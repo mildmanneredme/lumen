@@ -3,32 +3,97 @@
   "projectName": "lumen",
   "scope": "robert-xies-projects",
   "projectId": "prj_g2eoQPikqSKEEEouyT3FBTuEfACs",
-  "deploymentId": "dpl_EGSMKfya45WKKHC3pKPuAbXX88qv",
+  "deploymentId": "dpl_66YWkCdVSGhUhRdCCL5WpYnL2NUf",
   "target": "production",
   "status": "Ready",
   "productionUrl": "https://lumen-phi-five.vercel.app/",
-  "deploymentUrl": "https://lumen-cxq7xf67j-robert-xies-projects.vercel.app/",
+  "deploymentUrl": "https://lumen-80xboitg7-robert-xies-projects.vercel.app/",
   "projectDashboard": "https://vercel.com/robert-xies-projects/lumen",
-  "sourceCommit": "e7b9dc0c6ede7311684b60d2306e54c4e68b9435",
-  "deployedAt": "2026-10-09T15:33:19Z",
-  "verifiedAt": "2026-10-09T15:38:04.081786+00:00",
+  "sourceCommit": "cebe1cc15d022327aeaff40b128629265b50500a",
+  "deployedAt": "2026-10-09T17:28:53Z",
+  "verifiedAt": "2026-10-09T17:32:24.025133+00:00",
   "runtimeDirectory": "web/dist",
   "deploymentCommand": "vercel deploy --prod --yes --scope robert-xies-projects",
   "commandDirectory": "web",
   "verification": {
     "publicWithoutAuthentication": true,
-    "runtimeFilesVerified": 14,
+    "runtimeFilesVerified": 31,
     "runtimeSha256HashesMatch": true,
     "audioRangeStatus": 206,
     "audioContentRange": "bytes 100000-100099/5124278",
-    "browserChecksPassed": 62,
+    "audioRangeExactBytes": true,
+    "browserChecksPassed": 155,
     "browserChecksFailed": 0,
     "browserErrors": [],
+    "browserSuites": [
+      {
+        "script": "tests/browser-smoke.cjs",
+        "url": "https://lumen-phi-five.vercel.app/",
+        "generatedAt": "2026-10-09T17:29:40.506Z",
+        "passed": 62,
+        "failed": 0
+      },
+      {
+        "script": "tests/mobile-pwa.cjs",
+        "url": "https://lumen-phi-five.vercel.app/",
+        "generatedAt": "2026-10-09T17:29:57.394Z",
+        "passed": 93,
+        "failed": 0
+      }
+    ],
+    "serviceWorker": {
+      "status": 200,
+      "contentType": "application/javascript; charset=utf-8",
+      "cacheControl": "public, max-age=0, must-revalidate",
+      "pass": true
+    },
+    "manifest": {
+      "status": 200,
+      "contentType": "application/manifest+json; charset=utf-8",
+      "cacheControl": "public, max-age=0, must-revalidate",
+      "id": "/",
+      "startUrl": "/",
+      "scope": "/",
+      "display": "standalone",
+      "icons": [
+        {
+          "src": "/icons/icon-192.png",
+          "sizes": "192x192",
+          "purpose": "any",
+          "status": 200,
+          "hashMatches": true
+        },
+        {
+          "src": "/icons/icon-512.png",
+          "sizes": "512x512",
+          "purpose": "any",
+          "status": 200,
+          "hashMatches": true
+        },
+        {
+          "src": "/icons/icon-maskable-512.png",
+          "sizes": "512x512",
+          "purpose": "maskable",
+          "status": 200,
+          "hashMatches": true
+        }
+      ],
+      "pass": true
+    },
+    "chromeInstallabilityErrors": [],
+    "physicalPhoneInstallVerified": false,
+    "offlineReadingVerified": true,
+    "audioRequiresConnection": true,
+    "audioRequestsBypassServiceWorker": true,
     "authoringPathsReturn404": [
       "/art-direction/cast-bible.json",
       "/data/alignment-report.json",
+      "/data/artwork-optimization.json",
       "/README.md",
-      "/scripts/prepare_pilot.py"
+      "/scripts/prepare_pilot.py",
+      "/scripts/optimize_art.py",
+      "/.vercel/project.json"
     ]
-  }
+  },
+  "release": "Phone layout and installable web app"
 }
