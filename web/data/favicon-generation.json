@@ -25,5 +25,127 @@
       "#181816"
     ]
   },
-  "installedAppIcons": "Existing Android, maskable, Apple and MediaSession icons retained"
+  "installedAppIcons": "Existing Android, maskable, Apple and MediaSession icons retained",
+  "productionVerification": {
+    "generatedAt": "2026-10-09T17:42:29.438Z",
+    "url": "https://lumen-phi-five.vercel.app/",
+    "sourceCommit": "af0ca044e86a0b8e6f343dc20fcd2af046b2b308",
+    "passed": 15,
+    "failed": 0,
+    "errors": [],
+    "checks": [
+      {
+        "name": "New transparent PNG favicon links are the sole browser favicon candidates",
+        "pass": true
+      },
+      {
+        "name": "512px favicon decodes in Chrome with transparent corners and PNG Content-Type",
+        "pass": true
+      },
+      {
+        "name": "32px favicon decodes in Chrome with transparent corners and PNG Content-Type",
+        "pass": true
+      },
+      {
+        "name": "16px favicon decodes in Chrome with transparent corners and PNG Content-Type",
+        "pass": true
+      },
+      {
+        "name": "New favicon shell version activates normally",
+        "pass": true
+      },
+      {
+        "name": "Both tiny PNG favicons are precached",
+        "pass": true
+      },
+      {
+        "name": "Cached reader shell and canonical prose still open offline",
+        "pass": true
+      },
+      {
+        "name": "Both transparent favicon exports decode offline",
+        "pass": true
+      },
+      {
+        "name": "No JavaScript errors",
+        "pass": true
+      },
+      {
+        "name": "Live index.html exactly matches deployed local bytes",
+        "pass": true
+      },
+      {
+        "name": "Live sw.js exactly matches deployed local bytes",
+        "pass": true
+      },
+      {
+        "name": "Service worker uses immediate revalidation caching header",
+        "pass": true
+      },
+      {
+        "name": "Live icons/favicon-lumen-v2.png exactly matches deployed local bytes",
+        "pass": true
+      },
+      {
+        "name": "Live icons/favicon-lumen-32-v2.png exactly matches deployed local bytes",
+        "pass": true
+      },
+      {
+        "name": "Live icons/favicon-lumen-16-v2.png exactly matches deployed local bytes",
+        "pass": true
+      }
+    ],
+    "runtimeHashes": [
+      {
+        "file": "index.html",
+        "status": 200,
+        "bytes": 6874,
+        "localBytes": 6874,
+        "liveSha256": "d456afaeb14fc20e06b798353f51bfb864cfde556b71d32b7d7b16ae27305a1f",
+        "localSha256": "d456afaeb14fc20e06b798353f51bfb864cfde556b71d32b7d7b16ae27305a1f",
+        "contentType": "text/html; charset=utf-8",
+        "cacheControl": "public, max-age=0, must-revalidate"
+      },
+      {
+        "file": "sw.js",
+        "status": 200,
+        "bytes": 4955,
+        "localBytes": 4955,
+        "liveSha256": "dbb4670ff968c15693a5ee3d5ae17c537eef861f70f7613bc63dfb997a3363d6",
+        "localSha256": "dbb4670ff968c15693a5ee3d5ae17c537eef861f70f7613bc63dfb997a3363d6",
+        "contentType": "application/javascript; charset=utf-8",
+        "cacheControl": "public, max-age=0, must-revalidate"
+      },
+      {
+        "file": "icons/favicon-lumen-v2.png",
+        "status": 200,
+        "bytes": 125335,
+        "localBytes": 125335,
+        "liveSha256": "e37d0fb0c958054b2a8d83766d38fb4d86e431adae5e8e9833cb0d0be46065f1",
+        "localSha256": "e37d0fb0c958054b2a8d83766d38fb4d86e431adae5e8e9833cb0d0be46065f1",
+        "contentType": "image/png",
+        "cacheControl": "public, max-age=0, must-revalidate"
+      },
+      {
+        "file": "icons/favicon-lumen-32-v2.png",
+        "status": 200,
+        "bytes": 2590,
+        "localBytes": 2590,
+        "liveSha256": "b779aaf0a10e319caff7bb49cc753b712c92cc699bcb73ee1f4a77525cd4fcf8",
+        "localSha256": "b779aaf0a10e319caff7bb49cc753b712c92cc699bcb73ee1f4a77525cd4fcf8",
+        "contentType": "image/png",
+        "cacheControl": "public, max-age=0, must-revalidate"
+      },
+      {
+        "file": "icons/favicon-lumen-16-v2.png",
+        "status": 200,
+        "bytes": 913,
+        "localBytes": 913,
+        "liveSha256": "620d8198c53655f690818e3fa1e4c5bd46e4e8958bf6515a6310070c32ddd864",
+        "localSha256": "620d8198c53655f690818e3fa1e4c5bd46e4e8958bf6515a6310070c32ddd864",
+        "contentType": "image/png",
+        "cacheControl": "public, max-age=0, must-revalidate"
+      }
+    ]
+  }
 }
