@@ -24,6 +24,21 @@ Use this server for the preview. It serves audio byte ranges (HTTP 206), which l
 - Navigation before the audio is ready is queued. Repeated 15-second skips accumulate, and the latest timeline selection takes precedence. Loading feedback remains visible on phones.
 - Space toggles playback outside controls; left/right arrows seek 15 seconds. Reduced motion disables scene crossfades.
 
+## Phone and installed app
+
+The phone layout has a full-width touch timeline, large playback controls, adjustable text, and safe-area spacing for notches and home indicators. Rotate to landscape for artwork beside the prose. **Art** hides the illustration when you want more reading space; this preference is remembered. Media Session supplies playback metadata and supported system play/pause/seek controls.
+
+Open the production site in Chrome. In the Aa panel, **Install Lumen** opens Chrome's install prompt when available; otherwise **How to install** shows the browser's steps. There are no automatic install prompts.
+
+- Android Chrome: menu → **Install and create shortcut** → **Install**. Older versions may say **Add to Home screen**.
+- iPhone Chrome: **Share** → **Add to Home Screen** → **Add**.
+
+Chrome documents [Android installation](https://support.google.com/chrome/answer/9658361?co=GENIE.Platform%3DAndroid&hl=en) and [iPhone home-screen installation](https://support.google.com/chrome/answer/9658361?co=GENIE.Platform%3DiOS&hl=en). Launching the saved icon opens Lumen as a standalone app when supported. Browser and OS behavior can vary; physical phone installation has not yet been verified.
+
+The service worker saves the small reader shell and paintings you visit. Cached text and artwork remain readable offline, subject to browser storage eviction. **Audio requires a connection** and streams through Chrome's native media stack, including byte-range seeking. The bookmark survives offline visits, and Play retries after reconnection. Releases activate after existing reader tabs close, without interrupting current listening.
+
+The eight WebP paintings are about 89% smaller than the original PNGs, with the same dimensions and framing. Only the current painting and the next one load ahead; Save-Data disables the next-image prefetch. Original PNGs remain available for older open tabs. Run `python3 scripts/optimize_art.py` after replacing artwork; `data/artwork-optimization.json` records the output sizes.
+
 ## Saved place and narrator editions
 
 `dist/progress.js` stores a versioned bookmark under `lumen-reader-v1`: book, manuscript, chapter, canonical sentence, fraction through that sentence, narrator, recording hash, exact audio time, and completion. Position saves roughly every two seconds during playback, including background audio, and on pause, seek, page hide, or tab hide. Preferences use a separate key. Existing pilot bookmarks migrate without deleting their original key. Completed excerpts remain completed; loading the full chapter later maps the listener to the end of the excerpt rather than skipping the rest of Chapter 1.
@@ -44,7 +59,7 @@ The visual treatment includes present-day scenes, memories, and explicit metapho
 
 ## Verification
 
-`node --test tests/progress.cjs` checks persistence and mapping without a browser. With Playwright and Chrome available, `node tests/browser-smoke.cjs`, `node tests/navigation-real-input.cjs`, and `node tests/resume-navigation.cjs` verify actual audio playback, painting/prose synchronization, mouse and touch navigation, slow loading, resume, completion, and revised recordings. Set `PLAYWRIGHT_MODULE` or `CHROME_PATH` when needed. The real-input suite uses native mouse and touch events rather than synthesizing range changes.
+`node --test tests/progress.cjs` checks persistence and mapping without a browser. With Playwright and Chrome available, `node tests/browser-smoke.cjs`, `node tests/navigation-real-input.cjs`, and `node tests/resume-navigation.cjs` verify actual audio playback, painting/prose synchronization, mouse and touch navigation, slow loading, resume, completion, and revised recordings. `node tests/mobile-pwa.cjs` covers five phone viewports, touch controls, safe areas, Chrome installability, install choices, offline reading, native audio ranges, error recovery, and system media controls. These use Chrome emulation, not a physical phone. Set `PLAYWRIGHT_MODULE` or `CHROME_PATH` when needed; `LUMEN_QA_URL` targets a deployed site and `LUMEN_QA_OUT` chooses the report directory. The real-input suite uses native mouse and touch events rather than synthesizing range changes.
 
 ## Vercel deployment
 
@@ -61,3 +76,5 @@ On a fresh checkout, first run `vercel link --yes --project lumen --scope robert
 `vercel.json` selects the Other framework preset, no build command, and `dist` as the output directory. `.vercelignore` permits only `dist/` and the deployment configuration in the CLI upload. See [Vercel's configuration documentation](https://vercel.com/docs/project-configuration/vercel-json) and [deployment exclusions](https://vercel.com/docs/deployments/vercel-ignore). If Git-based automatic deployment is added later, set the repository's Root Directory to `web`.
 
 Use the stable production address for listening bookmarks. Each site origin has its own browser storage; existing localhost bookmarks are separate. Deployment verification is recorded in `data/deployment.json`.
+
+When changing runtime HTML, JavaScript, or CSS, bump `SHELL_CACHE` in `dist/sw.js`. Keep the worker and manifest revalidation headers in `vercel.json`. Do not force worker activation or reload a listener's page.

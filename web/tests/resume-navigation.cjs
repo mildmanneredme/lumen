@@ -29,6 +29,7 @@ async function state(page) {
       scene: document.querySelector('#scene-stage').dataset.scene,
       image: document.querySelector('#scene-image').getAttribute('src'),
       expectedScene: chapter.scenes.filter(scene => scene.start <= audio.currentTime).at(-1)?.id,
+      expectedImage: chapter.scenes.filter(scene => scene.start <= audio.currentTime).at(-1)?.src,
       active: document.querySelector('.sentence.active')?.id,
       expectedSentence: chapter.paragraphs.flatMap(p => p.sentences).filter(sentence => sentence.start <= audio.currentTime).at(-1)?.id,
       resumeVisible: !document.querySelector('#resume-panel').hidden,
@@ -47,10 +48,21 @@ async function track(page, fraction) {
   return state(page);
 }
 async function waitReady(page, expectedTime) {
-  await page.waitForFunction(time => {
-    const audio = document.querySelector('#narration');
-    return audio?.readyState >= 1 && (time == null || Math.abs(audio.currentTime - time) < .2);
-  }, expectedTime, { timeout: 15000 });
+  try {
+    await page.waitForFunction(time => {
+      const audio = document.querySelector('#narration');
+      return audio?.readyState >= 1 && (time == null || Math.abs(audio.currentTime - time) < .2);
+    }, expectedTime, { timeout: 15000 });
+  } catch (error) {
+    const diagnostic = await page.evaluate(() => {
+      const a = document.querySelector('#narration');
+      return {time:a?.currentTime,ready:a?.readyState,duration:a?.duration,network:a?.networkState,error:a?.error?.message,src:a?.src,
+        seekable:a ? Array.from({length:a.seekable.length},(_,i)=>[a.seekable.start(i),a.seekable.end(i)]) : [],
+        controller:navigator.serviceWorker?.controller?.scriptURL,status:document.querySelector('#play-status')?.textContent};
+    });
+    check('audio readiness failure diagnostic',false,{expectedTime,...diagnostic});
+    throw error;
+  }
   await page.waitForTimeout(200);
 }
 async function installSeed(context, bookmark, preferences = null) {
@@ -106,7 +118,7 @@ async function screenshot(page, name) {
   await normal.page.reload({ waitUntil: 'domcontentloaded' });
   await waitReady(normal.page, beforeReload.time);
   const restored = await state(normal.page);
-  check('reload restores precise paused audio, artwork, and sentence', restored.paused && Math.abs(restored.time - beforeReload.time) < .2 && restored.scene === restored.expectedScene && restored.image === 'assets/' + restored.expectedScene + '.png' && restored.active === restored.expectedSentence, restored);
+  check('reload restores precise paused audio, artwork, and sentence', restored.paused && Math.abs(restored.time - beforeReload.time) < .2 && restored.scene === restored.expectedScene && restored.image === restored.expectedImage && restored.active === restored.expectedSentence, restored);
   check('returning visitor sees Continue with retained time', restored.resumeVisible && restored.continueText === 'Continue from ' + formatTime(beforeReload.time), restored);
   check('reading preferences persist independently of audio bookmark', restored.rate === 1.25 && restored.textSize === 24 && !!restored.preferences && Object.keys(restored.bookmark).includes('audioTime'), restored);
   await screenshot(normal.page, 'desktop-returning-listener');

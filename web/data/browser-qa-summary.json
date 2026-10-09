@@ -1,13 +1,14 @@
 {
-  "generatedAt": "2026-10-09T15:25:55.156017+00:00",
+  "generatedAt": "2026-10-09T17:27:44.307234+00:00",
   "browser": "Chrome",
-  "passed": 121,
+  "passed": 186,
   "failed": 0,
   "errors": [],
   "suites": [
     {
       "script": "tests/browser-smoke.cjs",
-      "generatedAt": "2026-10-09T14:23:06.929Z",
+      "url": "http://127.0.0.1:8765/",
+      "generatedAt": "2026-10-09T17:03:46.187Z",
       "passed": 62,
       "failed": 0,
       "checks": [
@@ -262,128 +263,9 @@
       ]
     },
     {
-      "script": "tests/navigation-real-input.cjs",
-      "generatedAt": "2026-10-09T14:22:58.312Z",
-      "passed": 28,
-      "failed": 0,
-      "checks": [
-        {
-          "name": "1440 mouse fresh load stays paused",
-          "pass": true
-        },
-        {
-          "name": "1440 mouse forward immediately after metadata",
-          "pass": true
-        },
-        {
-          "name": "1440 mouse rewind immediately after metadata",
-          "pass": true
-        },
-        {
-          "name": "1440 mouse paused timeline click or tap",
-          "pass": true
-        },
-        {
-          "name": "1440 mouse forward while playing",
-          "pass": true
-        },
-        {
-          "name": "1440 mouse rewind while playing",
-          "pass": true
-        },
-        {
-          "name": "1440 mouse playing timeline click or tap",
-          "pass": true
-        },
-        {
-          "name": "desktop timeline drag while playing",
-          "pass": true
-        },
-        {
-          "name": "desktop timeline drag while paused",
-          "pass": true
-        },
-        {
-          "name": "390 touch fresh load stays paused",
-          "pass": true
-        },
-        {
-          "name": "390 touch forward immediately after metadata",
-          "pass": true
-        },
-        {
-          "name": "390 touch rewind immediately after metadata",
-          "pass": true
-        },
-        {
-          "name": "390 touch paused timeline click or tap",
-          "pass": true
-        },
-        {
-          "name": "390 touch forward while playing",
-          "pass": true
-        },
-        {
-          "name": "390 touch rewind while playing",
-          "pass": true
-        },
-        {
-          "name": "390 touch playing timeline click or tap",
-          "pass": true
-        },
-        {
-          "name": "390 touch timeline drag while playing",
-          "pass": true
-        },
-        {
-          "name": "390 touch timeline drag while paused",
-          "pass": true
-        },
-        {
-          "name": "320 touch fresh load stays paused",
-          "pass": true
-        },
-        {
-          "name": "320 touch forward immediately after metadata",
-          "pass": true
-        },
-        {
-          "name": "320 touch rewind immediately after metadata",
-          "pass": true
-        },
-        {
-          "name": "320 touch paused timeline click or tap",
-          "pass": true
-        },
-        {
-          "name": "320 touch forward while playing",
-          "pass": true
-        },
-        {
-          "name": "320 touch rewind while playing",
-          "pass": true
-        },
-        {
-          "name": "320 touch playing timeline click or tap",
-          "pass": true
-        },
-        {
-          "name": "320 touch timeline drag while playing",
-          "pass": true
-        },
-        {
-          "name": "320 touch timeline drag while paused",
-          "pass": true
-        },
-        {
-          "name": "no browser JavaScript errors",
-          "pass": true
-        }
-      ]
-    },
-    {
       "script": "tests/resume-navigation.cjs",
-      "generatedAt": "2026-10-09T15:23:15.389Z",
+      "url": "http://127.0.0.1:8765/",
+      "generatedAt": "2026-10-09T17:23:36.574Z",
       "passed": 31,
       "failed": 0,
       "checks": [
@@ -512,6 +394,387 @@
           "pass": true
         }
       ]
+    },
+    {
+      "script": "tests/mobile-pwa.cjs",
+      "url": "http://127.0.0.1:8765/",
+      "generatedAt": "2026-10-09T17:19:52.296Z",
+      "passed": 93,
+      "failed": 0,
+      "checks": [
+        {
+          "name": "320\u00d7720 no overflow and all controls visible \u226544px",
+          "pass": true
+        },
+        {
+          "name": "320\u00d7720 reachable timeline",
+          "pass": true
+        },
+        {
+          "name": "320\u00d7720 safe-area viewport and visible art",
+          "pass": true
+        },
+        {
+          "name": "320\u00d7720 actual touch timeline seeks with prose and painting",
+          "pass": true
+        },
+        {
+          "name": "320\u00d7720 actual forward touch",
+          "pass": true
+        },
+        {
+          "name": "320\u00d7720 actual rewind touch",
+          "pass": true
+        },
+        {
+          "name": "320\u00d7720 maximum type retains controls and reading area",
+          "pass": true
+        },
+        {
+          "name": "320\u00d7720 returning bookmark paused with visible controls",
+          "pass": true
+        },
+        {
+          "name": "320\u00d7720 art toggle gives prose more room",
+          "pass": true
+        },
+        {
+          "name": "320\u00d7720 artwork preference survives reload",
+          "pass": true
+        },
+        {
+          "name": "360\u00d7780 no overflow and all controls visible \u226544px",
+          "pass": true
+        },
+        {
+          "name": "360\u00d7780 reachable timeline",
+          "pass": true
+        },
+        {
+          "name": "360\u00d7780 safe-area viewport and visible art",
+          "pass": true
+        },
+        {
+          "name": "360\u00d7780 actual touch timeline seeks with prose and painting",
+          "pass": true
+        },
+        {
+          "name": "360\u00d7780 actual forward touch",
+          "pass": true
+        },
+        {
+          "name": "360\u00d7780 actual rewind touch",
+          "pass": true
+        },
+        {
+          "name": "360\u00d7780 maximum type retains controls and reading area",
+          "pass": true
+        },
+        {
+          "name": "360\u00d7780 returning bookmark paused with visible controls",
+          "pass": true
+        },
+        {
+          "name": "360\u00d7780 art toggle gives prose more room",
+          "pass": true
+        },
+        {
+          "name": "360\u00d7780 artwork preference survives reload",
+          "pass": true
+        },
+        {
+          "name": "390\u00d7844 no overflow and all controls visible \u226544px",
+          "pass": true
+        },
+        {
+          "name": "390\u00d7844 reachable timeline",
+          "pass": true
+        },
+        {
+          "name": "390\u00d7844 safe-area viewport and visible art",
+          "pass": true
+        },
+        {
+          "name": "390\u00d7844 actual touch timeline seeks with prose and painting",
+          "pass": true
+        },
+        {
+          "name": "390\u00d7844 actual forward touch",
+          "pass": true
+        },
+        {
+          "name": "390\u00d7844 actual rewind touch",
+          "pass": true
+        },
+        {
+          "name": "390\u00d7844 maximum type retains controls and reading area",
+          "pass": true
+        },
+        {
+          "name": "390\u00d7844 returning bookmark paused with visible controls",
+          "pass": true
+        },
+        {
+          "name": "390\u00d7844 art toggle gives prose more room",
+          "pass": true
+        },
+        {
+          "name": "390\u00d7844 artwork preference survives reload",
+          "pass": true
+        },
+        {
+          "name": "430\u00d7932 no overflow and all controls visible \u226544px",
+          "pass": true
+        },
+        {
+          "name": "430\u00d7932 reachable timeline",
+          "pass": true
+        },
+        {
+          "name": "430\u00d7932 safe-area viewport and visible art",
+          "pass": true
+        },
+        {
+          "name": "430\u00d7932 actual touch timeline seeks with prose and painting",
+          "pass": true
+        },
+        {
+          "name": "430\u00d7932 actual forward touch",
+          "pass": true
+        },
+        {
+          "name": "430\u00d7932 actual rewind touch",
+          "pass": true
+        },
+        {
+          "name": "430\u00d7932 maximum type retains controls and reading area",
+          "pass": true
+        },
+        {
+          "name": "430\u00d7932 returning bookmark paused with visible controls",
+          "pass": true
+        },
+        {
+          "name": "430\u00d7932 art toggle gives prose more room",
+          "pass": true
+        },
+        {
+          "name": "430\u00d7932 artwork preference survives reload",
+          "pass": true
+        },
+        {
+          "name": "844\u00d7390 no overflow and all controls visible \u226544px",
+          "pass": true
+        },
+        {
+          "name": "844\u00d7390 reachable timeline",
+          "pass": true
+        },
+        {
+          "name": "844\u00d7390 safe-area viewport and visible art",
+          "pass": true
+        },
+        {
+          "name": "844\u00d7390 actual touch timeline seeks with prose and painting",
+          "pass": true
+        },
+        {
+          "name": "844\u00d7390 actual forward touch",
+          "pass": true
+        },
+        {
+          "name": "844\u00d7390 actual rewind touch",
+          "pass": true
+        },
+        {
+          "name": "844\u00d7390 maximum type retains controls and reading area",
+          "pass": true
+        },
+        {
+          "name": "844\u00d7390 returning bookmark paused with visible controls",
+          "pass": true
+        },
+        {
+          "name": "844\u00d7390 art toggle gives prose more room",
+          "pass": true
+        },
+        {
+          "name": "844\u00d7390 artwork preference survives reload",
+          "pass": true
+        },
+        {
+          "name": "fresh phone normal loads current and next painting only",
+          "pass": true
+        },
+        {
+          "name": "fresh phone normal artwork under1MB",
+          "pass": true
+        },
+        {
+          "name": "phone audio initially requests metadata",
+          "pass": true
+        },
+        {
+          "name": "fresh phone Save-Data loads current painting only",
+          "pass": true
+        },
+        {
+          "name": "fresh phone Save-Data artwork under1MB",
+          "pass": true
+        },
+        {
+          "name": "phone audio initially requests metadata",
+          "pass": true
+        },
+        {
+          "name": "390\u00d7844 controls clear notch and Home indicator",
+          "pass": true
+        },
+        {
+          "name": "390\u00d7844 settings inside safe area",
+          "pass": true
+        },
+        {
+          "name": "844\u00d7390 controls clear notch and Home indicator",
+          "pass": true
+        },
+        {
+          "name": "844\u00d7390 settings inside safe area",
+          "pass": true
+        },
+        {
+          "name": "manifest defines stable standalone app identity",
+          "pass": true
+        },
+        {
+          "name": "manifest has192/512 PNG and separate maskable icon",
+          "pass": true
+        },
+        {
+          "name": "icon /icons/icon-192.png decodes at declared dimensions",
+          "pass": true
+        },
+        {
+          "name": "icon /icons/icon-512.png decodes at declared dimensions",
+          "pass": true
+        },
+        {
+          "name": "icon /icons/icon-maskable-512.png decodes at declared dimensions",
+          "pass": true
+        },
+        {
+          "name": "maskable icon background opaque and mark inside40% safe radius",
+          "pass": true
+        },
+        {
+          "name": "Apple Home screen icon decodes at180px",
+          "pass": true
+        },
+        {
+          "name": "service worker controls after reload",
+          "pass": true
+        },
+        {
+          "name": "Chrome reports no installability errors in normal profile",
+          "pass": true
+        },
+        {
+          "name": "dismissed installation prompt waits for explicit tap",
+          "pass": true
+        },
+        {
+          "name": "dismissed installation choice handled",
+          "pass": true
+        },
+        {
+          "name": "dismissed event consumed; helper offers Chrome menu",
+          "pass": true
+        },
+        {
+          "name": "accepted installation prompt waits for explicit tap",
+          "pass": true
+        },
+        {
+          "name": "accepted installation choice handled",
+          "pass": true
+        },
+        {
+          "name": "installed standalone app hides installation section",
+          "pass": true
+        },
+        {
+          "name": "iPhone Chrome helper explains Share to Home screen",
+          "pass": true
+        },
+        {
+          "name": "controlled online audio206 has exact native bytes",
+          "pass": true
+        },
+        {
+          "name": "controlled audio requests bypass service worker",
+          "pass": true
+        },
+        {
+          "name": "installation caches shell and artwork without audio",
+          "pass": true
+        },
+        {
+          "name": "uncached audio requires a connection",
+          "pass": true
+        },
+        {
+          "name": "cached app opens offline with saved prose and painting",
+          "pass": true
+        },
+        {
+          "name": "offline media error clearly explains reconnection",
+          "pass": true
+        },
+        {
+          "name": "Play retries narration after reconnect at saved position",
+          "pass": true
+        },
+        {
+          "name": "format error remains visible after a seek attempt",
+          "pass": true
+        },
+        {
+          "name": "Play reloads narration and keeps requested place",
+          "pass": true
+        },
+        {
+          "name": "media session advertises book and narration controls",
+          "pass": true
+        },
+        {
+          "name": "media forward action seeks15 seconds",
+          "pass": true
+        },
+        {
+          "name": "media rewind action seeks15 seconds",
+          "pass": true
+        },
+        {
+          "name": "media absolute seek updates prose and painting",
+          "pass": true
+        },
+        {
+          "name": "media pause freezes narration",
+          "pass": true
+        },
+        {
+          "name": "media play resumes narration",
+          "pass": true
+        },
+        {
+          "name": "media position state has valid duration and current position",
+          "pass": true
+        },
+        {
+          "name": "no browser JavaScript errors",
+          "pass": true
+        }
+      ]
     }
   ],
   "unitTests": {
@@ -519,11 +782,14 @@
     "passed": 13,
     "failed": 0
   },
+  "physicalPhoneInstallVerified": false,
   "manualPreviewChecks": [
     "Codex preview rewind and timeline click change the actual playback position.",
     "Reloading the Codex preview restores a paused position and displays Continue from the saved time."
   ],
   "unverifiedBrowsers": [
-    "Safari"
+    "Safari",
+    "physical Android Chrome",
+    "physical iPhone Chrome"
   ]
 }

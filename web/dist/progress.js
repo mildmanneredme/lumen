@@ -47,7 +47,8 @@
       return {
         speed: finite(value.speed) && value.speed >= .25 && value.speed <= 4 ? value.speed : 1,
         textSize: finite(value.textSize) && value.textSize >= 18 && value.textSize <= 28 ? value.textSize : 20,
-        narratorId: nonempty(value.narratorId) ? value.narratorId : identity.narratorId
+        narratorId: nonempty(value.narratorId) ? value.narratorId : identity.narratorId,
+        ...(typeof value.artworkVisible === 'boolean' ? {artworkVisible:value.artworkVisible} : {})
       };
     }
     function at(time) {

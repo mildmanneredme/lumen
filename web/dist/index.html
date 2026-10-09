@@ -4,14 +4,22 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#181816">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Lumen">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="description" content="Listen to the opening of Lumen by Rob Xie, with synchronized prose and original painted illustrations.">
   <title>Lumen — Read & listen</title>
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23181816'/%3E%3Cpath d='M10 7v18h13v-3H13V7z' fill='%23dfbd7d'/%3E%3C/svg%3E">
-  <link rel="stylesheet" href="styles.css?v=20261009-resume">
-  <link rel="preload" as="image" href="assets/opening-room.png">
-  <script src="data/chapter-001.js?v=20261009-resume" defer></script>
-  <script src="progress.js?v=20261009-resume" defer></script>
-  <script src="app.js?v=20261009-resume" defer></script>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="stylesheet" href="styles.css?v=20261009-mobile">
+  <link rel="stylesheet" href="mobile.css?v=20261009-mobile">
+  <link rel="preload" as="image" href="assets/opening-room.webp" fetchpriority="high">
+  <script src="data/chapter-001.js?v=20261009-mobile" defer></script>
+  <script src="progress.js?v=20261009-mobile" defer></script>
+  <script src="app.js?v=20261009-mobile" defer></script>
+  <script src="install.js?v=20261009-mobile" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#prose">Skip to the book</a>
@@ -32,7 +40,7 @@
   </aside>
   <main class="experience">
     <figure class="scene-stage" id="scene-stage" data-scene="opening-room">
-      <img id="scene-image" class="scene-image" src="assets/opening-room.png" alt="Adrian sits in his Berkeley living room, watching a glass office tower on television; a cold coffee rests nearby.">
+      <img id="scene-image" class="scene-image" src="assets/opening-room.webp" fetchpriority="high" decoding="async" alt="Adrian sits in his Berkeley living room, watching a glass office tower on television; a cold coffee rests nearby.">
       <img id="scene-incoming" class="scene-image incoming" alt="" aria-hidden="true">
       <figcaption class="scene-caption"><span id="scene-title">Berkeley · Monday evening</span><span class="scene-number" id="scene-number">01 / 08</span></figcaption>
     </figure>
@@ -52,6 +60,10 @@
   </main>
   <footer class="player" aria-label="Audiobook player">
     <p id="seek-feedback" class="seek-feedback" role="status" hidden></p>
+    <button id="art-toggle" class="art-toggle" type="button" aria-controls="scene-stage" aria-pressed="true" aria-label="Hide artwork">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8" cy="9" r="1.5"/><path d="m3 17 5-5 4 4 4-6 5 7"/></svg>
+      <span>Art</span>
+    </button>
     <div class="transport">
       <button id="back" class="skip-button" type="button" aria-label="Rewind 15 seconds"><span aria-hidden="true">↶</span><span>15</span></button>
       <button id="play" class="play-button" type="button" aria-label="Play audiobook"><span id="play-icon" aria-hidden="true">▶</span></button>
@@ -68,8 +80,13 @@
     <label class="size-label" for="text-size">Text size <output id="text-size-value">20 px</output></label>
     <input id="text-size" type="range" min="18" max="28" step="1" value="20">
     <p>Click a sentence to hear it. Scroll freely to read ahead, then select Follow text to return to the narration.</p>
+    <section id="install-section" class="install-section" aria-labelledby="install-title">
+      <h3 id="install-title">Lumen on your phone</h3>
+      <button id="install-app" class="continue-button" type="button">How to install</button>
+      <p id="install-status" role="status">Add Lumen to your Home screen to open it as an app.</p>
+    </section>
   </dialog>
-  <audio id="narration" preload="auto" src="assets/chapter-001-pilot.mp3?v=e6b49db1dac5"></audio>
+  <audio id="narration" preload="metadata" crossorigin="anonymous" src="assets/chapter-001-pilot.mp3?v=e6b49db1dac5"></audio>
   <noscript><p class="no-script">Enable JavaScript for synchronized text and paintings.</p><audio controls src="assets/chapter-001-pilot.mp3"></audio></noscript>
 </body>
 </html>

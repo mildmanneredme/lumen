@@ -13,7 +13,7 @@
   if (audio.getAttribute('src') !== recordingSrc) audio.src = recordingSrc;
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
   const duration = chapter.duration;
-  const scenes = chapter.scenes.map(scene => ({ ...scene, src: 'assets/' + scene.id + '.png' }));
+  const scenes = chapter.scenes.map(scene => ({ ...scene, src: scene.src || 'assets/' + scene.id + '.webp' }));
   const descriptions = {
     'opening-room': 'Adrian sits in his Berkeley living room, watching a glass office tower on television; a cold coffee rests nearby.',
     'unnamed-suspect': 'The television shows an unnamed young man with a faint smile being escorted in handcuffs outside a glass office building.',
@@ -28,6 +28,8 @@
   let sceneToken = 0, sceneTimer = 0, animationFrame = 0, lastSaved = -1;
   let pendingSeek = null, issuedSeek = null, resumeAfterSeek = false, seekTimer = 0;
   let progress, bookmarkDirty = false, completed = false;
+  let artworkVisible = true, lastMediaUpdate = 0;
+  const warmedScenes = new Set();
   const sentences = [], paragraphElements = new Map();
   const sentenceElements = new Map();
   const formatTime = seconds => {
@@ -94,8 +96,8 @@
     attemptSeek();
     setPlayState();
     clearTimeout(seekTimer);
-    if (pendingSeek !== null) seekTimer = setTimeout(() => {
-      if (pendingSeek !== null) $('seek-feedback').textContent = 'Still loading your place. Keep this page open, or reload if the connection has stopped.';
+    if (pendingSeek !== null && !audio.error) seekTimer = setTimeout(() => {
+      if (pendingSeek !== null && !audio.error) $('seek-feedback').textContent = 'Still loading your place. Keep this page open, or reload if the connection has stopped.';
     }, 8000);
   }
   function setFollow(value, jump = false) {
@@ -129,6 +131,11 @@
       if (token !== sceneToken) return;
       incoming.src = scene.src;
       image.alt = descriptions[scene.id];
+      const next = scenes[scenes.indexOf(scene) + 1];
+      if (next && !warmedScenes.has(next.id) && !navigator.connection?.saveData) {
+        warmedScenes.add(next.id);
+        const ahead = new Image(); ahead.decoding = 'async'; ahead.fetchPriority = 'low'; ahead.src = next.src;
+      }
       if (reduced.matches || audio.paused) { image.src = scene.src; return; }
       requestAnimationFrame(() => {
         if (token !== sceneToken) return;
@@ -141,7 +148,7 @@
       });
     };
     preload.onerror = () => {
-      if (token === sceneToken) $('play-status').textContent = 'Illustration unavailable · narration continues';
+      if (token === sceneToken) $('play-status').textContent = 'Illustration unavailable';
     };
     preload.src = scene.src;
   }
@@ -151,6 +158,7 @@
     seek.style.setProperty('--progress', (clamped / duration * 100) + '%');
     seek.setAttribute('aria-valuetext', Math.floor(clamped / 60) + ' minutes ' + Math.floor(clamped % 60) + ' seconds');
     $('elapsed').textContent = formatTime(clamped);
+    updateMediaSession(force);
     showScene(getAt(scenes,clamped) || scenes[0]);
     const sentence = getAt(sentences,clamped);
     const paragraph = getAt(chapter.paragraphs,clamped);
@@ -205,17 +213,37 @@
     progress.save(time, {completed: completed || (pendingSeek === null && audio.ended)});
   }
   function savePreferences() {
-    progress.savePreferences({speed:audio.playbackRate, textSize:Number($('text-size').value), narratorId:chapter.audio.narratorId});
+    progress.savePreferences({speed:audio.playbackRate, textSize:Number($('text-size').value), narratorId:chapter.audio.narratorId, artworkVisible});
+  }
+  function setArtworkVisible(value) {
+    artworkVisible = value;
+    document.body.classList.toggle('art-hidden', !value);
+    $('art-toggle').setAttribute('aria-pressed', String(value));
+    $('art-toggle').setAttribute('aria-label', value ? 'Hide artwork' : 'Show artwork');
+  }
+  function updateMediaSession(force = false) {
+    if (!('mediaSession' in navigator)) return;
+    const now = performance.now();
+    if (!force && now - lastMediaUpdate < 1000) return;
+    lastMediaUpdate = now;
+    navigator.mediaSession.playbackState = audio.paused ? 'paused' : 'playing';
+    if (navigator.mediaSession.setPositionState && Number.isFinite(audio.duration) && audio.duration > 0) {
+      try { navigator.mediaSession.setPositionState({duration:audio.duration, playbackRate:audio.playbackRate,
+        position:Math.max(0,Math.min(audio.duration,audio.currentTime))}); } catch (_) {}
+    }
   }
   function setPlayState() {
     const ended = completed || currentPosition() >= duration-.08;
     const waiting = pendingSeek !== null;
-    $('seek-feedback').hidden = !waiting;
-    if (waiting) $('seek-feedback').textContent = 'Loading your place at ' + formatTime(pendingSeek) + '…';
+    const errorMessage = audio.error ? (navigator.onLine ? 'Narration could not be loaded. Select Play to try again.' : 'You’re offline. Reconnect to listen; your place is saved.') : '';
+    $('seek-feedback').hidden = !waiting && !errorMessage;
+    if (errorMessage) $('seek-feedback').textContent = errorMessage;
+    else if (waiting) $('seek-feedback').textContent = 'Loading your place at ' + formatTime(pendingSeek) + '…';
     const wantsPlayback = !audio.paused || (waiting && resumeAfterSeek);
     $('play-icon').textContent = wantsPlayback ? 'Ⅱ' : '▶';
     play.setAttribute('aria-label', ended ? 'Replay audiobook' : wantsPlayback ? 'Pause audiobook' : 'Play audiobook');
-    $('play-status').textContent = ended ? 'End of the pilot' : audio.paused ? 'Chapter 1 · paused' : 'Chapter 1 · listening';
+    $('play-status').textContent = errorMessage || (ended ? 'End of the pilot' : audio.paused ? 'Chapter 1 · paused' : 'Chapter 1 · listening');
+    updateMediaSession(true);
   }
   async function startPlayback() {
     try { await audio.play(); } catch (_) { $('play-status').textContent = 'Playback could not start. Select Play to try again.'; }
@@ -223,6 +251,10 @@
   async function togglePlayback() {
     bookmarkDirty = true;
     $('resume-panel').hidden = true;
+    if (audio.error) {
+      const retryAt = currentPosition();
+      audio.load(); pendingSeek = retryAt; issuedSeek = null; resumeAfterSeek = false;
+    }
     if (completed) { startOver(true); return; }
     if (pendingSeek !== null) {
       if (!audio.paused) { resumeAfterSeek = false; audio.pause(); }
@@ -251,6 +283,10 @@
   seek.addEventListener('input',() => seekTo(seek.value));
   seek.addEventListener('change',setPlayState);
   followButton.addEventListener('click',() => setFollow(!follow,true));
+  $('art-toggle').addEventListener('click',() => {
+    setArtworkVisible(!artworkVisible); savePreferences();
+    requestAnimationFrame(() => scrollToActive(true));
+  });
   for (const event of ['wheel','touchmove']) pane.addEventListener(event,() => setFollow(false),{passive:true});
   pane.addEventListener('keydown',event => {
     if (['ArrowDown','ArrowUp','PageDown','PageUp','Home','End'].includes(event.key)) setFollow(false);
@@ -272,7 +308,7 @@
   audio.addEventListener('ended',() => { if (pendingSeek !== null) return; completed = true; cancelAnimationFrame(animationFrame); render(duration); savePosition(true); setPlayState(); });
   audio.addEventListener('waiting',() => { $('play-status').textContent = 'Loading narration…'; });
   audio.addEventListener('playing',setPlayState);
-  audio.addEventListener('error',() => { $('play-status').textContent = 'Narration could not be loaded. Please reload.'; $('seek-feedback').hidden = false; $('seek-feedback').textContent = 'Narration could not be loaded. Please reload to try again.'; });
+  audio.addEventListener('error',() => { clearTimeout(seekTimer); setPlayState(); });
   for (const event of ['loadedmetadata','progress','canplay','loadeddata']) audio.addEventListener(event,attemptSeek);
   const settings = $('settings');
   $('settings-open').addEventListener('click',() => settings.showModal());
@@ -297,6 +333,25 @@
   const saved = progress.readPreferences();
   if ([.75,1,1.25,1.5,2].includes(Number(saved.speed))) { audio.playbackRate=Number(saved.speed); $('speed').value=saved.speed; }
   setTextSize(saved.textSize);
+  setArtworkVisible(saved.artworkVisible !== false);
+  if ('mediaSession' in navigator) {
+    if ('MediaMetadata' in window) navigator.mediaSession.metadata = new MediaMetadata({
+      title: 'Lumen · ' + chapter.title, artist: chapter.author, album: 'Lumen',
+      artwork: [{src:new URL('icons/icon-192.png', location.href).href,sizes:'192x192',type:'image/png'},
+                {src:new URL('icons/icon-512.png', location.href).href,sizes:'512x512',type:'image/png'}]
+    });
+    const actions = {
+      play: () => { if (audio.paused && !resumeAfterSeek) togglePlayback(); },
+      pause: () => { resumeAfterSeek = false; audio.pause(); savePosition(true); setPlayState(); },
+      stop: () => { resumeAfterSeek = false; audio.pause(); savePosition(true); setPlayState(); },
+      seekbackward: details => seekTo(currentPosition() - (details.seekOffset || 15)),
+      seekforward: details => seekTo(currentPosition() + (details.seekOffset || 15)),
+      seekto: details => { if (Number.isFinite(details.seekTime)) seekTo(details.seekTime); }
+    };
+    for (const [action, handler] of Object.entries(actions)) {
+      try { navigator.mediaSession.setActionHandler(action, handler); } catch (_) {}
+    }
+  }
   $('total').textContent = formatTime(duration); $('excerpt-duration').textContent = formatTime(duration);
   setFollow(true);
   const restored = progress.resolve(progress.read());
@@ -307,5 +362,4 @@
     $('resume-continue').textContent = completed ? 'Listen again' : 'Continue from ' + formatTime(restored.time);
     seekTo(restored.time, true);
   } else { render(0); setPlayState(); }
-  for (const scene of scenes) { const image = new Image(); image.src = scene.src; }
 })();

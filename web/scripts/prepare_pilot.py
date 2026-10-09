@@ -183,7 +183,7 @@ def make_scenes(paragraphs):
     scenes = []
     for scene_id, paragraph_id, sentence_number, title, kind, description, reason in definitions:
         sentence = by_id[paragraph_id]["sentences"][sentence_number - 1]
-        scenes.append({"id": scene_id, "start": 0 if not scenes else sentence["start"],
+        scenes.append({"id": scene_id, "src": f"assets/{scene_id}.webp", "start": 0 if not scenes else sentence["start"],
                        "paragraphId": paragraph_id, "sentenceId": sentence["id"],
                        "title": title, "kind": kind, "description": description,
                        "narrationTrigger": sentence["text"], "reason": reason})

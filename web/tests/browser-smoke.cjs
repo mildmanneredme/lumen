@@ -25,7 +25,7 @@ async function state(page) {
       time: a.currentTime, paused: a.paused, ended: a.ended, duration: a.duration, rate: a.playbackRate,
       active: document.querySelector('.sentence.active')?.id || null, expectedSentence: current?.id || null,
       activeCount: document.querySelectorAll('.sentence.active').length,
-      scene: document.querySelector('#scene-stage').dataset.scene, expectedScene: expectedScene?.id,
+      scene: document.querySelector('#scene-stage').dataset.scene, expectedScene: expectedScene?.id, expectedImage: expectedScene?.src,
       image: document.querySelector('#scene-image').getAttribute('src'),
       sceneCounter: document.querySelector('#scene-number').textContent,
       expectedCounter: String(chapter.scenes.indexOf(expectedScene) + 1).padStart(2, '0') + ' / ' + String(chapter.scenes.length).padStart(2, '0'),
@@ -51,10 +51,10 @@ async function assertPausedCue(page, seconds, label) {
   await page.waitForFunction(() => {
     const a = document.querySelector('#narration');
     const scene = window.LUMEN_CHAPTER.scenes.filter(s => s.start <= a.currentTime).at(-1);
-    return scene && document.querySelector('#scene-image').getAttribute('src') === 'assets/' + scene.id + '.png';
+    return scene && document.querySelector('#scene-image').getAttribute('src') === scene.src;
   }, null, { timeout: 5000 });
   const result = await state(page);
-  check(label, result.paused && result.active === result.expectedSentence && result.scene === result.expectedScene && result.image === 'assets/' + result.expectedScene + '.png' && result.sceneCounter === result.expectedCounter, result);
+  check(label, result.paused && result.active === result.expectedSentence && result.scene === result.expectedScene && result.image === result.expectedImage && result.sceneCounter === result.expectedCounter, result);
 }
 async function screenshot(page, name) {
   const file = path.join(out, name + '.png');
@@ -91,7 +91,7 @@ async function screenshot(page, name) {
     const result = await seekTo(page, time);
     check(`seek ${time} synchronizes sentence and scene`, Math.abs(result.time - time) < .11 && result.active === result.expectedSentence && result.scene === result.expectedScene, result);
   }
-  const cues = await page.evaluate(() => window.LUMEN_CHAPTER.scenes.map(s => ({ id: s.id, start: s.start })));
+  const cues = await page.evaluate(() => window.LUMEN_CHAPTER.scenes.map(s => ({ id: s.id, start: s.start, src: s.src })));
   for (const cue of cues) {
     if (cue.start > 0) await assertPausedCue(page, cue.start - .2, `cue ${cue.id} before boundary`);
     await assertPausedCue(page, cue.start + .2, `cue ${cue.id} after boundary`);
@@ -145,9 +145,9 @@ async function screenshot(page, name) {
   await page.locator('#play').click();
   await page.waitForFunction(id => document.querySelector('#scene-stage').dataset.scene === id && document.querySelector('#scene-incoming').classList.contains('visible'), finalCue.id, { timeout: 5000 });
   const fading = await page.evaluate(() => ({ duration: getComputedStyle(document.querySelector('#scene-incoming')).transitionDuration, visible: document.querySelector('#scene-incoming').classList.contains('visible'), incoming: document.querySelector('#scene-incoming').getAttribute('src'), base: document.querySelector('#scene-image').getAttribute('src'), paused: document.querySelector('#narration').paused }));
-  check('final cue crossfades for 1.25 seconds during playback', !fading.paused && fading.visible && fading.duration === '1.25s' && fading.incoming === 'assets/' + finalCue.id + '.png' && fading.base !== fading.incoming, fading);
-  await page.waitForFunction(id => document.querySelector('#scene-image').getAttribute('src') === 'assets/' + id + '.png' && !document.querySelector('#scene-incoming').classList.contains('visible'), finalCue.id, { timeout: 3000 });
-  check('final cue crossfade completes without stale art', (await state(page)).image === 'assets/' + finalCue.id + '.png', await state(page));
+  check('final cue crossfades for 1.25 seconds during playback', !fading.paused && fading.visible && fading.duration === '1.25s' && fading.incoming === finalCue.src && fading.base !== fading.incoming, fading);
+  await page.waitForFunction(src => document.querySelector('#scene-image').getAttribute('src') === src && !document.querySelector('#scene-incoming').classList.contains('visible'), finalCue.src, { timeout: 3000 });
+  check('final cue crossfade completes without stale art', (await state(page)).image === finalCue.src, await state(page));
   await screenshot(page, 'desktop-final-cue');
   await page.locator('#play').click();
 
@@ -160,7 +160,7 @@ async function screenshot(page, name) {
   await page.locator('#replay').click();
   await page.waitForTimeout(1500);
   const replayed = await state(page);
-  check('end replay restarts first scene and artwork', replayed.time < 3 && !replayed.paused && replayed.scene === cues[0].id && replayed.image === 'assets/' + cues[0].id + '.png' && replayed.sceneCounter === replayed.expectedCounter, replayed);
+  check('end replay restarts first scene and artwork', replayed.time < 3 && !replayed.paused && replayed.scene === cues[0].id && replayed.image === cues[0].src && replayed.sceneCounter === replayed.expectedCounter, replayed);
   await page.locator('#play').click();
 
   for (const width of [390, 320]) {
@@ -186,7 +186,7 @@ async function screenshot(page, name) {
   await rp.goto(url, { waitUntil: 'networkidle' });
   await seekTo(rp, 161.7);
   const reducedResult = await rp.locator('#scene-incoming').evaluate(el => ({ reduced: matchMedia('(prefers-reduced-motion: reduce)').matches, transition: getComputedStyle(el).transitionDuration, incomingOpacity: getComputedStyle(el).opacity, image: document.querySelector('#scene-image').getAttribute('src') }));
-  check('reduced motion swaps scene without transition', reducedResult.reduced && reducedResult.transition === '0s' && reducedResult.image.endsWith('unnamed-suspect.png'), reducedResult);
+  check('reduced motion swaps scene without transition', reducedResult.reduced && reducedResult.transition === '0s' && reducedResult.image.endsWith('unnamed-suspect.webp'), reducedResult);
   await reducedContext.close();
   check('no browser JavaScript or resource errors', report.errors.length === 0, report.errors);
   report.passed = report.checks.filter(c => c.pass).length;
