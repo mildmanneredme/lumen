@@ -1,0 +1,29 @@
+{
+  "generatedAt": "2026-10-09T17:39:37.107Z",
+  "tool": "built-in image_gen",
+  "transparentBackground": true,
+  "source": {
+    "repository": "https://github.com/mildmanneredme/robxie-portfolio",
+    "artwork": "https://github.com/mildmanneredme/robxie-portfolio/blob/main/public/projects/lumen/art.webp",
+    "cover": "https://github.com/mildmanneredme/robxie-portfolio/blob/main/public/projects/lumen/cover.webp",
+    "motif": "A central light with gold paths radiating through the city"
+  },
+  "finalMaster": "web/art-direction/branding/lumen-favicon-master-v2.png",
+  "pngExports": [
+    "web/dist/icons/favicon-lumen-v2.png",
+    "web/dist/icons/favicon-lumen-32-v2.png",
+    "web/dist/icons/favicon-lumen-16-v2.png"
+  ],
+  "generationPrompt": "Use case: logo-brand.\nAsset type: transparent PNG browser favicon for Lumen.\nInput image 1 is a visual reference: the actual Lumen portfolio cover artwork without typography. Use its luminous central point and gold threads radiating through the dark city as the recognizable motif.\nPrimary request: create one beautiful, minimal square favicon mark inspired by that central branching light. Reduce the reference to a compact symbol: one bright central warm ivory-gold point, with six to eight substantial gold light paths radiating out and a few purposeful angular branches. The path arrangement should subtly suggest the reference's illuminated connected city, with a restrained cinematic feel.\nComposition: one centered isolated mark occupying about 84% of a square canvas; generous transparent margins. Broad, clean, connected forms that remain recognizable at 16x16 and 32x32 pixels. Strong silhouette, intentional asymmetric branches, restrained fine detail.\nPalette: warm antique gold and rich amber-gold with darker gold edges for legibility on both white and charcoal browser chrome; a small ivory light core. Very subtle glow only near the center. Polished, elegant and grounded, not cartoon.\nBackground: genuinely transparent alpha everywhere outside the gold mark, including spaces between branches. No city backdrop, no black square, no filled circular badge, no shadow backdrop, no baked checkerboard.\nText: none. Avoid letters, words, book covers, buildings, borders, multiple variants, mockups, watermark, tiny particles, many hairline rays or excessive glow. Output a single finished square PNG favicon asset with real transparency.",
+  "refinementPrompt": "Use case: precise-object-edit.\nAsset type: production transparent PNG favicon, readable at 16 and 32 pixels.\nInput image 1 is the edit target: the gold branching light emblem just generated for Lumen.\nPrimary request: simplify and thicken this emblem dramatically for a tiny browser favicon. Keep its central light and warm gold radiating branches, its square centered layout, and transparent background.\nChange only the form and material for legibility: reduce to SIX principal short straight or gently angled rays, with just ONE simple angular fork per ray. Every main ray must be at least 8% of the total emblem width in thickness, with squared or softly beveled ends rather than needle-thin curved antler tips. Make the central junction a strong small hexagonal amber-gold light node. Flat rich amber gold with a narrow darker-gold contour, just a tiny ivory central highlight. Opaque gold foreground strokes, crisp solid silhouette. Remove all outer glow, metallic reflections, fine vein highlights, small particles, narrow spurs, organic antler curves, and texture.\nShape should resemble a compact network of city light paths radiating from one point, NOT a sun with dozens of spikes. Connected icon occupies 82% of square canvas, with balanced clear transparent margins and open transparent gaps between rays. It must look solid and visible when reduced to 16x16 pixels on white AND dark charcoal.\nReal transparent alpha outside the mark. No background plate, no badge circle, no black square, no checkerboard, no typography, no border, no mockup, no multiple icons. Output exactly one finished square transparent PNG.",
+  "verification": {
+    "realAlpha": true,
+    "transparentCorners": true,
+    "inspectedAt16And32Pixels": true,
+    "backgrounds": [
+      "white",
+      "#181816"
+    ]
+  },
+  "installedAppIcons": "Existing Android, maskable, Apple and MediaSession icons retained"
+}
