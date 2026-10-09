@@ -46,8 +46,18 @@ The visual treatment includes present-day scenes, memories, and explicit metapho
 
 `node --test tests/progress.cjs` checks persistence and mapping without a browser. With Playwright and Chrome available, `node tests/browser-smoke.cjs`, `node tests/navigation-real-input.cjs`, and `node tests/resume-navigation.cjs` verify actual audio playback, painting/prose synchronization, mouse and touch navigation, slow loading, resume, completion, and revised recordings. Set `PLAYWRIGHT_MODULE` or `CHROME_PATH` when needed. The real-input suite uses native mouse and touch events rather than synthesizing range changes.
 
-## Deploy to Vercel when ready
+## Vercel deployment
 
-Import the Lumen repository and set **Root Directory** to `web`. `vercel.json` selects the Other framework preset, no build command, and `dist` as the output directory. Only runtime files in `dist` are served. See [Vercel's configuration documentation](https://vercel.com/docs/project-configuration/vercel-json).
+Production: [lumen-phi-five.vercel.app](https://lumen-phi-five.vercel.app/). Project: `lumen` in `robert-xies-projects`, created on 9 October 2026. This release is the opening pilot.
 
-This pilot is prepared locally; no hosting deployment or Google Drive test package is required.
+Releases deploy directly with the Vercel CLI from `web`:
+
+```sh
+vercel deploy --prod --yes --scope robert-xies-projects
+```
+
+On a fresh checkout, first run `vercel link --yes --project lumen --scope robert-xies-projects` from `web`. Local project identifiers stay in ignored `.vercel/`. Current releases use the CLI; GitHub is the source repository.
+
+`vercel.json` selects the Other framework preset, no build command, and `dist` as the output directory. `.vercelignore` permits only `dist/` and the deployment configuration in the CLI upload. See [Vercel's configuration documentation](https://vercel.com/docs/project-configuration/vercel-json) and [deployment exclusions](https://vercel.com/docs/deployments/vercel-ignore). If Git-based automatic deployment is added later, set the repository's Root Directory to `web`.
+
+Use the stable production address for listening bookmarks. Each site origin has its own browser storage; existing localhost bookmarks are separate. Deployment verification is recorded in `data/deployment.json`.
