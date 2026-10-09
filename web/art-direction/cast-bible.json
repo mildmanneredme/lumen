@@ -1,0 +1,3406 @@
+{
+  "schema_version": 1,
+  "book": "LUMEN",
+  "manuscript_version": "v6",
+  "updated_on": "2026-10-09",
+  "purpose": "Production cast and visual continuity registry. Not a runtime reader data file.",
+  "scope": "All 18 human names in the v6 narration pronunciation list, plus Raven; four supporting recurring faces. Other minor contacts receive their own record before first illustration.",
+  "source_priority": [
+    "Draft/v6/revision_canon.json for explicit revision decisions",
+    "Draft/v6/part1.md through part5.md for scene and appearance facts",
+    "Draft/v6/narration-guide.txt for canonical spellings and production identity aliases"
+  ],
+  "source_notes": [
+    "One-based line citations and chapter numbers refer to the current v6 part files. Excerpts identify the exact source text even if later edits move lines.",
+    "Older plans are thematic references; they do not override v6 identities, ages, or revised events.",
+    "A fact sourced from a later chapter may establish a stable appearance for production. It must not be exposed as an early biography or used to reveal future events."
+  ],
+  "reveal_policy": {
+    "private_registry": true,
+    "copy_to_web_dist": false,
+    "scene_cue_granularity": "A chapter is the minimum guard. Within a chapter, reveal new faces, names and props only after the corresponding narration/text anchor.",
+    "public_asset_labels": "Use cue-local labels and spoiler-safe captions/alt text. Internal character IDs are not display names.",
+    "future_variants": "Do not carry later injuries, costume changes, younger photograph ages, allegiances, or fate into earlier scenes.",
+    "codename_policy": "Aliases marked internal_only_until_verified are production vocabulary. Never assume a narration-guide alias is already known to a listener.",
+    "casting_policy": "Facts and artistic choices are separate. Every new face is an original fictional actor, and all unprovided visual specifics remain provisional."
+  },
+  "style": {
+    "id": "cinematic-painted-realism-v1",
+    "status": "active_pilot_direction",
+    "description": "Grounded present-day political thriller rendered as richly textured cinematic painted realism.",
+    "palette": {
+      "shadow": "charcoal",
+      "exterior": "fog blue-grey",
+      "human_practical_light": "amber",
+      "reading_surface": "warm paper ivory",
+      "accent": "restrained muted gold"
+    },
+    "materials": [
+      "Visible painterly brushwork",
+      "Natural skin and cloth",
+      "Dark warm timber in lived-in human spaces",
+      "Glass and cool steel in corporate spaces"
+    ],
+    "composition": [
+      "Natural human proportions",
+      "Quiet, observational camera positions",
+      "Soft practical light and cool screen light",
+      "One clear story beat per image",
+      "Stable actor identity across camera angles"
+    ],
+    "avoid": [
+      "Generic neon cyberpunk",
+      "Holograms or futuristic costumes absent from narration",
+      "Celebrity likenesses",
+      "Generated text required to be exact",
+      "Symbols that imply an unrevealed alliance",
+      "Beauty retouching that changes age or facial geometry"
+    ]
+  },
+  "locations": [
+    {
+      "id": "adrian-berkeley-home",
+      "canon_facts": [
+        {
+          "field": "building",
+          "value": "Modest craftsman bungalow in Berkeley",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part1.md",
+            "line": 17,
+            "chapter": 1,
+            "excerpt": "the craftsman bungalow"
+          }
+        },
+        {
+          "field": "opening_time",
+          "value": "Monday evening",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part1.md",
+            "line": 17,
+            "chapter": 1,
+            "excerpt": "It was Monday evening."
+          }
+        },
+        {
+          "field": "opening_props",
+          "value": "Cold coffee and television broadcast",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part1.md",
+            "line": 13,
+            "chapter": 1,
+            "excerpt": "Adrian Marsh reached for his coffee, already cold"
+          }
+        },
+        {
+          "field": "kitchen_detail",
+          "value": "Hairline crack from ceiling to window frame",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part1.md",
+            "line": 442,
+            "chapter": 5,
+            "excerpt": "A hairline crack ran from the ceiling to the window frame"
+          }
+        },
+        {
+          "field": "phone",
+          "value": "Phone receives texts from Lena and other contacts",
+          "scope": "scene_prop",
+          "source": {
+            "path": "Draft/v6/part1.md",
+            "line": 53,
+            "chapter": 1,
+            "excerpt": "His phone buzzed. A text from Lena Chen"
+          }
+        }
+      ],
+      "provisional_art_choices": [
+        {
+          "field": "materials",
+          "value": "Dark stained timber trim, book-filled shelves, textile sofa, ceramic coffee mug",
+          "status": "provisional_art_choice",
+          "is_manuscript_canon": false
+        },
+        {
+          "field": "lighting",
+          "value": "Amber lamp light balanced by blue evening windows and television glow",
+          "status": "provisional_art_choice",
+          "is_manuscript_canon": false
+        },
+        {
+          "field": "continuity",
+          "value": "Preserve room layout from opening-room.png and unnamed-suspect.png; TV on low timber cabinet, Adrian on sofa, low coffee table, books and plants",
+          "status": "provisional_art_choice",
+          "is_manuscript_canon": false
+        }
+      ],
+      "scene_references": [
+        "../dist/assets/opening-room.png",
+        "../dist/assets/unnamed-suspect.png",
+        "../dist/assets/personal-connection.png"
+      ]
+    },
+    {
+      "id": "novamind-soma-tower",
+      "canon_facts": [
+        {
+          "field": "building",
+          "value": "Glass tower in San Francisco South of Market",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part1.md",
+            "line": 13,
+            "chapter": 1,
+            "excerpt": "a glass tower in San Francisco's South of Market district"
+          }
+        }
+      ],
+      "provisional_art_choices": [
+        {
+          "field": "materials",
+          "value": "Cool blue glass and restrained steel, grounded present-day scale",
+          "status": "provisional_art_choice",
+          "is_manuscript_canon": false
+        }
+      ],
+      "continuity": "Chapter 1 is television/helicopter footage. Keep this framing distinct from a direct arrival at the tower."
+    },
+    {
+      "id": "adrian-campus-office",
+      "canon_facts": [
+        {
+          "field": "bookshelves",
+          "value": "AI, philosophy, and an entire shelf of Ursula K. Le Guin",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part1.md",
+            "line": 203,
+            "chapter": 3,
+            "excerpt": "one shelf that was entirely Ursula K. Le Guin"
+          }
+        },
+        {
+          "field": "desk",
+          "value": "Leaning paper stacks, pen mug, framed conference photograph",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part1.md",
+            "line": 203,
+            "chapter": 3,
+            "excerpt": "neat stacks of papers that had begun to lean"
+          }
+        }
+      ],
+      "provisional_art_choices": [
+        {
+          "field": "materials",
+          "value": "Warm timber desk with institutional neutral walls; retain human disorder",
+          "status": "provisional_art_choice",
+          "is_manuscript_canon": false
+        }
+      ],
+      "earliest_scene_chapter": 3
+    },
+    {
+      "id": "raven-bermondsey-flat",
+      "canon_facts": [
+        {
+          "field": "building",
+          "value": "Converted warehouse flat in Bermondsey, south London",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part1.md",
+            "line": 95,
+            "chapter": 2,
+            "excerpt": "a converted warehouse space"
+          }
+        },
+        {
+          "field": "organization",
+          "value": "Minimalist, clinical, designated object locations and bare kitchen surfaces",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part1.md",
+            "line": 97,
+            "chapter": 2,
+            "excerpt": "The kitchen surfaces were bare."
+          }
+        }
+      ],
+      "provisional_art_choices": [
+        {
+          "field": "materials",
+          "value": "Muted warehouse brick/concrete and precise shelving; low clutter",
+          "status": "provisional_art_choice",
+          "is_manuscript_canon": false
+        }
+      ],
+      "earliest_scene_chapter": 2
+    }
+  ],
+  "cast": [
+    {
+      "id": "adrian-marsh",
+      "name": "Adrian Marsh",
+      "production_role": "AI ethics professor; central point of view",
+      "first_named_source": {
+        "path": "Draft/v6/part1.md",
+        "line": 13,
+        "chapter": 1,
+        "excerpt": "Adrian Marsh"
+      },
+      "first_visual_portrait_chapter": 1,
+      "public_label_by_chapter": [],
+      "aliases": [
+        {
+          "name": "Professor Marsh",
+          "kind": "familiar_name",
+          "public_reveal_chapter": 1,
+          "internal_only_until_verified": false
+        },
+        {
+          "name": "Cartographer",
+          "kind": "operational_role",
+          "public_reveal_chapter": 25,
+          "internal_only_until_verified": false,
+          "source": {
+            "path": "Draft/v6/narration-guide.txt",
+            "line": 51
+          }
+        },
+        {
+          "name": "Atlas",
+          "kind": "codename",
+          "public_reveal_chapter": null,
+          "internal_only_until_verified": true,
+          "source": {
+            "path": "Draft/v6/narration-guide.txt",
+            "line": 51
+          }
+        }
+      ],
+      "canon_facts": [
+        {
+          "field": "role",
+          "value": "AI ethics professor",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part1.md",
+            "line": 656,
+            "chapter": 8,
+            "excerpt": "a professor of AI Ethics"
+          }
+        },
+        {
+          "field": "home",
+          "value": "Modest craftsman bungalow in Berkeley",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part1.md",
+            "line": 17,
+            "chapter": 1,
+            "excerpt": "He was in his living room in Berkeley, in the craftsman bungalow"
+          }
+        },
+        {
+          "field": "accessory",
+          "value": "Wears glasses; habitual adjustment at the bridge of his nose",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part1.md",
+            "line": 1567,
+            "chapter": 17,
+            "excerpt": "Adrian adjusted his glasses"
+          }
+        },
+        {
+          "field": "outerwear",
+          "value": "Owns/wears a jacket with an inner pocket; color and cut not specified",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part1.md",
+            "line": 941,
+            "chapter": 11,
+            "excerpt": "The inner pocket, the one he never used"
+          }
+        },
+        {
+          "field": "later_story_presentation",
+          "value": "Harder, leaner, more decisive than at his first inner-circle meeting",
+          "scope": "later_timeline",
+          "source": {
+            "path": "Draft/v6/part3.md",
+            "line": 1645,
+            "chapter": 53,
+            "excerpt": "had been replaced by someone harder, leaner, more decisive"
+          }
+        }
+      ],
+      "unspecified_in_verified_sources": [
+        "exact physical age",
+        "ethnicity",
+        "height",
+        "baseline body build",
+        "hair color and cut",
+        "eye color",
+        "glasses frame shape",
+        "opening sweater color/cut"
+      ],
+      "provisional_art_choices": [
+        {
+          "field": "apparent_age",
+          "value": "Adult, approximately mid-to-late forties; do not present this as a book age",
+          "status": "provisional_art_choice",
+          "is_manuscript_canon": false
+        },
+        {
+          "field": "build",
+          "value": "Lean to average build; natural posture",
+          "status": "provisional_art_choice",
+          "is_manuscript_canon": false
+        },
+        {
+          "field": "complexion",
+          "value": "Medium warm complexion, matched to existing pilot rear view; no ethnicity claim",
+          "status": "provisional_art_choice",
+          "is_manuscript_canon": false
+        },
+        {
+          "field": "hair",
+          "value": "Short dark wavy hair; charcoal with only subtle possible grey flecks; preserve pilot rear silhouette",
+          "status": "provisional_art_choice",
+          "is_manuscript_canon": false
+        },
+        {
+          "field": "face",
+          "value": "Thoughtful, softly lined adult face; natural features; no celebrity likeness",
+          "status": "provisional_art_choice",
+          "is_manuscript_canon": false
+        },
+        {
+          "field": "glasses",
+          "value": "Simple thin metal frames; preserve canonical glasses without claiming frame shape is canon",
+          "status": "provisional_art_choice",
+          "is_manuscript_canon": false
+        },
+        {
+          "field": "opening_wardrobe",
+          "value": "Charcoal textured knit sweater and dark trousers; match the existing pilot",
+          "status": "provisional_art_choice",
+          "is_manuscript_canon": false
+        },
+        {
+          "field": "facial_hair",
+          "value": "Light natural stubble as depicted on provisional v1 sheet",
+          "status": "provisional_art_choice",
+          "is_manuscript_canon": false
+        }
+      ],
+      "base_model": {
+        "reference_path": "models/adrian-marsh-v1.png",
+        "reference_status": "generated_provisional_v1",
+        "sheet_requirements": [
+          "front head",
+          "three-quarter head",
+          "profile",
+          "rear view",
+          "full body",
+          "neutral expression",
+          "one story-specific expression"
+        ],
+        "identity_version": "v1",
+        "author_approval_status": "not_yet_approved",
+        "sha256": "a2b19ff7bdc0731221ff297244b9f0cd0eda1f389aea66136293d63a5f2db105",
+        "pixel_size": {
+          "width": 1586,
+          "height": 992
+        },
+        "visual_review": "Reviewed beside pilot source art; identity views and expressions remain consistent."
+      },
+      "wardrobe_and_timeline_variants": [
+        {
+          "id": "opening-home",
+          "label": "Opening evening at home",
+          "earliest_scene_chapter": 1,
+          "canon_facts": [],
+          "provisional_art_choices": [
+            {
+              "field": "outfit",
+              "value": "Charcoal knit sweater and dark trousers",
+              "status": "provisional_art_choice",
+              "is_manuscript_canon": false
+            }
+          ],
+          "reference_path": null,
+          "reference_status": "uses_base_identity_reference"
+        },
+        {
+          "id": "campus-and-cafe",
+          "label": "Campus and cafe",
+          "earliest_scene_chapter": 3,
+          "canon_facts": [
+            {
+              "field": "jacket",
+              "value": "Jacket with inner pocket",
+              "scope": "scene_wardrobe",
+              "source": {
+                "path": "Draft/v6/part1.md",
+                "line": 941,
+                "chapter": 11,
+                "excerpt": "The inner pocket, the one he never used"
+              }
+            }
+          ],
+          "provisional_art_choices": [],
+          "reference_path": null,
+          "reference_status": "uses_base_identity_reference"
+        },
+        {
+          "id": "later-journey",
+          "label": "Later journey; same actor and glasses",
+          "earliest_scene_chapter": 53,
+          "canon_facts": [
+            {
+              "field": "presentation",
+              "value": "Harder, leaner, more decisive",
+              "scope": "later_timeline",
+              "source": {
+                "path": "Draft/v6/part3.md",
+                "line": 1645,
+                "chapter": 53,
+                "excerpt": "had been replaced by someone harder, leaner, more decisive"
+              }
+            }
+          ],
+          "provisional_art_choices": [],
+          "reference_path": null,
+          "reference_status": "uses_base_identity_reference"
+        }
+      ],
+      "spoiler_guards": [
+        "Do not give the opening character card a movement role or codename.",
+        "No change of face between home, campus, travel, and later scenes."
+      ]
+    },
+    {
+      "id": "daniel-yoon",
+      "name": "Daniel Yoon",
+      "production_role": "Arrested software engineer",
+      "first_named_source": {
+        "path": "Draft/v6/part1.md",
+        "line": 131,
+        "chapter": 2,
+        "excerpt": "Daniel Yoon"
+      },
+      "first_visual_portrait_chapter": 1,
+      "public_label_by_chapter": [
+        {
+          "from_chapter": 1,
+          "through_chapter": 1,
+          "label": "Unnamed suspect"
+        },
+        {
+          "from_chapter": 2,
+          "label": "Daniel Yoon",
+          "condition": "Only after Chapter 2 narration first names him; current Chapter 1 pilot remains unnamed."
+        }
+      ],
+      "aliases": [
+        {
+          "name": "Unnamed suspect",
+          "kind": "chapter_local_label",
+          "public_reveal_chapter": 1,
+          "internal_only_until_verified": false
+        },
+        {
+          "name": "Yoon",
+          "kind": "familiar_name",
+          "public_reveal_chapter": 2,
+          "internal_only_until_verified": false
+        }
+      ],
+      "canon_facts": [
+        {
+          "field": "gender_presentation",
+          "value": "Young man",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part1.md",
+            "line": 23,
+            "chapter": 1,
+            "excerpt": "A young man, mid-twenties, East Asian, slight build"
+          }
+        },
+        {
+          "field": "ethnicity",
+          "value": "East Asian",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part1.md",
+            "line": 23,
+            "chapter": 1,
+            "excerpt": "A young man, mid-twenties, East Asian, slight build"
+          }
+        },
+        {
+          "field": "apparent_age_at_arrest",
+          "value": "Mid-twenties",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part1.md",
+            "line": 23,
+            "chapter": 1,
+            "excerpt": "A young man, mid-twenties, East Asian, slight build"
+          }
+        },
+        {
+          "field": "age",
+          "value": 26,
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part1.md",
+            "line": 288,
+            "chapter": 3,
+            "excerpt": "Twenty-six years old. No prior record. Listed occupation: software engineer."
+          }
+        },
+        {
+          "field": "build",
+          "value": "Slight",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part1.md",
+            "line": 23,
+            "chapter": 1,
+            "excerpt": "A young man, mid-twenties, East Asian, slight build"
+          }
+        },
+        {
+          "field": "occupation",
+          "value": "Software engineer",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part1.md",
+            "line": 288,
+            "chapter": 3,
+            "excerpt": "Listed occupation: software engineer."
+          }
+        },
+        {
+          "field": "arrest_accessory",
+          "value": "Still wearing his badge; exact badge type and wording unspecified",
+          "scope": "scene_wardrobe",
+          "source": {
+            "path": "Draft/v6/part1.md",
+            "line": 23,
+            "chapter": 1,
+            "excerpt": "still wearing his badge"
+          }
+        },
+        {
+          "field": "arrest_pose",
+          "value": "Escorted in handcuffs",
+          "scope": "scene_pose",
+          "source": {
+            "path": "Draft/v6/part1.md",
+            "line": 23,
+            "chapter": 1,
+            "excerpt": "He was being escorted from the building in handcuffs."
+          }
+        },
+        {
+          "field": "arrest_expression",
+          "value": "Faint unsettling curl at the corners of his mouth; not a broad or triumphant smile",
+          "scope": "scene_expression",
+          "source": {
+            "path": "Draft/v6/part1.md",
+            "line": 23,
+            "chapter": 1,
+            "excerpt": "Not broadly, not triumphantly, but with a faint, unsettling curl"
+          }
+        }
+      ],
+      "unspecified_in_verified_sources": [
+        "height",
+        "hair color and style",
+        "eye color",
+        "badge wording",
+        "clothing color and cut",
+        "jail uniform"
+      ],
+      "provisional_art_choices": [
+        {
+          "field": "face",
+          "value": "Preserve exact likeness from web/dist/assets/unnamed-suspect.png: young clean-shaven narrow face; avoid a newly invented actor",
+          "status": "provisional_art_choice",
+          "is_manuscript_canon": false
+        },
+        {
+          "field": "hair",
+          "value": "Tousled medium-short black hair from existing television painting",
+          "status": "provisional_art_choice",
+          "is_manuscript_canon": false
+        },
+        {
+          "field": "complexion",
+          "value": "Light warm complexion from existing television painting",
+          "status": "provisional_art_choice",
+          "is_manuscript_canon": false
+        },
+        {
+          "field": "arrest_wardrobe",
+          "value": "Dark navy jacket over charcoal T-shirt from existing television painting",
+          "status": "provisional_art_choice",
+          "is_manuscript_canon": false
+        },
+        {
+          "field": "badge",
+          "value": "Simple employee badge visible on suspect; no legible name or company label before narration reveals it",
+          "status": "provisional_art_choice",
+          "is_manuscript_canon": false
+        }
+      ],
+      "base_model": {
+        "reference_path": "models/daniel-yoon-v1.png",
+        "reference_status": "generated_provisional_v1",
+        "sheet_requirements": [
+          "front head",
+          "three-quarter head",
+          "profile",
+          "rear view",
+          "full body",
+          "neutral expression",
+          "one story-specific expression"
+        ],
+        "identity_version": "v1",
+        "author_approval_status": "not_yet_approved",
+        "sha256": "efac995efcb5424eec8d64e26156be50f61dc6a89ce63b4dbe1ab7fc7ff0a01d",
+        "pixel_size": {
+          "width": 1586,
+          "height": 992
+        },
+        "visual_review": "Reviewed beside pilot source art; identity views and expressions remain consistent."
+      },
+      "wardrobe_and_timeline_variants": [
+        {
+          "id": "broadcast-arrest",
+          "label": "Chapter 1 television arrest",
+          "earliest_scene_chapter": 1,
+          "canon_facts": [
+            {
+              "field": "badge",
+              "value": "Badge remains worn; exact type and wording unspecified",
+              "scope": "scene_wardrobe",
+              "source": {
+                "path": "Draft/v6/part1.md",
+                "line": 23,
+                "chapter": 1,
+                "excerpt": "still wearing his badge"
+              }
+            }
+          ],
+          "provisional_art_choices": [
+            {
+              "field": "clothing",
+              "value": "Dark navy jacket over charcoal T-shirt",
+              "status": "provisional_art_choice",
+              "is_manuscript_canon": false
+            }
+          ],
+          "reference_path": null,
+          "reference_status": "uses_base_identity_reference"
+        },
+        {
+          "id": "custody",
+          "label": "Original suspect in custody; same identity",
+          "earliest_scene_chapter": 2,
+          "canon_facts": [],
+          "provisional_art_choices": [],
+          "reference_path": null,
+          "reference_status": "uses_base_identity_reference"
+        },
+        {
+          "id": "substitute-separate-actor",
+          "label": "Substitute is a separate actor with approximate resemblance, not the original portrait copied without review",
+          "earliest_scene_chapter": 2,
+          "canon_facts": [
+            {
+              "field": "appearance_match",
+              "value": "Matching build and approximate resemblance",
+              "scope": "separate_actor",
+              "source": {
+                "path": "Draft/v6/part1.md",
+                "line": 127,
+                "chapter": 2,
+                "excerpt": "a man of matching build and approximate resemblance"
+              }
+            }
+          ],
+          "provisional_art_choices": [],
+          "reference_path": "models/yoon-substitute-v1.png",
+          "reference_status": "planned_not_generated"
+        }
+      ],
+      "spoiler_guards": [
+        "Chapter 1 public label and alt text: unnamed suspect. Do not expose Daniel Yoon through captions, employee badge text, thumbnails, or gallery labels.",
+        "Full name is used by narration in Chapter 2. Its public release and Adrian recognition occur in Chapter 3.",
+        "The substitute is a distinct person. Its planned reference is production-only and must not expose substitution in earlier story moments."
+      ]
+    },
+    {
+      "id": "sebastian-hale",
+      "name": "Sebastian Hale",
+      "production_role": "Public activist; movement leader",
+      "first_named_source": {
+        "path": "Draft/v6/part2.md",
+        "line": 55,
+        "chapter": 19,
+        "excerpt": "Sebastian Hale"
+      },
+      "first_visual_portrait_chapter": 19,
+      "public_label_by_chapter": [],
+      "aliases": [
+        {
+          "name": "Seb",
+          "kind": "familiar_name",
+          "public_reveal_chapter": 19,
+          "internal_only_until_verified": false
+        }
+      ],
+      "canon_facts": [
+        {
+          "field": "age",
+          "value": 62,
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/revision_canon.json",
+            "line": 7,
+            "json_pointer": "/seb/age",
+            "chapter": null
+          }
+        },
+        {
+          "field": "height",
+          "value": "Approximately six foot two to six foot three",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part2.md",
+            "line": 53,
+            "chapter": 19,
+            "excerpt": "He was tall, six-two, maybe six-three"
+          }
+        },
+        {
+          "field": "build",
+          "value": "Angular frame",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part2.md",
+            "line": 53,
+            "chapter": 19,
+            "excerpt": "with the angular frame of a man"
+          }
+        },
+        {
+          "field": "hair",
+          "value": "Dark, slightly too long, pushed back",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part2.md",
+            "line": 53,
+            "chapter": 19,
+            "excerpt": "His hair was dark, slightly too long, pushed back"
+          }
+        },
+        {
+          "field": "eyes",
+          "value": "Color of glacial ice",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part2.md",
+            "line": 49,
+            "chapter": 19,
+            "excerpt": "His eyes were the color of glacial ice"
+          }
+        },
+        {
+          "field": "face_detail",
+          "value": "Faint scar along jawline; dark circles under eyes",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part2.md",
+            "line": 57,
+            "chapter": 19,
+            "excerpt": "the faint scar that ran along his jawline and the dark circles under his eyes"
+          }
+        },
+        {
+          "field": "wardrobe",
+          "value": "Charcoal sweater over collared shirt; sleeves pushed to elbows",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part2.md",
+            "line": 53,
+            "chapter": 19,
+            "excerpt": "He wore a charcoal sweater over a collared shirt"
+          }
+        },
+        {
+          "field": "hands",
+          "value": "Ink-stained hands",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part2.md",
+            "line": 53,
+            "chapter": 19,
+            "excerpt": "his hands were stained with ink"
+          }
+        }
+      ],
+      "unspecified_in_verified_sources": [
+        "ethnicity",
+        "exact eye color beyond glacial-ice description",
+        "precise weight"
+      ],
+      "provisional_art_choices": [],
+      "base_model": {
+        "reference_path": "models/sebastian-hale-v1.png",
+        "reference_status": "planned_not_generated",
+        "sheet_requirements": [
+          "front head",
+          "three-quarter head",
+          "profile",
+          "rear view",
+          "full body",
+          "neutral expression",
+          "one story-specific expression"
+        ],
+        "identity_version": "v1"
+      },
+      "wardrobe_and_timeline_variants": [
+        {
+          "id": "safe-house",
+          "label": "First meeting: sweater and collared shirt",
+          "earliest_scene_chapter": 19,
+          "canon_facts": [],
+          "provisional_art_choices": [],
+          "reference_path": null,
+          "reference_status": "uses_base_identity_reference"
+        },
+        {
+          "id": "later-farmhouse",
+          "label": "Same actor, fatigue increased; no premature fate imagery",
+          "earliest_scene_chapter": 53,
+          "canon_facts": [],
+          "provisional_art_choices": [],
+          "reference_path": null,
+          "reference_status": "uses_base_identity_reference"
+        }
+      ],
+      "spoiler_guards": [
+        "Reveal face and name at Chapter 19. Do not use symbolism that predicts his fate."
+      ]
+    },
+    {
+      "id": "kai-nakamura",
+      "name": "Kai Nakamura",
+      "production_role": "Founder of NovaTok; Adrian’s estranged friend",
+      "first_named_source": {
+        "path": "Draft/v6/part1.md",
+        "line": 205,
+        "chapter": 3,
+        "excerpt": "Kai Nakamura"
+      },
+      "first_visual_portrait_chapter": 3,
+      "public_label_by_chapter": [],
+      "aliases": [
+        {
+          "name": "Nakamura",
+          "kind": "familiar_name",
+          "public_reveal_chapter": 3,
+          "internal_only_until_verified": false
+        }
+      ],
+      "canon_facts": [
+        {
+          "field": "current_age",
+          "value": 36,
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/revision_canon.json",
+            "line": 206,
+            "json_pointer": "/ages/kai",
+            "chapter": null
+          }
+        },
+        {
+          "field": "ethnicity_national_identity",
+          "value": "Japanese-American",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part1.md",
+            "line": 847,
+            "chapter": 10,
+            "excerpt": "He was thirty-six, Japanese-American"
+          }
+        },
+        {
+          "field": "photo_age",
+          "value": 29,
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part1.md",
+            "line": 205,
+            "chapter": 3,
+            "excerpt": "Kai Nakamura. Twenty-nine years old in that photograph."
+          }
+        },
+        {
+          "field": "photo_timing",
+          "value": "Conference photograph taken seven years earlier",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part1.md",
+            "line": 203,
+            "chapter": 3,
+            "excerpt": "a framed photograph of Adrian at a conference seven years earlier"
+          }
+        },
+        {
+          "field": "eyes",
+          "value": "Dark, watchful",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part3.md",
+            "line": 521,
+            "chapter": 42,
+            "excerpt": "His eyes were the same: dark, watchful, intelligent"
+          }
+        },
+        {
+          "field": "build_and_face",
+          "value": "Lean angular frame and sharp features",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part5.md",
+            "line": 1605,
+            "chapter": 86,
+            "excerpt": "the same lean, angular frame, the same sharp features"
+          }
+        },
+        {
+          "field": "davos_wardrobe",
+          "value": "Dark suit, no tie",
+          "scope": "scene_wardrobe",
+          "source": {
+            "path": "Draft/v6/part3.md",
+            "line": 521,
+            "chapter": 42,
+            "excerpt": "Dark suit, no tie, the Davos uniform"
+          }
+        }
+      ],
+      "unspecified_in_verified_sources": [
+        "hair color and cut",
+        "height",
+        "detailed current wardrobe outside Davos"
+      ],
+      "provisional_art_choices": [],
+      "base_model": {
+        "reference_path": "models/kai-nakamura-v1.png",
+        "reference_status": "planned_not_generated",
+        "sheet_requirements": [
+          "front head",
+          "three-quarter head",
+          "profile",
+          "rear view",
+          "full body",
+          "neutral expression",
+          "one story-specific expression"
+        ],
+        "identity_version": "v1"
+      },
+      "wardrobe_and_timeline_variants": [
+        {
+          "id": "conference-photo-age-29",
+          "label": "Photograph: same actor at 29, seven years younger",
+          "earliest_scene_chapter": 3,
+          "canon_facts": [
+            {
+              "field": "age",
+              "value": 29,
+              "scope": "timeline_variant",
+              "source": {
+                "path": "Draft/v6/part1.md",
+                "line": 205,
+                "chapter": 3,
+                "excerpt": "Kai Nakamura. Twenty-nine years old in that photograph."
+              }
+            }
+          ],
+          "provisional_art_choices": [],
+          "reference_path": "models/kai-nakamura-age29-photo-v1.png",
+          "reference_status": "planned_not_generated"
+        },
+        {
+          "id": "current-age-36",
+          "label": "Current-day Kai, 36",
+          "earliest_scene_chapter": 10,
+          "canon_facts": [],
+          "provisional_art_choices": [],
+          "reference_path": null,
+          "reference_status": "uses_base_identity_reference"
+        },
+        {
+          "id": "davos-suit",
+          "label": "Davos dark suit, no tie",
+          "earliest_scene_chapter": 42,
+          "canon_facts": [],
+          "provisional_art_choices": [],
+          "reference_path": null,
+          "reference_status": "uses_base_identity_reference"
+        },
+        {
+          "id": "later-cafe",
+          "label": "Later cafe: same face, visibly worn; review Chapter 86 scene before production",
+          "earliest_scene_chapter": 86,
+          "canon_facts": [],
+          "provisional_art_choices": [],
+          "reference_path": null,
+          "reference_status": "uses_base_identity_reference"
+        }
+      ],
+      "spoiler_guards": [
+        "The conference portrait can appear only when narrated in Chapter 3.",
+        "Maintain ambiguity in earlier scenes. Do not imply hidden loyalties, authorship, or alliances through costume, symbols, gaze, or visual grouping before Chapter 86."
+      ]
+    },
+    {
+      "id": "nadia-osei",
+      "name": "Nadia Osei",
+      "production_role": "Investigative journalist",
+      "first_named_source": {
+        "path": "Draft/v6/part1.md",
+        "line": 632,
+        "chapter": 8,
+        "excerpt": "Nadia Osei"
+      },
+      "first_visual_portrait_chapter": 9,
+      "public_label_by_chapter": [],
+      "aliases": [
+        {
+          "name": "Nadia",
+          "kind": "familiar_name",
+          "public_reveal_chapter": 8,
+          "internal_only_until_verified": false
+        }
+      ],
+      "canon_facts": [
+        {
+          "field": "age_band",
+          "value": "Mid-thirties",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part1.md",
+            "line": 715,
+            "chapter": 9,
+            "excerpt": "in her mid-thirties, Black, with close-cropped natural hair"
+          }
+        },
+        {
+          "field": "ethnicity",
+          "value": "Black",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part1.md",
+            "line": 715,
+            "chapter": 9,
+            "excerpt": "in her mid-thirties, Black, with close-cropped natural hair"
+          }
+        },
+        {
+          "field": "hair",
+          "value": "Close-cropped natural hair",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part1.md",
+            "line": 715,
+            "chapter": 9,
+            "excerpt": "with close-cropped natural hair"
+          }
+        },
+        {
+          "field": "wardrobe",
+          "value": "Canvas jacket, plain black T-shirt, jeans, well-used walking boots",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part1.md",
+            "line": 715,
+            "chapter": 9,
+            "excerpt": "She wore a canvas jacket over a plain black T-shirt, jeans, and boots"
+          }
+        },
+        {
+          "field": "props",
+          "value": "Coffee and laptop",
+          "scope": "scene_prop",
+          "source": {
+            "path": "Draft/v6/part1.md",
+            "line": 715,
+            "chapter": 9,
+            "excerpt": "She was holding a coffee and a laptop."
+          }
+        }
+      ],
+      "unspecified_in_verified_sources": [
+        "exact age",
+        "height",
+        "eye color",
+        "precise jacket color"
+      ],
+      "provisional_art_choices": [],
+      "base_model": {
+        "reference_path": "models/nadia-osei-v1.png",
+        "reference_status": "planned_not_generated",
+        "sheet_requirements": [
+          "front head",
+          "three-quarter head",
+          "profile",
+          "rear view",
+          "full body",
+          "neutral expression",
+          "one story-specific expression"
+        ],
+        "identity_version": "v1"
+      },
+      "wardrobe_and_timeline_variants": [
+        {
+          "id": "cafe",
+          "label": "First cafe encounter",
+          "earliest_scene_chapter": 9,
+          "canon_facts": [],
+          "provisional_art_choices": [],
+          "reference_path": null,
+          "reference_status": "uses_base_identity_reference"
+        },
+        {
+          "id": "travel",
+          "label": "Travel: same actor, practical clothes; specify from each scene",
+          "earliest_scene_chapter": 26,
+          "canon_facts": [],
+          "provisional_art_choices": [],
+          "reference_path": null,
+          "reference_status": "uses_base_identity_reference"
+        }
+      ],
+      "spoiler_guards": [
+        "Named in Chapter 8; physical portrait arrives Chapter 9. Avoid later-role labels in early captions."
+      ]
+    },
+    {
+      "id": "raven",
+      "name": "Raven",
+      "production_role": "Contractor; distinct point of view",
+      "first_named_source": {
+        "path": "Draft/v6/part1.md",
+        "line": 91,
+        "chapter": 2,
+        "excerpt": "Raven"
+      },
+      "first_visual_portrait_chapter": 2,
+      "public_label_by_chapter": [],
+      "aliases": [
+        {
+          "name": "Margaret Chen",
+          "kind": "cover_identity",
+          "public_reveal_chapter": 6,
+          "internal_only_until_verified": false
+        }
+      ],
+      "canon_facts": [
+        {
+          "field": "gender_presentation",
+          "value": "Woman; she/her narration",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part1.md",
+            "line": 91,
+            "chapter": 2,
+            "excerpt": "Not because she was a night owl"
+          }
+        },
+        {
+          "field": "apparent_age_later",
+          "value": "Perhaps forty; observer estimate, not exact age",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part5.md",
+            "line": 231,
+            "chapter": 74,
+            "excerpt": "She was perhaps forty, lean"
+          }
+        },
+        {
+          "field": "build",
+          "value": "Lean",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part5.md",
+            "line": 231,
+            "chapter": 74,
+            "excerpt": "She was perhaps forty, lean"
+          }
+        },
+        {
+          "field": "face",
+          "value": "Angular",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part5.md",
+            "line": 231,
+            "chapter": 74,
+            "excerpt": "Her face was angular, bruised along the jaw"
+          }
+        },
+        {
+          "field": "eyes",
+          "value": "Dark, flat, assessing",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part5.md",
+            "line": 231,
+            "chapter": 74,
+            "excerpt": "her eyes, dark, flat, assessing"
+          }
+        },
+        {
+          "field": "cover_wardrobe",
+          "value": "Navy polo with apartment management logo; clipboard and small toolkit",
+          "scope": "scene_wardrobe",
+          "source": {
+            "path": "Draft/v6/part2.md",
+            "line": 429,
+            "chapter": 23,
+            "excerpt": "wearing a navy polo shirt with the apartment complex"
+          }
+        },
+        {
+          "field": "late_injury_variant",
+          "value": "Left arm in sling, bruised jaw, guarded torso movement",
+          "scope": "late_timeline",
+          "source": {
+            "path": "Draft/v6/part5.md",
+            "line": 231,
+            "chapter": 74,
+            "excerpt": "Her left arm was in a sling. Her face was angular, bruised along the jaw"
+          }
+        }
+      ],
+      "unspecified_in_verified_sources": [
+        "legal name",
+        "confirmed nationality or ethnicity",
+        "hair color and style",
+        "exact age",
+        "opening wardrobe"
+      ],
+      "provisional_art_choices": [],
+      "base_model": {
+        "reference_path": "models/raven-v1.png",
+        "reference_status": "planned_not_generated",
+        "sheet_requirements": [
+          "front head",
+          "three-quarter head",
+          "profile",
+          "rear view",
+          "full body",
+          "neutral expression",
+          "one story-specific expression"
+        ],
+        "identity_version": "v1"
+      },
+      "wardrobe_and_timeline_variants": [
+        {
+          "id": "bermondsey",
+          "label": "Opening flat: identity retained; exact clothes remain art choice",
+          "earliest_scene_chapter": 2,
+          "canon_facts": [],
+          "provisional_art_choices": [],
+          "reference_path": null,
+          "reference_status": "uses_base_identity_reference"
+        },
+        {
+          "id": "maintenance-cover",
+          "label": "Navy management polo and toolkit",
+          "earliest_scene_chapter": 23,
+          "canon_facts": [],
+          "provisional_art_choices": [],
+          "reference_path": null,
+          "reference_status": "uses_base_identity_reference"
+        },
+        {
+          "id": "post-arnhem-injury",
+          "label": "Later injury variant; no sling or bruises in earlier scenes",
+          "earliest_scene_chapter": 56,
+          "canon_facts": [],
+          "provisional_art_choices": [],
+          "reference_path": null,
+          "reference_status": "uses_base_identity_reference"
+        },
+        {
+          "id": "copenhagen-injury",
+          "label": "Left-arm sling and bruised jaw",
+          "earliest_scene_chapter": 74,
+          "canon_facts": [],
+          "provisional_art_choices": [],
+          "reference_path": null,
+          "reference_status": "uses_base_identity_reference"
+        }
+      ],
+      "spoiler_guards": [
+        "Raven is a handle. Do not establish legal identity, nationality, or ethnicity from the Shenzhen family reference or Canadian cover passport.",
+        "Later injuries must never be carried backward into her opening reference.",
+        "Use a neutral model base; create scene-specific cover costumes separately."
+      ]
+    },
+    {
+      "id": "olafur-sigurdsson",
+      "name": "Ólafur Sigurdsson",
+      "production_role": "Technical specialist",
+      "first_named_source": {
+        "path": "Draft/v6/part2.md",
+        "line": 667,
+        "chapter": 25,
+        "excerpt": "Ólafur Sigurdsson"
+      },
+      "first_visual_portrait_chapter": 38,
+      "public_label_by_chapter": [],
+      "aliases": [
+        {
+          "name": "Ólafur",
+          "kind": "familiar_name",
+          "public_reveal_chapter": 25,
+          "internal_only_until_verified": false
+        },
+        {
+          "name": "Timekeeper",
+          "kind": "operational_role",
+          "public_reveal_chapter": 25,
+          "internal_only_until_verified": false,
+          "source": {
+            "path": "Draft/v6/narration-guide.txt",
+            "line": 54
+          }
+        },
+        {
+          "name": "Sync",
+          "kind": "codename",
+          "public_reveal_chapter": null,
+          "internal_only_until_verified": true,
+          "source": {
+            "path": "Draft/v6/narration-guide.txt",
+            "line": 54
+          }
+        }
+      ],
+      "canon_facts": [
+        {
+          "field": "age",
+          "value": 22,
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part3.md",
+            "line": 123,
+            "chapter": 38,
+            "excerpt": "Ólafur Sigurdsson was twenty-two years old."
+          }
+        },
+        {
+          "field": "height_and_build",
+          "value": "Very tall and very thin",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part3.md",
+            "line": 115,
+            "chapter": 38,
+            "excerpt": "a very tall, very thin young man"
+          }
+        },
+        {
+          "field": "hair",
+          "value": "Straw-colored",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part3.md",
+            "line": 115,
+            "chapter": 38,
+            "excerpt": "hair the color of straw"
+          }
+        },
+        {
+          "field": "wardrobe",
+          "value": "Reykjavik University fleece, cargo pants with at least nine visible pockets, mismatched socks: one black and one cartoon puffins",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part3.md",
+            "line": 115,
+            "chapter": 38,
+            "excerpt": "He was wearing a fleece pullover with the Reykjavik University logo"
+          }
+        },
+        {
+          "field": "presentation",
+          "value": "Enthusiastic young man",
+          "scope": "scene_expression",
+          "source": {
+            "path": "Draft/v6/part3.md",
+            "line": 115,
+            "chapter": 38,
+            "excerpt": "The voice was enthusiastic, pitched slightly too high"
+          }
+        }
+      ],
+      "unspecified_in_verified_sources": [
+        "eye color",
+        "precise height",
+        "face structure"
+      ],
+      "provisional_art_choices": [],
+      "base_model": {
+        "reference_path": "models/olafur-sigurdsson-v1.png",
+        "reference_status": "planned_not_generated",
+        "sheet_requirements": [
+          "front head",
+          "three-quarter head",
+          "profile",
+          "rear view",
+          "full body",
+          "neutral expression",
+          "one story-specific expression"
+        ],
+        "identity_version": "v1"
+      },
+      "wardrobe_and_timeline_variants": [
+        {
+          "id": "iceland",
+          "label": "First in-person portrait: fleece, cargo pants, mismatched socks",
+          "earliest_scene_chapter": 38,
+          "canon_facts": [],
+          "provisional_art_choices": [],
+          "reference_path": null,
+          "reference_status": "uses_base_identity_reference"
+        },
+        {
+          "id": "later-portable-work",
+          "label": "Same young actor and identity; scene-specific travel clothing",
+          "earliest_scene_chapter": 71,
+          "canon_facts": [],
+          "provisional_art_choices": [],
+          "reference_path": null,
+          "reference_status": "uses_base_identity_reference"
+        }
+      ],
+      "spoiler_guards": [
+        "Mentioned at Chapter 25; detailed in-person portrait begins Chapter 38. Avoid fate-related iconography."
+      ]
+    },
+    {
+      "id": "tomas-ferreira",
+      "name": "Tomás Ferreira",
+      "production_role": "Technical deployment specialist",
+      "first_named_source": {
+        "path": "Draft/v6/part2.md",
+        "line": 665,
+        "chapter": 25,
+        "excerpt": "Tomás Ferreira"
+      },
+      "first_visual_portrait_chapter": 34,
+      "public_label_by_chapter": [],
+      "aliases": [
+        {
+          "name": "Tomás",
+          "kind": "familiar_name",
+          "public_reveal_chapter": 25,
+          "internal_only_until_verified": false
+        },
+        {
+          "name": "Courier",
+          "kind": "operational_role",
+          "public_reveal_chapter": 25,
+          "internal_only_until_verified": false,
+          "source": {
+            "path": "Draft/v6/narration-guide.txt",
+            "line": 53
+          }
+        },
+        {
+          "name": "Vento",
+          "kind": "codename",
+          "public_reveal_chapter": 74,
+          "internal_only_until_verified": false,
+          "source": {
+            "path": "Draft/v6/narration-guide.txt",
+            "line": 53
+          }
+        }
+      ],
+      "canon_facts": [
+        {
+          "field": "age",
+          "value": 45,
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part2.md",
+            "line": 1517,
+            "chapter": 34,
+            "excerpt": "He was forty-five, compact"
+          }
+        },
+        {
+          "field": "build",
+          "value": "Compact, functional build for climbing and carrying equipment",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part2.md",
+            "line": 1517,
+            "chapter": 34,
+            "excerpt": "a body built for climbing fences and carrying equipment through tight spaces"
+          }
+        },
+        {
+          "field": "movement",
+          "value": "Efficient, calibrated gestures",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part2.md",
+            "line": 1517,
+            "chapter": 34,
+            "excerpt": "every gesture calibrated for efficiency"
+          }
+        }
+      ],
+      "unspecified_in_verified_sources": [
+        "hair",
+        "eye color",
+        "ethnicity",
+        "height",
+        "facial details",
+        "first-visit wardrobe"
+      ],
+      "provisional_art_choices": [],
+      "base_model": {
+        "reference_path": "models/tomas-ferreira-v1.png",
+        "reference_status": "planned_not_generated",
+        "sheet_requirements": [
+          "front head",
+          "three-quarter head",
+          "profile",
+          "rear view",
+          "full body",
+          "neutral expression",
+          "one story-specific expression"
+        ],
+        "identity_version": "v1"
+      },
+      "wardrobe_and_timeline_variants": [
+        {
+          "id": "lisbon",
+          "label": "First visit; practical clothing remains an art choice",
+          "earliest_scene_chapter": 34,
+          "canon_facts": [],
+          "provisional_art_choices": [],
+          "reference_path": null,
+          "reference_status": "uses_base_identity_reference"
+        },
+        {
+          "id": "deployment",
+          "label": "Same actor with scene-required uniform or cover",
+          "earliest_scene_chapter": 55,
+          "canon_facts": [],
+          "provisional_art_choices": [],
+          "reference_path": null,
+          "reference_status": "uses_base_identity_reference"
+        }
+      ],
+      "spoiler_guards": [
+        "Name and role are introduced in Chapter 25. Do not visualize personal history before narrated."
+      ]
+    },
+    {
+      "id": "ines-brandt",
+      "name": "Ines Brandt",
+      "production_role": "Distribution systems specialist",
+      "first_named_source": {
+        "path": "Draft/v6/part2.md",
+        "line": 659,
+        "chapter": 25,
+        "excerpt": "Ines Brandt"
+      },
+      "first_visual_portrait_chapter": 32,
+      "public_label_by_chapter": [],
+      "aliases": [
+        {
+          "name": "Ines",
+          "kind": "familiar_name",
+          "public_reveal_chapter": 25,
+          "internal_only_until_verified": false
+        },
+        {
+          "name": "Scaffold",
+          "kind": "operational_role",
+          "public_reveal_chapter": 25,
+          "internal_only_until_verified": false,
+          "source": {
+            "path": "Draft/v6/narration-guide.txt",
+            "line": 49
+          }
+        },
+        {
+          "name": "Juno",
+          "kind": "codename",
+          "public_reveal_chapter": null,
+          "internal_only_until_verified": true,
+          "source": {
+            "path": "Draft/v6/narration-guide.txt",
+            "line": 49
+          }
+        }
+      ],
+      "canon_facts": [
+        {
+          "field": "age",
+          "value": 34,
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part2.md",
+            "line": 1329,
+            "chapter": 32,
+            "excerpt": "She was thirty-four, though she could have passed for younger"
+          }
+        },
+        {
+          "field": "face",
+          "value": "Lean, alert",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part2.md",
+            "line": 1329,
+            "chapter": 32,
+            "excerpt": "a lean, alert face"
+          }
+        },
+        {
+          "field": "hair",
+          "value": "Dark practical bob",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part2.md",
+            "line": 1329,
+            "chapter": 32,
+            "excerpt": "Her hair was dark, cut in a practical bob"
+          }
+        },
+        {
+          "field": "eyes",
+          "value": "Brown",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part2.md",
+            "line": 1329,
+            "chapter": 32,
+            "excerpt": "her eyes, brown, sharp"
+          }
+        },
+        {
+          "field": "background",
+          "value": "German-Brazilian; raised in Sao Paulo until twelve, then Berlin",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part2.md",
+            "line": 1331,
+            "chapter": 32,
+            "excerpt": "German-Brazilian, raised in Sao Paulo until the age of twelve, Berlin since then."
+          }
+        }
+      ],
+      "unspecified_in_verified_sources": [
+        "height",
+        "full body build",
+        "specific clothing",
+        "skin tone"
+      ],
+      "provisional_art_choices": [],
+      "base_model": {
+        "reference_path": "models/ines-brandt-v1.png",
+        "reference_status": "planned_not_generated",
+        "sheet_requirements": [
+          "front head",
+          "three-quarter head",
+          "profile",
+          "rear view",
+          "full body",
+          "neutral expression",
+          "one story-specific expression"
+        ],
+        "identity_version": "v1"
+      },
+      "wardrobe_and_timeline_variants": [
+        {
+          "id": "berlin-workspace",
+          "label": "First in-person meeting",
+          "earliest_scene_chapter": 32,
+          "canon_facts": [],
+          "provisional_art_choices": [],
+          "reference_path": null,
+          "reference_status": "uses_base_identity_reference"
+        },
+        {
+          "id": "later-journey",
+          "label": "Same actor and bob; scene wardrobe specified separately",
+          "earliest_scene_chapter": 58,
+          "canon_facts": [],
+          "provisional_art_choices": [],
+          "reference_path": null,
+          "reference_status": "uses_base_identity_reference"
+        }
+      ],
+      "spoiler_guards": [
+        "No body-type claim from the phrase lean face. Codename is production reference until a narration cue explicitly releases it."
+      ]
+    },
+    {
+      "id": "andrei-lepp",
+      "name": "Andrei Lepp",
+      "production_role": "Security researcher",
+      "first_named_source": {
+        "path": "Draft/v6/part2.md",
+        "line": 661,
+        "chapter": 25,
+        "excerpt": "Andrei Lepp"
+      },
+      "first_visual_portrait_chapter": 29,
+      "public_label_by_chapter": [],
+      "aliases": [
+        {
+          "name": "Andrei",
+          "kind": "familiar_name",
+          "public_reveal_chapter": 25,
+          "internal_only_until_verified": false
+        },
+        {
+          "name": "Locksmith",
+          "kind": "operational_role",
+          "public_reveal_chapter": 25,
+          "internal_only_until_verified": false,
+          "source": {
+            "path": "Draft/v6/narration-guide.txt",
+            "line": 50
+          }
+        },
+        {
+          "name": "Sable",
+          "kind": "codename",
+          "public_reveal_chapter": null,
+          "internal_only_until_verified": true,
+          "source": {
+            "path": "Draft/v6/narration-guide.txt",
+            "line": 50
+          }
+        }
+      ],
+      "canon_facts": [
+        {
+          "field": "age",
+          "value": 41,
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part2.md",
+            "line": 1085,
+            "chapter": 29,
+            "excerpt": "He was forty-one but looked older"
+          }
+        },
+        {
+          "field": "presentation",
+          "value": "Looks older than forty-one",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part2.md",
+            "line": 1085,
+            "chapter": 29,
+            "excerpt": "He was forty-one but looked older"
+          }
+        },
+        {
+          "field": "build_and_features",
+          "value": "Thin, angular, sharp features",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part2.md",
+            "line": 1085,
+            "chapter": 29,
+            "excerpt": "Thin, angular, with sharp features"
+          }
+        },
+        {
+          "field": "hair",
+          "value": "Dark and short",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part2.md",
+            "line": 1085,
+            "chapter": 29,
+            "excerpt": "His hair was dark, cut short"
+          }
+        },
+        {
+          "field": "eyes",
+          "value": "Pale blue, almost grey in some light",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part2.md",
+            "line": 1085,
+            "chapter": 29,
+            "excerpt": "his eyes were a pale blue that in certain light appeared almost gray"
+          }
+        },
+        {
+          "field": "wardrobe",
+          "value": "Black thermal shirt and black jeans",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part2.md",
+            "line": 1085,
+            "chapter": 29,
+            "excerpt": "He wore a black thermal shirt, black jeans"
+          }
+        }
+      ],
+      "unspecified_in_verified_sources": [
+        "height",
+        "ethnicity",
+        "exact facial proportions"
+      ],
+      "provisional_art_choices": [],
+      "base_model": {
+        "reference_path": "models/andrei-lepp-v1.png",
+        "reference_status": "planned_not_generated",
+        "sheet_requirements": [
+          "front head",
+          "three-quarter head",
+          "profile",
+          "rear view",
+          "full body",
+          "neutral expression",
+          "one story-specific expression"
+        ],
+        "identity_version": "v1"
+      },
+      "wardrobe_and_timeline_variants": [
+        {
+          "id": "tallinn",
+          "label": "First in-person meeting: black thermal and jeans",
+          "earliest_scene_chapter": 29,
+          "canon_facts": [],
+          "provisional_art_choices": [],
+          "reference_path": null,
+          "reference_status": "uses_base_identity_reference"
+        },
+        {
+          "id": "later-work",
+          "label": "Same actor, short hair, and pale eyes",
+          "earliest_scene_chapter": 58,
+          "canon_facts": [],
+          "provisional_art_choices": [],
+          "reference_path": null,
+          "reference_status": "uses_base_identity_reference"
+        }
+      ],
+      "spoiler_guards": [
+        "Portrait begins Chapter 29; avoid stereotyped national appearance not specified in the prose."
+      ]
+    },
+    {
+      "id": "sophie-richter",
+      "name": "Sophie Richter",
+      "production_role": "Financial specialist",
+      "first_named_source": {
+        "path": "Draft/v6/part2.md",
+        "line": 663,
+        "chapter": 25,
+        "excerpt": "Sophie Richter"
+      },
+      "first_visual_portrait_chapter": 34,
+      "public_label_by_chapter": [],
+      "aliases": [
+        {
+          "name": "Sophie",
+          "kind": "familiar_name",
+          "public_reveal_chapter": 25,
+          "internal_only_until_verified": false
+        },
+        {
+          "name": "Auditor",
+          "kind": "operational_role",
+          "public_reveal_chapter": 25,
+          "internal_only_until_verified": false,
+          "source": {
+            "path": "Draft/v6/narration-guide.txt",
+            "line": 52
+          }
+        },
+        {
+          "name": "Ledger",
+          "kind": "codename",
+          "public_reveal_chapter": null,
+          "internal_only_until_verified": true,
+          "source": {
+            "path": "Draft/v6/narration-guide.txt",
+            "line": 52
+          }
+        }
+      ],
+      "canon_facts": [
+        {
+          "field": "age",
+          "value": 52,
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part2.md",
+            "line": 1493,
+            "chapter": 34,
+            "excerpt": "The woman herself was fifty-two, silver-blond, composed"
+          }
+        },
+        {
+          "field": "hair",
+          "value": "Silver-blond",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part2.md",
+            "line": 1493,
+            "chapter": 34,
+            "excerpt": "The woman herself was fifty-two, silver-blond, composed"
+          }
+        },
+        {
+          "field": "eyes",
+          "value": "Grey-blue",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part2.md",
+            "line": 1493,
+            "chapter": 34,
+            "excerpt": "with gray-blue eyes that evaluated Adrian"
+          }
+        },
+        {
+          "field": "presentation",
+          "value": "Composed",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part2.md",
+            "line": 1493,
+            "chapter": 34,
+            "excerpt": "The woman herself was fifty-two, silver-blond, composed"
+          }
+        }
+      ],
+      "unspecified_in_verified_sources": [
+        "hair length and style",
+        "height",
+        "body build",
+        "ethnicity",
+        "clothing"
+      ],
+      "provisional_art_choices": [],
+      "base_model": {
+        "reference_path": "models/sophie-richter-v1.png",
+        "reference_status": "planned_not_generated",
+        "sheet_requirements": [
+          "front head",
+          "three-quarter head",
+          "profile",
+          "rear view",
+          "full body",
+          "neutral expression",
+          "one story-specific expression"
+        ],
+        "identity_version": "v1"
+      },
+      "wardrobe_and_timeline_variants": [
+        {
+          "id": "geneva",
+          "label": "First meeting in Geneva apartment",
+          "earliest_scene_chapter": 34,
+          "canon_facts": [],
+          "provisional_art_choices": [],
+          "reference_path": null,
+          "reference_status": "uses_base_identity_reference"
+        },
+        {
+          "id": "later-work",
+          "label": "Same actor and silver-blond hair",
+          "earliest_scene_chapter": 58,
+          "canon_facts": [],
+          "provisional_art_choices": [],
+          "reference_path": null,
+          "reference_status": "uses_base_identity_reference"
+        }
+      ],
+      "spoiler_guards": [
+        "Do not invent a bank uniform or formal suit as canon."
+      ]
+    },
+    {
+      "id": "priya-chandrasekaran",
+      "name": "Priya Chandrasekaran",
+      "production_role": "Senior infrastructure engineer",
+      "first_named_source": {
+        "path": "Draft/v6/part2.md",
+        "line": 339,
+        "chapter": 22,
+        "excerpt": "Priya Chandrasekaran"
+      },
+      "first_visual_portrait_chapter": 23,
+      "public_label_by_chapter": [],
+      "aliases": [
+        {
+          "name": "Priya",
+          "kind": "familiar_name",
+          "public_reveal_chapter": 22,
+          "internal_only_until_verified": false
+        },
+        {
+          "name": "Cartographer",
+          "kind": "operational_role",
+          "public_reveal_chapter": 22,
+          "internal_only_until_verified": false,
+          "source": {
+            "path": "Draft/v6/narration-guide.txt",
+            "line": 51
+          }
+        },
+        {
+          "name": "Atlas",
+          "kind": "codename",
+          "public_reveal_chapter": null,
+          "internal_only_until_verified": true,
+          "source": {
+            "path": "Draft/v6/narration-guide.txt",
+            "line": 51
+          }
+        }
+      ],
+      "canon_facts": [
+        {
+          "field": "age",
+          "value": 38,
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part2.md",
+            "line": 505,
+            "chapter": 24,
+            "excerpt": "thirty-eight, Indian-American, meticulous, anxious"
+          }
+        },
+        {
+          "field": "ethnicity_national_identity",
+          "value": "Indian-American",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part2.md",
+            "line": 505,
+            "chapter": 24,
+            "excerpt": "thirty-eight, Indian-American, meticulous, anxious"
+          }
+        },
+        {
+          "field": "height",
+          "value": "Five foot three",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part2.md",
+            "line": 431,
+            "chapter": 23,
+            "excerpt": "Five-three, slight, with dark circles under her eyes"
+          }
+        },
+        {
+          "field": "build",
+          "value": "Slight",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part2.md",
+            "line": 431,
+            "chapter": 23,
+            "excerpt": "Five-three, slight, with dark circles under her eyes"
+          }
+        },
+        {
+          "field": "face_detail",
+          "value": "Dark circles under eyes",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part2.md",
+            "line": 431,
+            "chapter": 23,
+            "excerpt": "Five-three, slight, with dark circles under her eyes"
+          }
+        },
+        {
+          "field": "hair",
+          "value": "Dark",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part2.md",
+            "line": 657,
+            "chapter": 25,
+            "excerpt": "a woman with dark hair, intense eyes"
+          }
+        },
+        {
+          "field": "wardrobe_detail",
+          "value": "Socks with cartoon cats",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part2.md",
+            "line": 431,
+            "chapter": 23,
+            "excerpt": "wearing socks with cartoon cats on them"
+          }
+        },
+        {
+          "field": "scene_prop",
+          "value": "Mug of chai",
+          "scope": "scene_prop",
+          "source": {
+            "path": "Draft/v6/part2.md",
+            "line": 431,
+            "chapter": 23,
+            "excerpt": "She was holding a mug of chai"
+          }
+        }
+      ],
+      "unspecified_in_verified_sources": [
+        "hair length and style",
+        "eye color",
+        "remaining outfit"
+      ],
+      "provisional_art_choices": [],
+      "base_model": {
+        "reference_path": "models/priya-chandrasekaran-v1.png",
+        "reference_status": "planned_not_generated",
+        "sheet_requirements": [
+          "front head",
+          "three-quarter head",
+          "profile",
+          "rear view",
+          "full body",
+          "neutral expression",
+          "one story-specific expression"
+        ],
+        "identity_version": "v1"
+      },
+      "wardrobe_and_timeline_variants": [
+        {
+          "id": "apartment",
+          "label": "Apartment scene, chai and cartoon cat socks",
+          "earliest_scene_chapter": 23,
+          "canon_facts": [],
+          "provisional_art_choices": [],
+          "reference_path": null,
+          "reference_status": "uses_base_identity_reference"
+        },
+        {
+          "id": "reference-photo",
+          "label": "Photograph: same actor, dark hair and intense eyes",
+          "earliest_scene_chapter": 25,
+          "canon_facts": [],
+          "provisional_art_choices": [],
+          "reference_path": "models/priya-chandrasekaran-photo-v1.png",
+          "reference_status": "planned_not_generated"
+        }
+      ],
+      "spoiler_guards": [
+        "Never replace her face with Adrian when the Cartographer role passes between characters. Role IDs and actor IDs are separate."
+      ]
+    },
+    {
+      "id": "james-morrow",
+      "name": "James Morrow",
+      "production_role": "San Francisco detective",
+      "first_named_source": {
+        "path": "Draft/v6/part1.md",
+        "line": 197,
+        "chapter": 3,
+        "excerpt": "James Morrow"
+      },
+      "first_visual_portrait_chapter": 3,
+      "public_label_by_chapter": [],
+      "aliases": [
+        {
+          "name": "Detective Morrow",
+          "kind": "familiar_name",
+          "public_reveal_chapter": 3,
+          "internal_only_until_verified": false
+        },
+        {
+          "name": "Morrow",
+          "kind": "familiar_name",
+          "public_reveal_chapter": 3,
+          "internal_only_until_verified": false
+        }
+      ],
+      "canon_facts": [
+        {
+          "field": "age_band",
+          "value": "Mid-forties",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part1.md",
+            "line": 183,
+            "chapter": 3,
+            "excerpt": "One was mid-forties, medium height"
+          }
+        },
+        {
+          "field": "height",
+          "value": "Medium",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part1.md",
+            "line": 183,
+            "chapter": 3,
+            "excerpt": "One was mid-forties, medium height"
+          }
+        },
+        {
+          "field": "wardrobe",
+          "value": "Pressed suit, polished shoes, burgundy tie",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part1.md",
+            "line": 195,
+            "chapter": 3,
+            "excerpt": "pressed suit, polished shoes"
+          }
+        },
+        {
+          "field": "tie",
+          "value": "Burgundy",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part1.md",
+            "line": 183,
+            "chapter": 3,
+            "excerpt": "It was burgundy."
+          }
+        },
+        {
+          "field": "props",
+          "value": "Badge wallet, paper notebook and pen",
+          "scope": "scene_prop",
+          "source": {
+            "path": "Draft/v6/part1.md",
+            "line": 207,
+            "chapter": 3,
+            "excerpt": "Slowly, Morrow extracted a notepad from his coat chest pocket"
+          }
+        }
+      ],
+      "unspecified_in_verified_sources": [
+        "ethnicity",
+        "hair",
+        "eye color",
+        "exact age",
+        "suit color"
+      ],
+      "provisional_art_choices": [],
+      "base_model": {
+        "reference_path": "models/james-morrow-v1.png",
+        "reference_status": "planned_not_generated",
+        "sheet_requirements": [
+          "front head",
+          "three-quarter head",
+          "profile",
+          "rear view",
+          "full body",
+          "neutral expression",
+          "one story-specific expression"
+        ],
+        "identity_version": "v1"
+      },
+      "wardrobe_and_timeline_variants": [
+        {
+          "id": "campus-visit",
+          "label": "Pressed suit and burgundy tie",
+          "earliest_scene_chapter": 3,
+          "canon_facts": [],
+          "provisional_art_choices": [],
+          "reference_path": null,
+          "reference_status": "uses_base_identity_reference"
+        },
+        {
+          "id": "later-investigation",
+          "label": "Same actor; scene wardrobe varies without changing face",
+          "earliest_scene_chapter": 33,
+          "canon_facts": [],
+          "provisional_art_choices": [],
+          "reference_path": null,
+          "reference_status": "uses_base_identity_reference"
+        }
+      ],
+      "spoiler_guards": [
+        "Separate Morrow from his younger, larger colleague Santos."
+      ]
+    },
+    {
+      "id": "harrison-polk",
+      "name": "Harrison Polk",
+      "production_role": "Washington power broker",
+      "first_named_source": {
+        "path": "Draft/v6/part1.md",
+        "line": 304,
+        "chapter": 4,
+        "excerpt": "Harrison Polk"
+      },
+      "first_visual_portrait_chapter": 4,
+      "public_label_by_chapter": [],
+      "aliases": [
+        {
+          "name": "Harrison",
+          "kind": "familiar_name",
+          "public_reveal_chapter": 4,
+          "internal_only_until_verified": false
+        },
+        {
+          "name": "Broker",
+          "kind": "role",
+          "public_reveal_chapter": null,
+          "internal_only_until_verified": true,
+          "source": {
+            "path": "Draft/v6/narration-guide.txt",
+            "line": 56
+          }
+        }
+      ],
+      "canon_facts": [
+        {
+          "field": "opening_wardrobe",
+          "value": "Cashmere robe and slippers reading WORLD’S OKAYEST DAD",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part1.md",
+            "line": 306,
+            "chapter": 4,
+            "excerpt": "wearing a cashmere robe he'd bought in Milan and slippers"
+          }
+        },
+        {
+          "field": "props",
+          "value": "Three distinct phones",
+          "scope": "scene_prop",
+          "source": {
+            "path": "Draft/v6/part1.md",
+            "line": 304,
+            "chapter": 4,
+            "excerpt": "Harrison Polk had three phones."
+          }
+        },
+        {
+          "field": "opening_location",
+          "value": "Georgetown townhouse kitchen at six in the morning",
+          "scope": "scene_location",
+          "source": {
+            "path": "Draft/v6/part1.md",
+            "line": 306,
+            "chapter": 4,
+            "excerpt": "standing in the kitchen of his Georgetown townhouse at six in the morning"
+          }
+        }
+      ],
+      "unspecified_in_verified_sources": [
+        "age",
+        "ethnicity",
+        "build",
+        "height",
+        "hair",
+        "eye color",
+        "professional suit specifics"
+      ],
+      "provisional_art_choices": [],
+      "base_model": {
+        "reference_path": "models/harrison-polk-v1.png",
+        "reference_status": "planned_not_generated",
+        "sheet_requirements": [
+          "front head",
+          "three-quarter head",
+          "profile",
+          "rear view",
+          "full body",
+          "neutral expression",
+          "one story-specific expression"
+        ],
+        "identity_version": "v1"
+      },
+      "wardrobe_and_timeline_variants": [
+        {
+          "id": "georgetown-morning",
+          "label": "Cashmere robe and printed slippers",
+          "earliest_scene_chapter": 4,
+          "canon_facts": [],
+          "provisional_art_choices": [],
+          "reference_path": null,
+          "reference_status": "uses_base_identity_reference"
+        },
+        {
+          "id": "council",
+          "label": "Business attire: specific styling remains art choice",
+          "earliest_scene_chapter": 10,
+          "canon_facts": [],
+          "provisional_art_choices": [],
+          "reference_path": null,
+          "reference_status": "uses_base_identity_reference"
+        }
+      ],
+      "spoiler_guards": [
+        "Do not copy a real politician. The character’s face must be an original casting choice."
+      ]
+    },
+    {
+      "id": "elias-strutt",
+      "name": "Elias Strutt",
+      "production_role": "Technology executive",
+      "first_named_source": {
+        "path": "Draft/v6/part1.md",
+        "line": 326,
+        "chapter": 4,
+        "excerpt": "Elias Strutt"
+      },
+      "first_visual_portrait_chapter": 10,
+      "public_label_by_chapter": [],
+      "aliases": [
+        {
+          "name": "Strutt",
+          "kind": "familiar_name",
+          "public_reveal_chapter": 4,
+          "internal_only_until_verified": false
+        },
+        {
+          "name": "Architect",
+          "kind": "role",
+          "public_reveal_chapter": null,
+          "internal_only_until_verified": true,
+          "source": {
+            "path": "Draft/v6/narration-guide.txt",
+            "line": 55
+          }
+        }
+      ],
+      "canon_facts": [
+        {
+          "field": "age",
+          "value": 41,
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/revision_canon.json",
+            "line": 207,
+            "json_pointer": "/ages/strutt",
+            "chapter": null
+          }
+        },
+        {
+          "field": "complexion",
+          "value": "Pale",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part1.md",
+            "line": 821,
+            "chapter": 10,
+            "excerpt": "He was forty-one, pale"
+          }
+        },
+        {
+          "field": "build",
+          "value": "Thin",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part2.md",
+            "line": 207,
+            "chapter": 21,
+            "excerpt": "thin, pale, with the slightly glazed expression"
+          }
+        },
+        {
+          "field": "accessory",
+          "value": "Glasses",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part2.md",
+            "line": 207,
+            "chapter": 21,
+            "excerpt": "Elias Strutt adjusted his glasses."
+          }
+        },
+        {
+          "field": "wardrobe",
+          "value": "Grey T-shirt and dark jeans",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part1.md",
+            "line": 821,
+            "chapter": 10,
+            "excerpt": "a gray T-shirt and dark jeans"
+          }
+        }
+      ],
+      "unspecified_in_verified_sources": [
+        "hair",
+        "eye color",
+        "height",
+        "glasses frame shape"
+      ],
+      "provisional_art_choices": [],
+      "base_model": {
+        "reference_path": "models/elias-strutt-v1.png",
+        "reference_status": "planned_not_generated",
+        "sheet_requirements": [
+          "front head",
+          "three-quarter head",
+          "profile",
+          "rear view",
+          "full body",
+          "neutral expression",
+          "one story-specific expression"
+        ],
+        "identity_version": "v1"
+      },
+      "wardrobe_and_timeline_variants": [
+        {
+          "id": "council",
+          "label": "Grey T-shirt and dark jeans",
+          "earliest_scene_chapter": 10,
+          "canon_facts": [],
+          "provisional_art_choices": [],
+          "reference_path": null,
+          "reference_status": "uses_base_identity_reference"
+        },
+        {
+          "id": "working",
+          "label": "Same face, build, and glasses",
+          "earliest_scene_chapter": 21,
+          "canon_facts": [],
+          "provisional_art_choices": [],
+          "reference_path": null,
+          "reference_status": "uses_base_identity_reference"
+        }
+      ],
+      "spoiler_guards": [
+        "Use an original face. External real-person archetypes in older planning notes are not portrait references."
+      ]
+    },
+    {
+      "id": "arthur-venn",
+      "name": "Arthur Venn",
+      "production_role": "Infrastructure executive",
+      "first_named_source": {
+        "path": "Draft/v6/part1.md",
+        "line": 342,
+        "chapter": 4,
+        "excerpt": "Arthur Venn"
+      },
+      "first_visual_portrait_chapter": 10,
+      "public_label_by_chapter": [],
+      "aliases": [
+        {
+          "name": "Venn",
+          "kind": "familiar_name",
+          "public_reveal_chapter": 4,
+          "internal_only_until_verified": false
+        },
+        {
+          "name": "Machine",
+          "kind": "role",
+          "public_reveal_chapter": null,
+          "internal_only_until_verified": true,
+          "source": {
+            "path": "Draft/v6/narration-guide.txt",
+            "line": 55
+          }
+        }
+      ],
+      "canon_facts": [
+        {
+          "field": "age",
+          "value": 58,
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part1.md",
+            "line": 843,
+            "chapter": 10,
+            "excerpt": "He was fifty-eight, compact, unremarkable in appearance"
+          }
+        },
+        {
+          "field": "build",
+          "value": "Compact",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part1.md",
+            "line": 843,
+            "chapter": 10,
+            "excerpt": "He was fifty-eight, compact, unremarkable in appearance"
+          }
+        },
+        {
+          "field": "appearance",
+          "value": "Unremarkable; understated presentation",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part1.md",
+            "line": 843,
+            "chapter": 10,
+            "excerpt": "He was fifty-eight, compact, unremarkable in appearance"
+          }
+        }
+      ],
+      "unspecified_in_verified_sources": [
+        "hair",
+        "eye color",
+        "ethnicity",
+        "height",
+        "specific clothes"
+      ],
+      "provisional_art_choices": [],
+      "base_model": {
+        "reference_path": "models/arthur-venn-v1.png",
+        "reference_status": "planned_not_generated",
+        "sheet_requirements": [
+          "front head",
+          "three-quarter head",
+          "profile",
+          "rear view",
+          "full body",
+          "neutral expression",
+          "one story-specific expression"
+        ],
+        "identity_version": "v1"
+      },
+      "wardrobe_and_timeline_variants": [
+        {
+          "id": "council-host",
+          "label": "Original understated actor; no specific canonical suit",
+          "earliest_scene_chapter": 10,
+          "canon_facts": [],
+          "provisional_art_choices": [],
+          "reference_path": null,
+          "reference_status": "uses_base_identity_reference"
+        }
+      ],
+      "spoiler_guards": [
+        "Do not infer a celebrity look from the planning archetype."
+      ]
+    },
+    {
+      "id": "magnus-cole",
+      "name": "Magnus Cole",
+      "production_role": "Infrastructure executive",
+      "first_named_source": {
+        "path": "Draft/v6/part1.md",
+        "line": 348,
+        "chapter": 4,
+        "excerpt": "Magnus Cole"
+      },
+      "first_visual_portrait_chapter": 10,
+      "public_label_by_chapter": [],
+      "aliases": [
+        {
+          "name": "Cole",
+          "kind": "familiar_name",
+          "public_reveal_chapter": 4,
+          "internal_only_until_verified": false
+        },
+        {
+          "name": "Showman",
+          "kind": "role",
+          "public_reveal_chapter": null,
+          "internal_only_until_verified": true,
+          "source": {
+            "path": "Draft/v6/narration-guide.txt",
+            "line": 55
+          }
+        }
+      ],
+      "canon_facts": [
+        {
+          "field": "age",
+          "value": 53,
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part1.md",
+            "line": 833,
+            "chapter": 10,
+            "excerpt": "He was fifty-three, six foot two"
+          }
+        },
+        {
+          "field": "height",
+          "value": "Six foot two",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part1.md",
+            "line": 833,
+            "chapter": 10,
+            "excerpt": "He was fifty-three, six foot two"
+          }
+        },
+        {
+          "field": "presentation",
+          "value": "Expansive posture; forceful handshake",
+          "scope": "scene_pose",
+          "source": {
+            "path": "Draft/v6/part1.md",
+            "line": 833,
+            "chapter": 10,
+            "excerpt": "His handshake was too firm. His voice was too loud."
+          }
+        }
+      ],
+      "unspecified_in_verified_sources": [
+        "hair",
+        "eye color",
+        "ethnicity",
+        "weight/build beyond height",
+        "specific clothes"
+      ],
+      "provisional_art_choices": [],
+      "base_model": {
+        "reference_path": "models/magnus-cole-v1.png",
+        "reference_status": "planned_not_generated",
+        "sheet_requirements": [
+          "front head",
+          "three-quarter head",
+          "profile",
+          "rear view",
+          "full body",
+          "neutral expression",
+          "one story-specific expression"
+        ],
+        "identity_version": "v1"
+      },
+      "wardrobe_and_timeline_variants": [
+        {
+          "id": "council",
+          "label": "Original actor; expansive posture",
+          "earliest_scene_chapter": 10,
+          "canon_facts": [],
+          "provisional_art_choices": [],
+          "reference_path": null,
+          "reference_status": "uses_base_identity_reference"
+        }
+      ],
+      "spoiler_guards": [
+        "Keep portrait original; no celebrity imitation. Do not translate loud behavior into a facial caricature."
+      ]
+    },
+    {
+      "id": "geoffrey-laine",
+      "name": "Geoffrey Laine",
+      "production_role": "Foundation leader and diplomat",
+      "first_named_source": {
+        "path": "Draft/v6/part1.md",
+        "line": 354,
+        "chapter": 4,
+        "excerpt": "Geoffrey Laine"
+      },
+      "first_visual_portrait_chapter": 10,
+      "public_label_by_chapter": [],
+      "aliases": [
+        {
+          "name": "Geoffrey",
+          "kind": "familiar_name",
+          "public_reveal_chapter": 4,
+          "internal_only_until_verified": false
+        },
+        {
+          "name": "Laine",
+          "kind": "familiar_name",
+          "public_reveal_chapter": 4,
+          "internal_only_until_verified": false
+        },
+        {
+          "name": "Philanthropist",
+          "kind": "role",
+          "public_reveal_chapter": null,
+          "internal_only_until_verified": true,
+          "source": {
+            "path": "Draft/v6/narration-guide.txt",
+            "line": 56
+          }
+        }
+      ],
+      "canon_facts": [
+        {
+          "field": "age",
+          "value": 62,
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part1.md",
+            "line": 831,
+            "chapter": 10,
+            "excerpt": "He was sixty-two, silver-haired"
+          }
+        },
+        {
+          "field": "hair",
+          "value": "Silver",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part1.md",
+            "line": 831,
+            "chapter": 10,
+            "excerpt": "He was sixty-two, silver-haired"
+          }
+        },
+        {
+          "field": "wardrobe_style",
+          "value": "Understated elegance",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part1.md",
+            "line": 831,
+            "chapter": 10,
+            "excerpt": "dressed in understated elegance"
+          }
+        },
+        {
+          "field": "later_wardrobe",
+          "value": "Immaculate suit",
+          "scope": "scene_wardrobe",
+          "source": {
+            "path": "Draft/v6/part3.md",
+            "line": 323,
+            "chapter": 40,
+            "excerpt": "His suit was immaculate."
+          }
+        }
+      ],
+      "unspecified_in_verified_sources": [
+        "hair cut",
+        "height",
+        "body build",
+        "eye color",
+        "ethnicity",
+        "specific suit color"
+      ],
+      "provisional_art_choices": [],
+      "base_model": {
+        "reference_path": "models/geoffrey-laine-v1.png",
+        "reference_status": "planned_not_generated",
+        "sheet_requirements": [
+          "front head",
+          "three-quarter head",
+          "profile",
+          "rear view",
+          "full body",
+          "neutral expression",
+          "one story-specific expression"
+        ],
+        "identity_version": "v1"
+      },
+      "wardrobe_and_timeline_variants": [
+        {
+          "id": "council",
+          "label": "Understated elegance",
+          "earliest_scene_chapter": 10,
+          "canon_facts": [],
+          "provisional_art_choices": [],
+          "reference_path": null,
+          "reference_status": "uses_base_identity_reference"
+        },
+        {
+          "id": "formal-reception",
+          "label": "Immaculate suit",
+          "earliest_scene_chapter": 40,
+          "canon_facts": [],
+          "provisional_art_choices": [],
+          "reference_path": null,
+          "reference_status": "uses_base_identity_reference"
+        }
+      ],
+      "spoiler_guards": [
+        "Keep moral ambiguity. Do not make him visually saintly or villainous beyond the current narrated scene."
+      ]
+    },
+    {
+      "id": "clive-barrington",
+      "name": "Clive Barrington",
+      "production_role": "Media proprietor",
+      "first_named_source": {
+        "path": "Draft/v6/part1.md",
+        "line": 316,
+        "chapter": 4,
+        "excerpt": "Clive Barrington"
+      },
+      "first_visual_portrait_chapter": 4,
+      "public_label_by_chapter": [],
+      "aliases": [
+        {
+          "name": "Clive",
+          "kind": "familiar_name",
+          "public_reveal_chapter": 4,
+          "internal_only_until_verified": false
+        },
+        {
+          "name": "Barrington",
+          "kind": "familiar_name",
+          "public_reveal_chapter": 4,
+          "internal_only_until_verified": false
+        },
+        {
+          "name": "Narrator",
+          "kind": "role",
+          "public_reveal_chapter": null,
+          "internal_only_until_verified": true,
+          "source": {
+            "path": "Draft/v6/narration-guide.txt",
+            "line": 56
+          }
+        }
+      ],
+      "canon_facts": [
+        {
+          "field": "age",
+          "value": 73,
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part1.md",
+            "line": 825,
+            "chapter": 10,
+            "excerpt": "He was seventy-three and looked sixty"
+          }
+        },
+        {
+          "field": "apparent_age",
+          "value": "Looks approximately sixty despite age seventy-three",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part1.md",
+            "line": 825,
+            "chapter": 10,
+            "excerpt": "He was seventy-three and looked sixty"
+          }
+        },
+        {
+          "field": "hair",
+          "value": "Silver-white",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part2.md",
+            "line": 223,
+            "chapter": 21,
+            "excerpt": "His hair was silver-white, his suit was Savile Row"
+          }
+        },
+        {
+          "field": "wardrobe",
+          "value": "Savile Row suit",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part2.md",
+            "line": 223,
+            "chapter": 21,
+            "excerpt": "His hair was silver-white, his suit was Savile Row"
+          }
+        }
+      ],
+      "unspecified_in_verified_sources": [
+        "hair cut",
+        "eye color",
+        "ethnicity",
+        "height",
+        "build",
+        "suit color"
+      ],
+      "provisional_art_choices": [],
+      "base_model": {
+        "reference_path": "models/clive-barrington-v1.png",
+        "reference_status": "planned_not_generated",
+        "sheet_requirements": [
+          "front head",
+          "three-quarter head",
+          "profile",
+          "rear view",
+          "full body",
+          "neutral expression",
+          "one story-specific expression"
+        ],
+        "identity_version": "v1"
+      },
+      "wardrobe_and_timeline_variants": [
+        {
+          "id": "london-call",
+          "label": "Opening phone scene; exact clothes unspecified",
+          "earliest_scene_chapter": 4,
+          "canon_facts": [],
+          "provisional_art_choices": [],
+          "reference_path": null,
+          "reference_status": "uses_base_identity_reference"
+        },
+        {
+          "id": "council-suit",
+          "label": "Savile Row suit",
+          "earliest_scene_chapter": 21,
+          "canon_facts": [],
+          "provisional_art_choices": [],
+          "reference_path": null,
+          "reference_status": "uses_base_identity_reference"
+        }
+      ],
+      "spoiler_guards": [
+        "Narrator is an operational role label, not the audiobook narrator. Keep these identities separate."
+      ]
+    }
+  ],
+  "supporting_cast": [
+    {
+      "id": "detective-santos",
+      "name": "Detective Santos",
+      "production_role": "Supporting detective",
+      "first_named_source": {
+        "path": "Draft/v6/part1.md",
+        "line": 197,
+        "chapter": 3,
+        "excerpt": "Detective Santos"
+      },
+      "first_visual_portrait_chapter": 3,
+      "public_label_by_chapter": [],
+      "aliases": [
+        {
+          "name": "Santos",
+          "kind": "familiar_name",
+          "public_reveal_chapter": 3,
+          "internal_only_until_verified": false
+        }
+      ],
+      "canon_facts": [
+        {
+          "field": "relative_age_build",
+          "value": "Younger and larger than Morrow",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part1.md",
+            "line": 183,
+            "chapter": 3,
+            "excerpt": "The other was younger, bigger, standing slightly behind"
+          }
+        },
+        {
+          "field": "pose",
+          "value": "Arms crossed, blank face",
+          "scope": "scene_pose",
+          "source": {
+            "path": "Draft/v6/part1.md",
+            "line": 183,
+            "chapter": 3,
+            "excerpt": "arms crossed, face blank"
+          }
+        }
+      ],
+      "unspecified_in_verified_sources": [
+        "first name",
+        "exact age",
+        "ethnicity",
+        "hair",
+        "eye color",
+        "specific clothes"
+      ],
+      "provisional_art_choices": [],
+      "base_model": {
+        "reference_path": "models/detective-santos-v1.png",
+        "reference_status": "planned_not_generated",
+        "sheet_requirements": [
+          "front head",
+          "three-quarter head",
+          "profile",
+          "rear view",
+          "full body",
+          "neutral expression",
+          "one story-specific expression"
+        ],
+        "identity_version": "v1"
+      },
+      "wardrobe_and_timeline_variants": [],
+      "spoiler_guards": [
+        "Use a separate actor from Morrow."
+      ]
+    },
+    {
+      "id": "lin",
+      "name": "Lin",
+      "production_role": "Supporting operations coordinator",
+      "first_named_source": {
+        "path": "Draft/v6/part2.md",
+        "line": 489,
+        "chapter": 24,
+        "excerpt": "her name was Lin"
+      },
+      "first_visual_portrait_chapter": 19,
+      "public_label_by_chapter": [],
+      "aliases": [
+        {
+          "name": "Lin",
+          "kind": "familiar_name",
+          "public_reveal_chapter": 24,
+          "internal_only_until_verified": false
+        }
+      ],
+      "canon_facts": [
+        {
+          "field": "age_band",
+          "value": "Forties",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part2.md",
+            "line": 35,
+            "chapter": 19,
+            "excerpt": "A woman in her forties with close-cropped silver hair"
+          }
+        },
+        {
+          "field": "hair",
+          "value": "Close-cropped silver",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part2.md",
+            "line": 35,
+            "chapter": 19,
+            "excerpt": "A woman in her forties with close-cropped silver hair"
+          }
+        },
+        {
+          "field": "build",
+          "value": "Lean, distance-runner build",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part2.md",
+            "line": 35,
+            "chapter": 19,
+            "excerpt": "the lean build of a distance runner"
+          }
+        },
+        {
+          "field": "accent",
+          "value": "Possibly South African; explicitly uncertain observer assessment",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part2.md",
+            "line": 35,
+            "chapter": 19,
+            "excerpt": "South African, maybe."
+          }
+        }
+      ],
+      "unspecified_in_verified_sources": [
+        "surname",
+        "nationality/ethnicity",
+        "eye color",
+        "clothes"
+      ],
+      "provisional_art_choices": [],
+      "base_model": {
+        "reference_path": "models/lin-v1.png",
+        "reference_status": "planned_not_generated",
+        "sheet_requirements": [
+          "front head",
+          "three-quarter head",
+          "profile",
+          "rear view",
+          "full body",
+          "neutral expression",
+          "one story-specific expression"
+        ],
+        "identity_version": "v1"
+      },
+      "wardrobe_and_timeline_variants": [],
+      "spoiler_guards": [
+        "Seen in Chapter 19 and named in Chapter 24. Before name disclosure, use operations coordinator in accessible labels. Do not equate accent uncertainty with confirmed nationality."
+      ]
+    },
+    {
+      "id": "jonas",
+      "name": "Jonas",
+      "production_role": "Supporting operations coordinator",
+      "first_named_source": {
+        "path": "Draft/v6/part2.md",
+        "line": 489,
+        "chapter": 24,
+        "excerpt": "Jonas"
+      },
+      "first_visual_portrait_chapter": 24,
+      "public_label_by_chapter": [],
+      "aliases": [
+        {
+          "name": "Jonas",
+          "kind": "familiar_name",
+          "public_reveal_chapter": 24,
+          "internal_only_until_verified": false
+        }
+      ],
+      "canon_facts": [
+        {
+          "field": "facial_hair",
+          "value": "Bearded",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part2.md",
+            "line": 489,
+            "chapter": 24,
+            "excerpt": "A bearded coordinator named Jonas"
+          }
+        }
+      ],
+      "unspecified_in_verified_sources": [
+        "surname",
+        "age",
+        "ethnicity",
+        "hair",
+        "eye color",
+        "build",
+        "clothes"
+      ],
+      "provisional_art_choices": [],
+      "base_model": {
+        "reference_path": "models/jonas-v1.png",
+        "reference_status": "planned_not_generated",
+        "sheet_requirements": [
+          "front head",
+          "three-quarter head",
+          "profile",
+          "rear view",
+          "full body",
+          "neutral expression",
+          "one story-specific expression"
+        ],
+        "identity_version": "v1"
+      },
+      "wardrobe_and_timeline_variants": [],
+      "spoiler_guards": []
+    },
+    {
+      "id": "maya",
+      "name": "Maya",
+      "production_role": "Supporting activist",
+      "first_named_source": {
+        "path": "Draft/v6/part1.md",
+        "line": 1067,
+        "chapter": 12,
+        "excerpt": "\"Maya!\""
+      },
+      "first_visual_portrait_chapter": 12,
+      "public_label_by_chapter": [],
+      "aliases": [
+        {
+          "name": "Maya",
+          "kind": "familiar_name",
+          "public_reveal_chapter": 12,
+          "internal_only_until_verified": false
+        }
+      ],
+      "canon_facts": [
+        {
+          "field": "age_band",
+          "value": "Early twenties",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part1.md",
+            "line": 1029,
+            "chapter": 12,
+            "excerpt": "in her early twenties, petite, Latina, dark hair pulled back"
+          }
+        },
+        {
+          "field": "build",
+          "value": "Petite",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part1.md",
+            "line": 1029,
+            "chapter": 12,
+            "excerpt": "in her early twenties, petite, Latina, dark hair pulled back"
+          }
+        },
+        {
+          "field": "ethnicity",
+          "value": "Latina",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part1.md",
+            "line": 1029,
+            "chapter": 12,
+            "excerpt": "in her early twenties, petite, Latina, dark hair pulled back"
+          }
+        },
+        {
+          "field": "hair",
+          "value": "Dark, pulled back",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part1.md",
+            "line": 1029,
+            "chapter": 12,
+            "excerpt": "in her early twenties, petite, Latina, dark hair pulled back"
+          }
+        },
+        {
+          "field": "wardrobe",
+          "value": "Denim jacket covered in political enamel pins",
+          "scope": "stable_identity",
+          "source": {
+            "path": "Draft/v6/part1.md",
+            "line": 1029,
+            "chapter": 12,
+            "excerpt": "wearing a denim jacket covered in enamel pins"
+          }
+        }
+      ],
+      "unspecified_in_verified_sources": [
+        "surname",
+        "exact age",
+        "eye color",
+        "height"
+      ],
+      "provisional_art_choices": [],
+      "base_model": {
+        "reference_path": "models/maya-v1.png",
+        "reference_status": "planned_not_generated",
+        "sheet_requirements": [
+          "front head",
+          "three-quarter head",
+          "profile",
+          "rear view",
+          "full body",
+          "neutral expression",
+          "one story-specific expression"
+        ],
+        "identity_version": "v1"
+      },
+      "wardrobe_and_timeline_variants": [],
+      "spoiler_guards": [
+        "Pin texts belong to her Chapter 12 costume, not to the opening scene or a global movement logo."
+      ]
+    }
+  ],
+  "generation_workflow": [
+    "Select character ID and scene timeline/wardrobe variant.",
+    "Use generated base reference pixels and any active costume/location reference as image-generation references. A name or repeated prompt alone is insufficient.",
+    "Preserve face geometry, hairline, complexion, glasses and proportions. Change pose, expression, lighting and approved wardrobe only.",
+    "Review generated image beside model sheet and neighboring story images. Check stable actor likeness and scene-specific props.",
+    "Verify text-anchor reveal, accessible label and public filename before inclusion in reader runtime.",
+    "Record approved revisions with a new reference version; keep old references for continuity and do not silently redefine actors."
+  ],
+  "reference_status_note": "Adrian and Daniel provisional v1 sheets exist and have been visually reviewed against pilot source art. They are not yet author-approved. All other base sheets and alternate-actor/timeline sheets are planned, not generated."
+}

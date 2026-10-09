@@ -1,0 +1,317 @@
+{
+  "method": "Canonical text → selected narration tokens → ASR matching word runs → mastered chunk timeline",
+  "edition": "v6",
+  "chapter": 1,
+  "checks": {
+    "canonicalParagraphsPreserved": true,
+    "monotonicParagraphTimings": true,
+    "sentenceTextReconstructsParagraphs": true,
+    "sentenceBoundsWithinParagraphs": true,
+    "monotonicSentenceTimings": true,
+    "sceneCuesOnCanonicalSentenceStarts": true,
+    "symbolicImageryClearlyIdentified": true,
+    "endsAfterWholeParagraph": true,
+    "paragraphsChecked": 11,
+    "sentencesChecked": 60,
+    "scenesChecked": 8,
+    "cutAndFadeInsideMeasuredQuietGap": true,
+    "exportDecodedDurationMatchesCut": true,
+    "audioPreservedWithoutReencoding": true,
+    "audioHashMatches": true
+  },
+  "duration": 320.19,
+  "paragraphCount": 11,
+  "sentenceCount": 60,
+  "sceneCount": 8,
+  "sceneCues": [
+    {
+      "id": "opening-room",
+      "start": 0,
+      "paragraphId": "p001",
+      "sentenceId": "p001-s01",
+      "kind": "present",
+      "narrationTrigger": "The crawl at the bottom of the screen said BREAKING, which in the taxonomy of modern cable news meant anything from a nuclear detonation to a celebrity's new haircut."
+    },
+    {
+      "id": "boardroom-dismissal",
+      "start": 81.64,
+      "paragraphId": "p004",
+      "sentenceId": "p004-s03",
+      "kind": "memory",
+      "narrationTrigger": "Then the \"growth advisors\" arrived, men in expensive shoes who spoke about users as \"addressable markets\" and ethics as \"brand risk.\""
+    },
+    {
+      "id": "kitchen-calculation",
+      "start": 134.0,
+      "paragraphId": "p005",
+      "sentenceId": "p005-s03",
+      "kind": "memory",
+      "narrationTrigger": "Some nights, alone in the kitchen with nothing but the hum of the refrigerator, he let himself calculate what those later stakes would be worth today."
+    },
+    {
+      "id": "unnamed-suspect",
+      "start": 161.52,
+      "paragraphId": "p006",
+      "sentenceId": "p006-s01",
+      "kind": "broadcast",
+      "narrationTrigger": "On screen, the footage cut to a perp walk."
+    },
+    {
+      "id": "personal-connection",
+      "start": 206.46,
+      "paragraphId": "p009",
+      "sentenceId": "p009-s01",
+      "kind": "present",
+      "narrationTrigger": "NovaMind."
+    },
+    {
+      "id": "cognitive-grid",
+      "start": 222.84,
+      "paragraphId": "p009",
+      "sentenceId": "p009-s05",
+      "kind": "symbolic",
+      "narrationTrigger": "The electrical grid of the cognitive age."
+    },
+    {
+      "id": "classroom-lever",
+      "start": 272.3,
+      "paragraphId": "p011",
+      "sentenceId": "p011-s01",
+      "kind": "reflection",
+      "narrationTrigger": "So he did."
+    },
+    {
+      "id": "people-as-clay",
+      "start": 302.02,
+      "paragraphId": "p011",
+      "sentenceId": "p011-s07",
+      "kind": "symbolic",
+      "narrationTrigger": "People became clay."
+    }
+  ],
+  "exactNormalizedTokens": 881,
+  "canonicalNormalizedTokens": 891,
+  "exactTokenFraction": 0.988777,
+  "interpolatedCanonicalTokens": 10,
+  "cut": {
+    "lastCanonicalSpeechEnd": 319.66,
+    "nextCanonicalSpeechStart": 320.72,
+    "cutAt": 320.19,
+    "silentTailAfterLastRecognizedWord": 0.53,
+    "fadeOutSeconds": 0.1,
+    "finalParagraphId": "p011",
+    "measuredQuietRegion": [
+      319.688866,
+      320.503447
+    ],
+    "quietThresholdDbfs": -45,
+    "finalWords": "ection. When you can model a population's decision-making at scale, the distance between prediction and manipulation is measured in one board meeting."
+  },
+  "masteredTimeline": [
+    {
+      "id": "chapter-001-001",
+      "masterOffset": 0.96,
+      "sourceDuration": 238.36
+    },
+    {
+      "id": "chapter-001-002",
+      "masterOffset": 239.32,
+      "sourceDuration": 256.6
+    },
+    {
+      "id": "chapter-001-003",
+      "masterOffset": 495.92,
+      "sourceDuration": 184.92
+    }
+  ],
+  "recognitionDifferences": [
+    {
+      "type": "insert",
+      "expectedIndex": 400,
+      "expectedCount": 0,
+      "recognizedIndex": 400,
+      "recognizedCount": 1
+    },
+    {
+      "type": "replace",
+      "expectedIndex": 442,
+      "expectedCount": 1,
+      "recognizedIndex": 443,
+      "recognizedCount": 2
+    },
+    {
+      "type": "replace",
+      "expectedIndex": 578,
+      "expectedCount": 1,
+      "recognizedIndex": 580,
+      "recognizedCount": 2
+    },
+    {
+      "type": "replace",
+      "expectedIndex": 581,
+      "expectedCount": 1,
+      "recognizedIndex": 584,
+      "recognizedCount": 1
+    },
+    {
+      "type": "replace",
+      "expectedIndex": 587,
+      "expectedCount": 1,
+      "recognizedIndex": 590,
+      "recognizedCount": 2
+    },
+    {
+      "type": "replace",
+      "expectedIndex": 590,
+      "expectedCount": 1,
+      "recognizedIndex": 594,
+      "recognizedCount": 2
+    },
+    {
+      "type": "replace",
+      "expectedIndex": 596,
+      "expectedCount": 1,
+      "recognizedIndex": 601,
+      "recognizedCount": 2
+    },
+    {
+      "type": "replace",
+      "expectedIndex": 637,
+      "expectedCount": 1,
+      "recognizedIndex": 643,
+      "recognizedCount": 2
+    },
+    {
+      "type": "replace",
+      "expectedIndex": 742,
+      "expectedCount": 1,
+      "recognizedIndex": 749,
+      "recognizedCount": 1
+    },
+    {
+      "type": "replace",
+      "expectedIndex": 836,
+      "expectedCount": 1,
+      "recognizedIndex": 843,
+      "recognizedCount": 2
+    },
+    {
+      "type": "replace",
+      "expectedIndex": 846,
+      "expectedCount": 1,
+      "recognizedIndex": 854,
+      "recognizedCount": 1
+    },
+    {
+      "type": "replace",
+      "expectedIndex": 896,
+      "expectedCount": 1,
+      "recognizedIndex": 904,
+      "recognizedCount": 1
+    },
+    {
+      "type": "replace",
+      "expectedIndex": 918,
+      "expectedCount": 1,
+      "recognizedIndex": 926,
+      "recognizedCount": 1
+    },
+    {
+      "type": "replace",
+      "expectedIndex": 965,
+      "expectedCount": 1,
+      "recognizedIndex": 973,
+      "recognizedCount": 1
+    },
+    {
+      "type": "replace",
+      "expectedIndex": 1163,
+      "expectedCount": 1,
+      "recognizedIndex": 1171,
+      "recognizedCount": 1
+    },
+    {
+      "type": "replace",
+      "expectedIndex": 1170,
+      "expectedCount": 1,
+      "recognizedIndex": 1178,
+      "recognizedCount": 1
+    },
+    {
+      "type": "replace",
+      "expectedIndex": 1231,
+      "expectedCount": 1,
+      "recognizedIndex": 1239,
+      "recognizedCount": 1
+    },
+    {
+      "type": "replace",
+      "expectedIndex": 1247,
+      "expectedCount": 1,
+      "recognizedIndex": 1255,
+      "recognizedCount": 1
+    },
+    {
+      "type": "replace",
+      "expectedIndex": 1321,
+      "expectedCount": 1,
+      "recognizedIndex": 1329,
+      "recognizedCount": 1
+    },
+    {
+      "type": "replace",
+      "expectedIndex": 1339,
+      "expectedCount": 1,
+      "recognizedIndex": 1347,
+      "recognizedCount": 1
+    },
+    {
+      "type": "replace",
+      "expectedIndex": 1640,
+      "expectedCount": 1,
+      "recognizedIndex": 1648,
+      "recognizedCount": 2
+    }
+  ],
+  "asrSources": [
+    {
+      "path": "Audiobook/v6/local-checks/cache/chapter-001-001.9eccfe2df25fc48592ee98ef9b364d01f316961914c2147b6e26afbd03527445.json",
+      "sha256": "6fc51d5de5fec1d5bde77625fe473cb514c9fd3e87dcb77e1d0b626f59626a3a",
+      "requestSha256": "4fd5f1b1bfd3f9b28935e57267af29d46922afb3b66035649c89719f8923a414",
+      "audioSha256": "e468cc5af2b82f56a071a1823832d8001a60c126b825e39dc693d30c58de2cc5"
+    },
+    {
+      "path": "Audiobook/v6/local-checks/cache/chapter-001-002.17a32e2fbd773d1be2a48dab45b021c257a7033048d89a99e777341bd16cf461.json",
+      "sha256": "e0c82a506415792bed1d0868e550a32e6eafc12c19419a47a1cc0ba2dbe25ba6",
+      "requestSha256": "fa27acc875921bd7162277a2bfa7e4919be18b86dc6fcdf9b2225a00244fb72d",
+      "audioSha256": "c5432ab23353be6d6d58a4a2b47808fe61f107a8ca7d6048e37c48ca1155d340"
+    },
+    {
+      "path": "Audiobook/v6/local-checks/cache/chapter-001-003.49e38060e20ac0693b835e69dc8535d15e3aecdac0ed625df5677fcde602a23b.json",
+      "sha256": "2e77e61463a3b755d8e7c1192a70445adf33eb378b7c3df1a436ffb79985d21c",
+      "requestSha256": "1849d65b71d65d74d8bf27abf4aa0990bebaf6951f865b8d3b300b151f25626b",
+      "audioSha256": "7726c98166eaf5b26b57d5b44122eb6f51e4162d55649d3dea26760a63380efb"
+    }
+  ],
+  "audioProbe": {
+    "programs": [],
+    "stream_groups": [],
+    "streams": [
+      {
+        "codec_name": "mp3",
+        "sample_rate": "44100",
+        "channels": 1
+      }
+    ],
+    "format": {
+      "duration": "320.190000",
+      "size": "5124278"
+    }
+  },
+  "limitations": [
+    "ASR word timestamps are approximate; there is no measured human-reviewed timing error bound.",
+    "Recognition spelling/name differences use local interpolation; canonical display text is not rewritten.",
+    "Existing content QA and these timing checks do not constitute human listening approval."
+  ],
+  "listeningApproved": false
+}
