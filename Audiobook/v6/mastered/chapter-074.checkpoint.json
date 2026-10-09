@@ -1,0 +1,96 @@
+{
+  "identity": {
+    "coordinator_version": "1.0.0",
+    "master_audio_sha256": "369141dcf541fe9920bde4e5ed59ec52bd3731be512f52189f74019d6773dce5",
+    "chapter": 74,
+    "title": "Chapter 74",
+    "book": "LUMEN",
+    "author": "Rob Xie",
+    "narration": "AI-generated Gemini voice, Charon",
+    "settings": {
+      "ffmpeg": "/opt/homebrew/bin/ffmpeg",
+      "ffprobe": "/opt/homebrew/bin/ffprobe",
+      "target_rms_db": -20.0,
+      "peak_ceiling_db": -3.2,
+      "codec_headroom_db": 0.6,
+      "max_gain_db": 30.0,
+      "head_seconds": 1.0,
+      "tail_seconds": 2.0,
+      "silence_db": -60.0,
+      "long_silence_seconds": 2.0,
+      "quiet_window_seconds": 0.5,
+      "quiet_window_db": -50.0,
+      "trim_edges": true,
+      "edge_guard_seconds": 0.02,
+      "max_attempts": 8,
+      "peak_limiter": "auto",
+      "max_limiter_overdrive_db": 6.0
+    },
+    "inputs": [
+      {
+        "id": "chapter-074-001",
+        "chapter": 74,
+        "chunk": 1,
+        "path": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/raw/chapter-074-001.wav",
+        "request_sha256": "6eeb72d3ae427a2b7f5de076155c5adf78dbb714ecd59282124cc37cd586e72f",
+        "audio_sha256": "4b7c5d37bb076d21871135ea6a1b01a1397a0f5284352f829be8f4e93fa21337",
+        "native_frames": 6138240,
+        "native_rate": 24000,
+        "duration_seconds": 255.76
+      },
+      {
+        "id": "chapter-074-002-take2",
+        "chapter": 74,
+        "chunk": 2,
+        "path": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/raw/chapter-074-002-take2.wav",
+        "request_sha256": "2b1f8e952cae8abbf7bba0f3b9b4f202969b650966789fa5aad766cc8c174067",
+        "audio_sha256": "525055f9de7224538b8b7c1c7ed1a8cb79b573aef911914a398eef837d633793",
+        "native_frames": 6282240,
+        "native_rate": 24000,
+        "duration_seconds": 261.76
+      },
+      {
+        "id": "chapter-074-003",
+        "chapter": 74,
+        "chunk": 3,
+        "path": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/raw/chapter-074-003.wav",
+        "request_sha256": "7681ee847895b2c4d2b3f5d68c4fc3894d8788506b54e62345268f8fc0279999",
+        "audio_sha256": "41fdd63e96ce2c0ad70a899274118ea943a075a2c887bc05a0bd992688f27857",
+        "native_frames": 6172800,
+        "native_rate": 24000,
+        "duration_seconds": 257.2
+      },
+      {
+        "id": "chapter-074-004",
+        "chapter": 74,
+        "chunk": 4,
+        "path": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/raw/chapter-074-004.wav",
+        "request_sha256": "d0a6d3da154a6cc63288f3a854a10b4ad94aed720fb2930274094c1585600458",
+        "audio_sha256": "e32567f953818b15a7fede4bd1de71bac1f3c1c24a7af67eb4bda96014ad3a25",
+        "native_frames": 4572480,
+        "native_rate": 24000,
+        "duration_seconds": 190.52
+      }
+    ]
+  },
+  "identity_sha256": "78b55019584e47d0a83c0960d430f387f311522d675109bc0ff679042c83b93c",
+  "output_sha256": {
+    "lossless_wav": "4c3935069cad2bb1251e5aafd7afa0a0c47c9e08332c1a6200d117dc0110da5a",
+    "mp3": "30efcaf60644657e4088f48b9620476c73dd424095a34391a38c6172c3062da6",
+    "qa": "26d6aca994b16b2c25ee4397f6a849d077e1a309efd65411f6b284237c112a72"
+  },
+  "summary": {
+    "mp3": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/mastered/chapter-074.mp3",
+    "lossless_wav": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/mastered/chapter-074.wav",
+    "qa": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/mastered/chapter-074.qa.json",
+    "duration_seconds": 967.75,
+    "rms_dbfs": -20.834731521185024,
+    "sample_peak_dbfs": -3.9949762450227766,
+    "warnings": [
+      "RMS target remains constrained by peak ceiling, gentle-limiter budget, or maximum gain; inspect the reported deficit",
+      "Decoded resampled PCM exceeds full scale; interpolation can cause overshoot. Check native sample measurements before inferring source clipping"
+    ],
+    "rms_target_met_within_0_5_db": false
+  },
+  "completed_at_unix": 1791538355.9937
+}

@@ -1,0 +1,63 @@
+LUMEN Gemini generator fixes: offline regression report
+Date: 9 October 2026
+Production mutation: generate_audio.py and this report only.
+All fake job files used isolated /private/tmp directories and were removed.
+No API requests, credential access, generation, or production cache writes.
+
+Implemented changes
+- Requests cannot reuse attempts or receipts with a different request hash.
+  New receipts include their own hash; legacy receipts require their matching
+  durable attempt record.
+- New requests reserve the full maximum charge under LOCK before dispatch.
+  The durable ledger is the sole reservation counter, so active requests are
+  counted once. Dispatch requires the reservation's unique ownership token.
+- Cached WAV bytes must match audio_sha256. Legacy metadata lacking that hash
+  can be rebuilt locally from a bound receipt without a new paid request.
+- Explicit daily/per-day quota errors stop after one HTTP 429 response.
+  Transient 429 retries and rejected-before-generation resumption remain valid.
+- Attempt/receipt JSON persistence now fsyncs the temporary file before rename
+  and fsyncs the containing directory afterward. Failed persistence prevents
+  dispatch; uncertain billing remains conservatively reserved and blocked.
+- Empty WAVs are rejected before calculating pace.
+
+Independent final review
+An independent reviewer ran 29 additional isolated mocked tests against this
+final source. All passed, including receipt recovery after disk-write failures,
+exact reservation ceilings with concurrent requests, single-ID dispatch
+suppression, and file-fsync -> rename -> directory-fsync ordering before
+dispatch. File/directory fsync failures both prevented requests. No remaining
+defect was found within the confirmed single-generator-process scope.
+
+Combined result: 46 offline tests passed (17 below + 29 independent).
+Read-only compatibility check: all 11 existing receipt/metadata pairs matched
+the current request hashes, and all 11 cached WAV audio hashes matched. No
+production cache, receipt, attempt, or generation manifest was changed.
+LOCK coordinates worker threads in one process; run one generator instance.
+
+Temporary independent test harness:
+/private/tmp/generator-fix-qa.hMG1oL/test_generator.py
+
+test_budget_and_prepared_hash_validation_prevent_dispatch (__main__.GeneratorTests) ... ok
+test_changed_request_cannot_relabel_receipt_or_attempt (__main__.GeneratorTests) ... ok
+test_concurrent_reservations_count_once_and_enforce_ceiling (__main__.GeneratorTests) ... ok
+test_concurrent_same_id_has_only_one_dispatch (__main__.GeneratorTests) ... ok
+test_daily_quota_429_never_retries_and_remains_resumable (__main__.GeneratorTests) ... ok
+test_dispatch_requires_matching_reservation_token (__main__.GeneratorTests) ... ok
+test_incomplete_and_empty_audio_receipts_are_preserved_without_retry (__main__.GeneratorTests) ... ok
+test_legacy_bound_receipt_recovers_without_request_or_budget (__main__.GeneratorTests) ... ok
+test_missing_legacy_audio_hash_uses_bound_receipt_without_charge (__main__.GeneratorTests) ... ok
+test_network_failure_or_http500_cannot_duplicate (__main__.GeneratorTests) ... ok
+test_orphan_cache_and_corrupted_cached_wav_fail_closed (__main__.GeneratorTests) ... ok
+test_receipt_has_independent_hash_binding (__main__.GeneratorTests) ... ok
+test_rejected_attempt_can_resume_but_mismatched_hash_cannot (__main__.GeneratorTests) ... ok
+test_success_cache_hash_and_prepared_payload (__main__.GeneratorTests) ... ok
+test_transient_429_retries_and_exhaustion_is_resumable (__main__.GeneratorTests) ... ok
+test_unbound_or_rejected_receipt_is_blocked (__main__.GeneratorTests) ... ok
+test_uncertain_attempts_stay_reserved_and_duplicate_safe (__main__.GeneratorTests) ... ok
+
+----------------------------------------------------------------------
+Ran 17 tests in 0.071s
+
+OK
+
+Source SHA-256: 6cbe5e202694ff4a8e767fbd1adb8e43edd40dad9079edf8e4eee7e193b9adc6

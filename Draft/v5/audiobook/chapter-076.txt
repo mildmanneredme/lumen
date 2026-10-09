@@ -1,0 +1,79 @@
+Chapter Seventy Six.
+
+ten hours remaining
+
+The contingency laptops arrived at 2:17 a.m., carried by a courier who looked like an art student and who handed Adrian a duffel bag without a word before disappearing down the stairwell of the Brussels apartment building. Adrian locked the door, drew the curtains, and unzipped the bag on the bed.
+
+Three loaned laptops. Two external hard drives containing mirrored copies of Ólafur's work. Spare timing diagrams, hand-drawn, rolled into a tube and secured with a rubber band. Tomás had placed the cache outside Brussels before the team dispersed. The originals were still in Copenhagen.
+
+And Adrian paused. A bag of Icelandic licorice, opened and folded shut. Ólafur had packed it with the contingency materials in Zurich, apparently unwilling to trust even a backup plan to someone without food.
+
+Adrian set the licorice aside. He would eat it later. He would eat it later and he would think of the boy who had brought it, and he would allow himself the luxury of grief. But not now.
+
+He opened the first laptop. Air-gapped. The courier had supplied the decryption key for the mirrored drive. The loaned machine opened onto Ólafur's working desktop, files and settings copied with everything else.
+
+The desktop was chaos. Files everywhere: simulation outputs, calibration scripts, timing models, documentation that ranged from meticulously detailed to barely legible. Ólafur's filing system appeared to operate on the same principle as his conversational style: everything important was there, but you had to parse it at his speed, not yours.
+
+Adrian took a breath. Opened the folder labeled Heartbeat Final.
+
+Inside: the complete trigger mechanism. Source code, configuration files, simulation frameworks, deployment templates. Thousands of lines of work, representing four months of a brilliant mind focused on a single, impossible problem.
+
+Adrian began reading.
+
+The first hour was vertigo. Ólafur's code was dense, idiosyncratic, and commented in a mixture of English, Icelandic, and what appeared to be mathematical notation that Ólafur had invented for his own use. Variable names were drawn from music theory: tempo, fermata, crescendo, downbeat. Functions were named after cardiac anatomy: systole, diastole, sinoatrial node. The Heartbeat Protocol was not a metaphor. It was a design philosophy.
+
+Adrian's background in AI systems gave him the vocabulary. His years as an angel investor, evaluating the technical architecture of startups, reading code to assess the competence of founding teams, gave him the pattern recognition. And his two weeks embedded in Project Lumen, studying every component, understanding every interface, gave him the context.
+
+By the second hour, he could see the shape of it. The Heartbeat Protocol solved a coordination problem under a specific and unusual constraint: the nodes could not communicate with each other. A traditional consensus algorithm would require message-passing between nodes. Ólafur's nodes, the physical implants inside each company, were isolated. They couldn't talk to each other without risking detection.
+
+So Ólafur had solved the problem differently. Instead of negotiating the moment through communication, he'd fixed it through calibration. Each node carried a precisely synchronized internal clock, calibrated before deployment to a shared epoch. The clocks would drift, all clocks drift, but Ólafur had modeled the drift characteristics of the specific timing crystals Tomás had sourced, and had built compensation algorithms that predicted and corrected for drift over time periods up to seventy-two hours.
+
+Within that seventy-two-hour window, every node would agree on the moment. Not because they talked to each other. Because they had been tuned to the same pitch.
+
+"You beautiful madman," Adrian murmured, scrolling through the drift compensation code. It was elegant — a suspension bridge of code, every force balanced, every tension accounted for, the whole structure held together by the precise distribution of load across its components.
+
+The third hour was integration. Adrian opened the deployment parameters he'd received from Ólafur six hours before the handoff, the primary copy, safe on his machine even while Ólafur had carried the backup into the cafe. Seven device serial numbers. Seven network configurations. Seven calibration offsets that would tune each implant's timing crystal to its specific target network's latency characteristics.
+
+He began feeding the parameters into Ólafur's integration framework. The framework was, naturally, beautifully designed. Each parameter slotted into a template. Each template generated a device-specific configuration. Each configuration was validated against the simulation model before being accepted.
+
+The first device, Strutt's social network infrastructure, integrated cleanly. Green.
+
+The second, Cole's Austin headquarters, integrated cleanly. Green.
+
+The third, Venn's Seattle cloud center, threw an error.
+
+Adrian stared at the error message. Read it again. Read the underlying code. Read Ólafur's comments, written in a mixture of English and irritation: Venn network latency is three times higher than estimated. Recalibrate or accept wider timing window. Ask Tomás to verify on-site measurements.
+
+Tomás was in Seattle right now. Planting the last device. The on-site measurements Ólafur had needed were measurements Tomás hadn't yet taken, because the device hadn't yet been deployed.
+
+Adrian sat back. This was the gap. This was the place where the system needed its creator, not the code, which was complete, but the judgment to handle the unexpected, to make the real-time adjustments that no amount of pre-planning could anticipate.
+
+He picked up the relay phone. Dialed the first number in Nadia's chain.
+
+"I need Tomás," he said. "When he's inside Venn's facility. I need real-time network latency measurements from the implant's position. The integration framework can't calibrate the Seattle device without them."
+
+The relay operator, one of Nadia's contacts, a woman in Amsterdam who asked no questions, acknowledged and disconnected.
+
+Adrian turned back to the laptops. Continued integrating the remaining devices. Four through seven: all green. The calibration offsets matched the simulation models. The timing windows held.
+
+Six of seven devices integrated. One, the most critical, the most heavily secured, the last to be planted, awaiting data from inside the fortress.
+
+He pulled the tube of timing diagrams from the duffel bag. Unrolled them on the desk, weighting the corners with coffee mugs and hard drives. Ólafur's handwriting was terrible, but the diagrams were exquisite: precise, symmetrical, annotated with the musical terminology that ran through everything the young man had built.
+
+In the margin of the main diagram, in small, careful letters unlike his usual scrawl, Ólafur had written:
+
+For when the music starts — O.S.
+
+His initials. His dedication. Written on the instrument he'd spent four months crafting, knowing he might not be there when it played.
+
+Adrian stared at the inscription for a long time.
+
+Then he rolled up the diagrams, set them aside, and went back to work. The fourth hour was approaching. Six configurations validated. One waiting. Seven hours until the heartbeat.
+
+The ghost of a twenty-two-year-old prodigy was not looking over his shoulder.
+
+The ghost was in the code. In the variable names drawn from music and heartbeats. In the drift compensation algorithms that predicted the future with elegant precision. In the phase-locked fallback mode that kept the rhythm alive even when players dropped out.
+
+Ólafur was in every line.
+
+And Adrian would not let him down.

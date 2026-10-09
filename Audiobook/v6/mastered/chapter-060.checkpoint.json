@@ -1,0 +1,62 @@
+{
+  "identity": {
+    "coordinator_version": "1.0.0",
+    "master_audio_sha256": "369141dcf541fe9920bde4e5ed59ec52bd3731be512f52189f74019d6773dce5",
+    "chapter": 60,
+    "title": "Chapter 60",
+    "book": "LUMEN",
+    "author": "Rob Xie",
+    "narration": "AI-generated Gemini voice, Charon",
+    "settings": {
+      "ffmpeg": "/opt/homebrew/bin/ffmpeg",
+      "ffprobe": "/opt/homebrew/bin/ffprobe",
+      "target_rms_db": -20.0,
+      "peak_ceiling_db": -3.2,
+      "codec_headroom_db": 0.6,
+      "max_gain_db": 30.0,
+      "head_seconds": 1.0,
+      "tail_seconds": 2.0,
+      "silence_db": -60.0,
+      "long_silence_seconds": 2.0,
+      "quiet_window_seconds": 0.5,
+      "quiet_window_db": -50.0,
+      "trim_edges": true,
+      "edge_guard_seconds": 0.02,
+      "max_attempts": 8,
+      "peak_limiter": "auto",
+      "max_limiter_overdrive_db": 6.0
+    },
+    "inputs": [
+      {
+        "id": "chapter-060-001",
+        "chapter": 60,
+        "chunk": 1,
+        "path": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/raw/chapter-060-001.wav",
+        "request_sha256": "e6ac82c848764e48d883bbfa0dc68aeca901c2de28895eb16abbcbadfc6fda43",
+        "audio_sha256": "5229acb04b12472ab65720dee40909390ed3b2d9517b36595f0ce729c92dbb44",
+        "native_frames": 6321600,
+        "native_rate": 24000,
+        "duration_seconds": 263.4
+      }
+    ]
+  },
+  "identity_sha256": "19b886c937601e92bf7ed80cf8d8ac42563e6f4016b0306f137e54b2ada3fd1f",
+  "output_sha256": {
+    "lossless_wav": "6b27ffd84d173e873ea6a15d564c0ad4490973622eb8c93e849e365844b10ce0",
+    "mp3": "23c2eb171d402a7c58928960a61f80dca6bb7555f50ffc7cffb6de3bbbed14d0",
+    "qa": "fae72c57ddd2164efe659b4f5baed900836952910dc310330e829e2c0e6a2361"
+  },
+  "summary": {
+    "mp3": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/mastered/chapter-060.mp3",
+    "lossless_wav": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/mastered/chapter-060.wav",
+    "qa": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/mastered/chapter-060.qa.json",
+    "duration_seconds": 265.92,
+    "rms_dbfs": -20.765108139520674,
+    "sample_peak_dbfs": -4.027484958792051,
+    "warnings": [
+      "RMS target remains constrained by peak ceiling, gentle-limiter budget, or maximum gain; inspect the reported deficit"
+    ],
+    "rms_target_met_within_0_5_db": false
+  },
+  "completed_at_unix": 1791528719.74495
+}

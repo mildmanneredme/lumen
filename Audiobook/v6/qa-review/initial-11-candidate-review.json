@@ -1,0 +1,1252 @@
+{
+  "review_version": "candidate-adjudication-1",
+  "generated_at_unix": 1791521928.352233,
+  "clips_reviewed": 11,
+  "difference_classification_counts": {
+    "unresolved_wording_candidate": 25,
+    "contraction_expansion": 2,
+    "proper_name_pronunciation_candidate": 15,
+    "orthographic_equivalent": 9,
+    "homophonic_transcript_variant": 11,
+    "numeric_punctuation_equivalent": 2,
+    "resolved_asr_artifact": 1
+  },
+  "confirmed_new_narration_errors": 0,
+  "has_unresolved_candidates": true,
+  "limits": "Review of saved ASR and text only; no auditory certification, cloud calls, or inference performed. The supplied review assessment resolves one previous ASR omission flag.",
+  "preserved_prior_assessment": {
+    "flag": "chapter-002-003 apparent multi-sentence omission",
+    "finding": "Focused local transcription recovered the expected passage exactly after normalization",
+    "classification": "ASR artifact; no narration retake for this flag",
+    "review_clip_source_start_seconds": 2.4,
+    "review_clip_source_end_seconds": 35,
+    "normalized_changed_words": 0,
+    "retake_required_for_this_flag": false,
+    "other_candidates": "Remaining automated flags are review candidates, not confirmed narration errors"
+  },
+  "clips": [
+    {
+      "id": "chapter-000-001",
+      "cache_key": "d81caa2ce3d82650dbb5bc13a1b082f7e89396aa8a15e769d990ec9ea0104693",
+      "audio_sha256": "ea368a27ef293a9324119fdb2188bd6788d89aa3d8321cecc9f1516a2f70ef51",
+      "request_sha256": "f2328bd82481c56f29a48072296c6cb11a6df964f57f5969a11e82b986d71aa6",
+      "cache_path": "Audiobook/v6/local-checks/cache/chapter-000-001.d81caa2ce3d82650dbb5bc13a1b082f7e89396aa8a15e769d990ec9ea0104693.json",
+      "full_clip_seconds": 20.04,
+      "automated_needs_review": false,
+      "differences": []
+    },
+    {
+      "id": "chapter-001-001",
+      "cache_key": "9eccfe2df25fc48592ee98ef9b364d01f316961914c2147b6e26afbd03527445",
+      "audio_sha256": "e468cc5af2b82f56a071a1823832d8001a60c126b825e39dc693d30c58de2cc5",
+      "request_sha256": "4fd5f1b1bfd3f9b28935e57267af29d46922afb3b66035649c89719f8923a414",
+      "cache_path": "Audiobook/v6/local-checks/cache/chapter-001-001.9eccfe2df25fc48592ee98ef9b364d01f316961914c2147b6e26afbd03527445.json",
+      "full_clip_seconds": 238.36,
+      "automated_needs_review": false,
+      "differences": [
+        {
+          "index": 0,
+          "type": "insert",
+          "expected": "",
+          "asr_heard": "later",
+          "classification": "unresolved_wording_candidate",
+          "reason": "Local excerpt recheck required; ASR is not proof of a narration error.",
+          "context": "with nothing but the hum of the refrigerator, he let himself calculate what those later stakes would",
+          "anchor": {
+            "start_seconds": 136.4,
+            "end_seconds": 136.6,
+            "precision": "word_timestamps",
+            "suggested_clip_start_seconds": 134.4,
+            "suggested_clip_end_seconds": 138.6
+          },
+          "priority": "medium"
+        },
+        {
+          "index": 1,
+          "type": "replace",
+          "expected": "He'd",
+          "asr_heard": "He had",
+          "classification": "contraction_expansion",
+          "reason": "ASR expanded the same words; no meaning change is indicated.",
+          "context": "pushed out before he'd even had that chance. He'd given most of the proceeds away. Kept the house",
+          "anchor": {
+            "start_seconds": 150.66,
+            "end_seconds": 150.96,
+            "precision": "word_timestamps",
+            "suggested_clip_start_seconds": 148.66,
+            "suggested_clip_end_seconds": 152.96
+          },
+          "priority": "low"
+        },
+        {
+          "index": 2,
+          "type": "replace",
+          "expected": "hand",
+          "asr_heard": "hands",
+          "classification": "unresolved_wording_candidate",
+          "reason": "Local excerpt recheck required; ASR is not proof of a narration error.",
+          "context": "accessed proprietary AI systems at NovaMind Technologies\u2014\"  Adrian's hand stopped halfway to the remote.  NovaMind. He knew NovaMind",
+          "anchor": {
+            "start_seconds": 203.1,
+            "end_seconds": 203.26,
+            "precision": "word_timestamps",
+            "suggested_clip_start_seconds": 201.1,
+            "suggested_clip_end_seconds": 205.26
+          },
+          "priority": "medium"
+        }
+      ]
+    },
+    {
+      "id": "chapter-001-002",
+      "cache_key": "17a32e2fbd773d1be2a48dab45b021c257a7033048d89a99e777341bd16cf461",
+      "audio_sha256": "c5432ab23353be6d6d58a4a2b47808fe61f107a8ca7d6048e37c48ca1155d340",
+      "request_sha256": "fa27acc875921bd7162277a2bfa7e4919be18b86dc6fcdf9b2225a00244fb72d",
+      "cache_path": "Audiobook/v6/local-checks/cache/chapter-001-002.17a32e2fbd773d1be2a48dab45b021c257a7033048d89a99e777341bd16cf461.json",
+      "full_clip_seconds": 256.6,
+      "automated_needs_review": false,
+      "differences": [
+        {
+          "index": 0,
+          "type": "replace",
+          "expected": "He'd",
+          "asr_heard": "He",
+          "classification": "unresolved_wording_candidate",
+          "reason": "Local excerpt recheck required; ASR is not proof of a narration error.",
+          "context": "that power was doing. He couldn't change them. He'd tried, and they'd shown him the door with a",
+          "anchor": {
+            "start_seconds": 24.7,
+            "end_seconds": 24.84,
+            "precision": "word_timestamps",
+            "suggested_clip_start_seconds": 22.7,
+            "suggested_clip_end_seconds": 26.84
+          },
+          "priority": "medium"
+        },
+        {
+          "index": 1,
+          "type": "replace",
+          "expected": "NovaMind's",
+          "asr_heard": "Nova mines",
+          "classification": "proper_name_pronunciation_candidate",
+          "reason": "Inconsistent ASR name rendering; check a representative local excerpt before assessing pronunciation.",
+          "context": "career-limiting. His argument was straightforward: systems like NovaMind's didn't just predict behavior \u2014 they created the conditions for",
+          "anchor": {
+            "start_seconds": 57.64,
+            "end_seconds": 58.24,
+            "precision": "word_timestamps",
+            "suggested_clip_start_seconds": 55.64,
+            "suggested_clip_end_seconds": 60.24
+          },
+          "priority": "low"
+        },
+        {
+          "index": 2,
+          "type": "replace",
+          "expected": "moulding",
+          "asr_heard": "molding",
+          "classification": "orthographic_equivalent",
+          "reason": "Spelling or compound boundary alone cannot change spoken wording.",
+          "context": "just predict behavior \u2014 they created the conditions for moulding it. People became clay. The algorithms shaped them in",
+          "anchor": {
+            "start_seconds": 61.34,
+            "end_seconds": 61.72,
+            "precision": "word_timestamps",
+            "suggested_clip_start_seconds": 59.34,
+            "suggested_clip_end_seconds": 63.72
+          },
+          "priority": "low"
+        },
+        {
+          "index": 3,
+          "type": "replace",
+          "expected": "residence",
+          "asr_heard": "residents",
+          "classification": "homophonic_transcript_variant",
+          "reason": "Transcript uses an acoustically equivalent or very close spelling; this alone does not establish a spoken error.",
+          "context": "one board meeting.  \"\u2014materials seized from the suspect's residence include academic papers and theoretical frameworks related to AI",
+          "anchor": {
+            "start_seconds": 82.58,
+            "end_seconds": 83.06,
+            "precision": "word_timestamps",
+            "suggested_clip_start_seconds": 80.58,
+            "suggested_clip_end_seconds": 85.06
+          },
+          "priority": "low"
+        },
+        {
+          "index": 4,
+          "type": "replace",
+          "expected": "Adrian",
+          "asr_heard": "Adrienne",
+          "classification": "homophonic_transcript_variant",
+          "reason": "Transcript uses an acoustically equivalent or very close spelling; this alone does not establish a spoken error.",
+          "context": "some connected to researchers at Bay Area universities\u2014\"  Adrian sat forward.  The anchor continued, but her words had",
+          "anchor": {
+            "start_seconds": 92.68,
+            "end_seconds": 93.04,
+            "precision": "word_timestamps",
+            "suggested_clip_start_seconds": 90.68,
+            "suggested_clip_end_seconds": 95.04
+          },
+          "priority": "low"
+        },
+        {
+          "index": 5,
+          "type": "replace",
+          "expected": "NovaMind's",
+          "asr_heard": "Novamine's",
+          "classification": "proper_name_pronunciation_candidate",
+          "reason": "Inconsistent ASR name rendering; check a representative local excerpt before assessing pronunciation.",
+          "context": "architecture documents that had no business being outside NovaMind's servers. But there, fourth on the list, displayed in",
+          "anchor": {
+            "start_seconds": 110.42,
+            "end_seconds": 110.94,
+            "precision": "word_timestamps",
+            "suggested_clip_start_seconds": 108.42,
+            "suggested_clip_end_seconds": 112.94
+          },
+          "priority": "low"
+        },
+        {
+          "index": 6,
+          "type": "replace",
+          "expected": "behavioural",
+          "asr_heard": "behavioral",
+          "classification": "orthographic_equivalent",
+          "reason": "Spelling or compound boundary alone cannot change spoken wording.",
+          "context": "anchor was talking about \"proprietary AI systems\" and \"behavioural prediction models,\" the same vague language NovaMind's PR department",
+          "anchor": {
+            "start_seconds": 191.46,
+            "end_seconds": 191.98,
+            "precision": "word_timestamps",
+            "suggested_clip_start_seconds": 189.46,
+            "suggested_clip_end_seconds": 193.98
+          },
+          "priority": "low"
+        },
+        {
+          "index": 7,
+          "type": "replace",
+          "expected": "NovaMind's",
+          "asr_heard": "Novomind's",
+          "classification": "proper_name_pronunciation_candidate",
+          "reason": "Inconsistent ASR name rendering; check a representative local excerpt before assessing pronunciation.",
+          "context": "and \"behavioural prediction models,\" the same vague language NovaMind's PR department used to obscure the specificity of what",
+          "anchor": {
+            "start_seconds": 194.94,
+            "end_seconds": 195.6,
+            "precision": "word_timestamps",
+            "suggested_clip_start_seconds": 192.94,
+            "suggested_clip_end_seconds": 197.6
+          },
+          "priority": "low"
+        },
+        {
+          "index": 8,
+          "type": "replace",
+          "expected": "NovaMind's",
+          "asr_heard": "Novomind's",
+          "classification": "proper_name_pronunciation_candidate",
+          "reason": "Inconsistent ASR name rendering; check a representative local excerpt before assessing pronunciation.",
+          "context": "done with it, and what that said about NovaMind's systems being worth breaching in the first place.  His",
+          "anchor": {
+            "start_seconds": 212.88,
+            "end_seconds": 213.64,
+            "precision": "word_timestamps",
+            "suggested_clip_start_seconds": 210.88,
+            "suggested_clip_end_seconds": 215.64
+          },
+          "priority": "low"
+        },
+        {
+          "index": 9,
+          "type": "replace",
+          "expected": "Chen",
+          "asr_heard": "Chatton",
+          "classification": "unresolved_wording_candidate",
+          "reason": "Local excerpt recheck required; ASR is not proof of a narration error.",
+          "context": "place.  His phone buzzed. A text from Lena Chen, his department chair:  Seeing this. You okay?  Then another",
+          "anchor": {
+            "start_seconds": 218.76,
+            "end_seconds": 219.12,
+            "precision": "word_timestamps",
+            "suggested_clip_start_seconds": 216.76,
+            "suggested_clip_end_seconds": 221.12
+          },
+          "priority": "medium"
+        },
+        {
+          "index": 10,
+          "type": "replace",
+          "expected": "patience",
+          "asr_heard": "patients",
+          "classification": "homophonic_transcript_variant",
+          "reason": "Transcript uses an acoustically equivalent or very close spelling; this alone does not establish a spoken error.",
+          "context": "recycling. The same glass tower, the same orbital patience. But now the graphic had changed. Below the evidence",
+          "anchor": {
+            "start_seconds": 248.36,
+            "end_seconds": 248.8,
+            "precision": "word_timestamps",
+            "suggested_clip_start_seconds": 246.36,
+            "suggested_clip_end_seconds": 250.8
+          },
+          "priority": "low"
+        },
+        {
+          "index": 11,
+          "type": "replace",
+          "expected": "NovaMind's",
+          "asr_heard": "Novomind's",
+          "classification": "proper_name_pronunciation_candidate",
+          "reason": "Inconsistent ASR name rendering; check a representative local excerpt before assessing pronunciation.",
+          "context": "list, the anchor was reading a statement from NovaMind's Chief Security Officer",
+          "anchor": {
+            "start_seconds": 254.7,
+            "end_seconds": 255.3,
+            "precision": "word_timestamps",
+            "suggested_clip_start_seconds": 252.7,
+            "suggested_clip_end_seconds": 256.6
+          },
+          "priority": "low"
+        }
+      ]
+    },
+    {
+      "id": "chapter-001-003",
+      "cache_key": "49e38060e20ac0693b835e69dc8535d15e3aecdac0ed625df5677fcde602a23b",
+      "audio_sha256": "7726c98166eaf5b26b57d5b44122eb6f51e4162d55649d3dea26760a63380efb",
+      "request_sha256": "1849d65b71d65d74d8bf27abf4aa0990bebaf6951f865b8d3b300b151f25626b",
+      "cache_path": "Audiobook/v6/local-checks/cache/chapter-001-003.49e38060e20ac0693b835e69dc8535d15e3aecdac0ed625df5677fcde602a23b.json",
+      "full_clip_seconds": 184.92,
+      "automated_needs_review": false,
+      "differences": []
+    },
+    {
+      "id": "chapter-002-001",
+      "cache_key": "959ff3b72c28dfd884725072f75c8c7e2c6347c826c9c0594cd394dd55736f7c",
+      "audio_sha256": "ec0c02df9a099e4e7f69590b9972db3bb57cd48a072e5145232194c5f2d5c913",
+      "request_sha256": "b0b3fa67460b3b7fa43c212201a35ef2ca518a14166f590523d4446a395ee666",
+      "cache_path": "Audiobook/v6/local-checks/cache/chapter-002-001.959ff3b72c28dfd884725072f75c8c7e2c6347c826c9c0594cd394dd55736f7c.json",
+      "full_clip_seconds": 246.32,
+      "automated_needs_review": true,
+      "differences": [
+        {
+          "index": 0,
+          "type": "replace",
+          "expected": "3:47",
+          "asr_heard": "3.47",
+          "classification": "numeric_punctuation_equivalent",
+          "reason": "Same clock digits with alternate transcript separator; no value change indicated.",
+          "context": "Chapter Two.  The contract arrived on Tuesday at 3:47 a.m. Greenwich Mean Time, which was precisely the hour",
+          "anchor": {
+            "start_seconds": 4.38,
+            "end_seconds": 5.24,
+            "precision": "neighboring_asr_anchor",
+            "suggested_clip_start_seconds": 2.38,
+            "suggested_clip_end_seconds": 7.24
+          },
+          "priority": "low"
+        },
+        {
+          "index": 1,
+          "type": "replace",
+          "expected": "let",
+          "asr_heard": "led",
+          "classification": "unresolved_wording_candidate",
+          "reason": "Local excerpt recheck required; ASR is not proof of a narration error.",
+          "context": "rotation of the earth. She slept when it let her. She worked when it didn't.  Tonight, it didn't",
+          "anchor": {
+            "start_seconds": 27.94,
+            "end_seconds": 28.1,
+            "precision": "word_timestamps",
+            "suggested_clip_start_seconds": 25.94,
+            "suggested_clip_end_seconds": 30.1
+          },
+          "priority": "medium"
+        },
+        {
+          "index": 2,
+          "type": "replace",
+          "expected": "tied",
+          "asr_heard": "tide",
+          "classification": "homophonic_transcript_variant",
+          "reason": "Transcript uses an acoustically equivalent or very close spelling; this alone does not establish a spoken error.",
+          "context": "by publication date, then by spine color within tied dates. The tools of her profession were stored in",
+          "anchor": {
+            "start_seconds": 87.34,
+            "end_seconds": 87.64,
+            "precision": "word_timestamps",
+            "suggested_clip_start_seconds": 85.34,
+            "suggested_clip_end_seconds": 89.64
+          },
+          "priority": "low"
+        },
+        {
+          "index": 3,
+          "type": "replace",
+          "expected": "ThinkPad",
+          "asr_heard": "think pad",
+          "classification": "orthographic_equivalent",
+          "reason": "Spelling or compound boundary alone cannot change spoken wording.",
+          "context": "her real identity. The laptop itself was a ThinkPad she'd bought for cash at a market in Shenzhen",
+          "anchor": {
+            "start_seconds": 134.7,
+            "end_seconds": 135.12,
+            "precision": "word_timestamps",
+            "suggested_clip_start_seconds": 132.7,
+            "suggested_clip_end_seconds": 137.12
+          },
+          "priority": "low"
+        },
+        {
+          "index": 4,
+          "type": "replace",
+          "expected": "Male",
+          "asr_heard": "Mail",
+          "classification": "homophonic_transcript_variant",
+          "reason": "Transcript uses an acoustically equivalent or very close spelling; this alone does not establish a spoken error.",
+          "context": "The message was terse. They always were.  Target: Male. Currently in federal custody, San Francisco County Jail, 850",
+          "anchor": {
+            "start_seconds": 153.98,
+            "end_seconds": 154.22,
+            "precision": "word_timestamps",
+            "suggested_clip_start_seconds": 151.98,
+            "suggested_clip_end_seconds": 156.22
+          },
+          "priority": "low"
+        },
+        {
+          "index": 5,
+          "type": "replace",
+          "expected": "Bryant",
+          "asr_heard": "Bryan",
+          "classification": "unresolved_wording_candidate",
+          "reason": "Local excerpt recheck required; ASR is not proof of a narration error.",
+          "context": "in federal custody, San Francisco County Jail, 850 Bryant Street. Holding cell 4-C, pre-trial isolation. Arrested",
+          "anchor": {
+            "start_seconds": 158.46,
+            "end_seconds": 158.88,
+            "precision": "word_timestamps",
+            "suggested_clip_start_seconds": 156.46,
+            "suggested_clip_end_seconds": 160.88
+          },
+          "priority": "medium"
+        },
+        {
+          "index": 6,
+          "type": "insert",
+          "expected": "",
+          "asr_heard": "8",
+          "classification": "unresolved_wording_candidate",
+          "reason": "Local excerpt recheck required; ASR is not proof of a narration error.",
+          "context": "custody, San Francisco County Jail, 850 Bryant Street. Holding cell 4-C, pre-trial isolation. Arrested on",
+          "anchor": {
+            "start_seconds": 159.22,
+            "end_seconds": 159.3,
+            "precision": "word_timestamps",
+            "suggested_clip_start_seconds": 157.22,
+            "suggested_clip_end_seconds": 161.3
+          },
+          "priority": "medium"
+        },
+        {
+          "index": 7,
+          "type": "replace",
+          "expected": "pre-trial",
+          "asr_heard": "pretrial",
+          "classification": "orthographic_equivalent",
+          "reason": "Spelling or compound boundary alone cannot change spoken wording.",
+          "context": "Jail, 850 Bryant Street. Holding cell 4-C, pre-trial isolation. Arrested on espionage charges. Initial hearing scheduled for",
+          "anchor": {
+            "start_seconds": 161.68,
+            "end_seconds": 162.08,
+            "precision": "word_timestamps",
+            "suggested_clip_start_seconds": 159.68,
+            "suggested_clip_end_seconds": 164.08
+          },
+          "priority": "low"
+        },
+        {
+          "index": 8,
+          "type": "replace",
+          "expected": "hearing",
+          "asr_heard": "hearings",
+          "classification": "unresolved_wording_candidate",
+          "reason": "Local excerpt recheck required; ASR is not proof of a narration error.",
+          "context": "pre-trial isolation. Arrested on espionage charges. Initial hearing scheduled for Friday morning. Requirements: (1) Target must be",
+          "anchor": {
+            "start_seconds": 166.08,
+            "end_seconds": 166.5,
+            "precision": "word_timestamps",
+            "suggested_clip_start_seconds": 164.08,
+            "suggested_clip_end_seconds": 168.5
+          },
+          "priority": "medium"
+        },
+        {
+          "index": 9,
+          "type": "delete",
+          "expected": "why",
+          "asr_heard": "",
+          "classification": "unresolved_wording_candidate",
+          "reason": "Local excerpt recheck required; ASR is not proof of a narration error.",
+          "context": "a Swiss watch.  She didn't need to know why. The \"why\" was someone else's puzzle. Hers was the",
+          "anchor": {
+            "start_seconds": 239.1,
+            "end_seconds": 239.1,
+            "precision": "neighboring_asr_anchor",
+            "suggested_clip_start_seconds": 237.1,
+            "suggested_clip_end_seconds": 241.1
+          },
+          "priority": "high"
+        }
+      ]
+    },
+    {
+      "id": "chapter-002-002",
+      "cache_key": "28839bbfb3e5dd5bf62050e55297f11e2148f605cd8a397ccdd08f00a2b4e8cf",
+      "audio_sha256": "4ef590cde0f3133f002c9f803752308c32aa902443d5571db4dafccd8ca737d5",
+      "request_sha256": "3e6609f1aeee470576e6dbd5b210ef830794427d2104f497493a3c1b0f4b871e",
+      "cache_path": "Audiobook/v6/local-checks/cache/chapter-002-002.28839bbfb3e5dd5bf62050e55297f11e2148f605cd8a397ccdd08f00a2b4e8cf.json",
+      "full_clip_seconds": 251.24,
+      "automated_needs_review": true,
+      "differences": [
+        {
+          "index": 0,
+          "type": "replace",
+          "expected": "Practising",
+          "asr_heard": "Practicing",
+          "classification": "orthographic_equivalent",
+          "reason": "Spelling or compound boundary alone cannot change spoken wording.",
+          "context": "perfectly still, and asked what she'd been doing. \"Practising,\" Raven said. She did not specify what.  Raven pulled",
+          "anchor": {
+            "start_seconds": 39.7,
+            "end_seconds": 40.14,
+            "precision": "word_timestamps",
+            "suggested_clip_start_seconds": 37.7,
+            "suggested_clip_end_seconds": 42.14
+          },
+          "priority": "low"
+        },
+        {
+          "index": 1,
+          "type": "replace",
+          "expected": "Pre-trial",
+          "asr_heard": "Pretrial",
+          "classification": "orthographic_equivalent",
+          "reason": "Spelling or compound boundary alone cannot change spoken wording.",
+          "context": "across six decades of changing codes and budgets.  Pre-trial isolation. Cell 4-C. She'd need the internal layout",
+          "anchor": {
+            "start_seconds": 93.3,
+            "end_seconds": 93.62,
+            "precision": "word_timestamps",
+            "suggested_clip_start_seconds": 91.3,
+            "suggested_clip_end_seconds": 95.62
+          },
+          "priority": "low"
+        },
+        {
+          "index": 2,
+          "type": "replace",
+          "expected": "Cell 4-C",
+          "asr_heard": "Self-forcy",
+          "classification": "unresolved_wording_candidate",
+          "reason": "Local excerpt recheck required; ASR is not proof of a narration error.",
+          "context": "of changing codes and budgets.  Pre-trial isolation. Cell 4-C. She'd need the internal layout of that wing specifically",
+          "anchor": {
+            "start_seconds": 95.32,
+            "end_seconds": 95.82,
+            "precision": "word_timestamps",
+            "suggested_clip_start_seconds": 93.32,
+            "suggested_clip_end_seconds": 97.82
+          },
+          "priority": "medium"
+        }
+      ]
+    },
+    {
+      "id": "chapter-002-003",
+      "cache_key": "a7715d6f3ad66962c1da80d0350901c170ccc483d99f7378ddf3a2bc47c9b03f",
+      "audio_sha256": "cb93f75e092ba44615373c900319a1e4f63024dfe783c736e0fd992fe0d909c9",
+      "request_sha256": "4977c678d44b394a02568c8c5263997cee26dbd20c483afb77dc11c2a818b9f8",
+      "cache_path": "Audiobook/v6/local-checks/cache/chapter-002-003.a7715d6f3ad66962c1da80d0350901c170ccc483d99f7378ddf3a2bc47c9b03f.json",
+      "full_clip_seconds": 109.0,
+      "automated_needs_review": true,
+      "differences": [
+        {
+          "index": 0,
+          "type": "delete",
+          "expected": "[Long passage; see original cache]",
+          "asr_heard": "",
+          "classification": "resolved_asr_artifact",
+          "reason": "Prior focused local excerpt transcription recovered the expected passage after normalization; preserve existing assessment.",
+          "context": "[Long suspected omission already resolved; refer to original local assessment]",
+          "anchor": {
+            "start_seconds": 2.0,
+            "end_seconds": 30.0,
+            "precision": "neighboring_asr_anchor",
+            "suggested_clip_start_seconds": 0.0,
+            "suggested_clip_end_seconds": 32.0
+          },
+          "priority": "low"
+        },
+        {
+          "index": 1,
+          "type": "replace",
+          "expected": "Aisle",
+          "asr_heard": "Isle",
+          "classification": "homophonic_transcript_variant",
+          "reason": "Transcript uses an acoustically equivalent or very close spelling; this alone does not establish a spoken error.",
+          "context": "travel was a logistical problem to be optimized. Aisle seat. Forward cabin. Left side. The left side was",
+          "anchor": {
+            "start_seconds": 65.42,
+            "end_seconds": 65.42,
+            "precision": "word_timestamps",
+            "suggested_clip_start_seconds": 63.42,
+            "suggested_clip_end_seconds": 67.42
+          },
+          "priority": "low"
+        },
+        {
+          "index": 2,
+          "type": "replace",
+          "expected": "she'd",
+          "asr_heard": "She",
+          "classification": "unresolved_wording_candidate",
+          "reason": "Local excerpt recheck required; ASR is not proof of a narration error.",
+          "context": "cabin. Left side. The left side was critical \u2014 she'd learned the hard way that sitting on the right",
+          "anchor": {
+            "start_seconds": 70.52,
+            "end_seconds": 70.66,
+            "precision": "word_timestamps",
+            "suggested_clip_start_seconds": 68.52,
+            "suggested_clip_end_seconds": 72.66
+          },
+          "priority": "medium"
+        },
+        {
+          "index": 3,
+          "type": "replace",
+          "expected": "4:23",
+          "asr_heard": "4.23",
+          "classification": "numeric_punctuation_equivalent",
+          "reason": "Same clock digits with alternate transcript separator; no value change indicated.",
+          "context": "booked three tickets. She would use one.  At 4:23 a.m., she sent her reply.  Accepted. Timeline confirmed.  A",
+          "anchor": {
+            "start_seconds": 86.72,
+            "end_seconds": 87.46,
+            "precision": "neighboring_asr_anchor",
+            "suggested_clip_start_seconds": 84.72,
+            "suggested_clip_end_seconds": 89.46
+          },
+          "priority": "low"
+        },
+        {
+          "index": 4,
+          "type": "replace",
+          "expected": "her",
+          "asr_heard": "a",
+          "classification": "unresolved_wording_candidate",
+          "reason": "Local excerpt recheck required; ASR is not proof of a narration error.",
+          "context": "use one.  At 4:23 a.m., she sent her reply.  Accepted. Timeline confirmed.  A contract and an acceptance",
+          "anchor": {
+            "start_seconds": 88.52,
+            "end_seconds": 88.68,
+            "precision": "word_timestamps",
+            "suggested_clip_start_seconds": 86.52,
+            "suggested_clip_end_seconds": 90.68
+          },
+          "priority": "medium"
+        }
+      ]
+    },
+    {
+      "id": "chapter-003-001",
+      "cache_key": "94ea8ff8b1b6f73a3fe343c5cf9f72753115a10000a5f5af1063c22db93deb37",
+      "audio_sha256": "f44bb11e3e886ead446803a4e91cb9dab2983488a4c145add818de3afa3e89cb",
+      "request_sha256": "765779cd2e3147daf5528c38451636f98a3767833d3ceb1cd87a4f064c27e72b",
+      "cache_path": "Audiobook/v6/local-checks/cache/chapter-003-001.94ea8ff8b1b6f73a3fe343c5cf9f72753115a10000a5f5af1063c22db93deb37.json",
+      "full_clip_seconds": 254.44,
+      "automated_needs_review": true,
+      "differences": [
+        {
+          "index": 0,
+          "type": "replace",
+          "expected": "a GAN",
+          "asr_heard": "again",
+          "classification": "unresolved_wording_candidate",
+          "reason": "Local excerpt recheck required; ASR is not proof of a narration error.",
+          "context": "language model. It was a generative adversarial network \u2014 a GAN \u2014 developed for image synthesis in 2014. The fundamental architecture",
+          "anchor": {
+            "start_seconds": 13.52,
+            "end_seconds": 13.86,
+            "precision": "word_timestamps",
+            "suggested_clip_start_seconds": 11.52,
+            "suggested_clip_end_seconds": 15.86
+          },
+          "priority": "medium"
+        },
+        {
+          "index": 1,
+          "type": "delete",
+          "expected": "Silence",
+          "asr_heard": "",
+          "classification": "unresolved_wording_candidate",
+          "reason": "Local excerpt recheck required; ASR is not proof of a narration error.",
+          "context": "anyone tell me why this adversarial structure matters?\"  Silence. Forty-three undergraduates in Introduction to AI Systems, a Tuesday",
+          "anchor": {
+            "start_seconds": 29.3,
+            "end_seconds": 32.0,
+            "precision": "neighboring_asr_anchor",
+            "suggested_clip_start_seconds": 27.3,
+            "suggested_clip_end_seconds": 34.0
+          },
+          "priority": "high"
+        },
+        {
+          "index": 2,
+          "type": "replace",
+          "expected": "Priti",
+          "asr_heard": "Pretty",
+          "classification": "homophonic_transcript_variant",
+          "reason": "Transcript uses an acoustically equivalent or very close spelling; this alone does not establish a spoken error.",
+          "context": "up. Third row, left side. A sophomore named Priti who usually asked good questions.  \"Professor Marsh \u2014 is it",
+          "anchor": {
+            "start_seconds": 60.28,
+            "end_seconds": 60.56,
+            "precision": "word_timestamps",
+            "suggested_clip_start_seconds": 58.28,
+            "suggested_clip_end_seconds": 62.56
+          },
+          "priority": "low"
+        },
+        {
+          "index": 3,
+          "type": "replace",
+          "expected": "NovaMind",
+          "asr_heard": "Novamine",
+          "classification": "proper_name_pronunciation_candidate",
+          "reason": "Inconsistent ASR name rendering; check a representative local excerpt before assessing pronunciation.",
+          "context": "Marsh \u2014 is it true the suspect in the NovaMind case was a student here?\"  Adrian paused. The name",
+          "anchor": {
+            "start_seconds": 65.72,
+            "end_seconds": 66.06,
+            "precision": "word_timestamps",
+            "suggested_clip_start_seconds": 63.72,
+            "suggested_clip_end_seconds": 68.06
+          },
+          "priority": "low"
+        },
+        {
+          "index": 4,
+          "type": "replace",
+          "expected": "Priti",
+          "asr_heard": "pretty",
+          "classification": "homophonic_transcript_variant",
+          "reason": "Transcript uses an acoustically equivalent or very close spelling; this alone does not establish a spoken error.",
+          "context": "how he'd handle this.  \"It's a fair question, Priti,\" he said. \"But this isn't the place for it",
+          "anchor": {
+            "start_seconds": 103.88,
+            "end_seconds": 103.98,
+            "precision": "word_timestamps",
+            "suggested_clip_start_seconds": 101.88,
+            "suggested_clip_end_seconds": 105.98
+          },
+          "priority": "low"
+        },
+        {
+          "index": 5,
+          "type": "replace",
+          "expected": "murmur",
+          "asr_heard": "member",
+          "classification": "unresolved_wording_candidate",
+          "reason": "Local excerpt recheck required; ASR is not proof of a narration error.",
+          "context": "got GANs to get through. Slide fourteen.\"  A murmur of disappointment. Another hand.  \"But did you know him",
+          "anchor": {
+            "start_seconds": 113.9,
+            "end_seconds": 114.0,
+            "precision": "word_timestamps",
+            "suggested_clip_start_seconds": 111.9,
+            "suggested_clip_end_seconds": 116.0
+          },
+          "priority": "medium"
+        },
+        {
+          "index": 6,
+          "type": "replace",
+          "expected": "recognise",
+          "asr_heard": "recognize",
+          "classification": "orthographic_equivalent",
+          "reason": "Spelling or compound boundary alone cannot change spoken wording.",
+          "context": "the student who'd asked \u2014 a junior he didn't recognise \u2014 and then at the podium, where his lecture notes",
+          "anchor": {
+            "start_seconds": 126.64,
+            "end_seconds": 127.02,
+            "precision": "word_timestamps",
+            "suggested_clip_start_seconds": 124.64,
+            "suggested_clip_end_seconds": 129.01999999999998
+          },
+          "priority": "low"
+        },
+        {
+          "index": 7,
+          "type": "replace",
+          "expected": "Asked",
+          "asr_heard": "ask",
+          "classification": "unresolved_wording_candidate",
+          "reason": "Local excerpt recheck required; ASR is not proof of a narration error.",
+          "context": "a couple of years back. Bright kid. Quiet. Asked good questions.\" He stopped. The image surfaced unbidden \u2014 Yoon",
+          "anchor": {
+            "start_seconds": 139.28,
+            "end_seconds": 139.52,
+            "precision": "word_timestamps",
+            "suggested_clip_start_seconds": 137.28,
+            "suggested_clip_end_seconds": 141.52
+          },
+          "priority": "medium"
+        },
+        {
+          "index": 8,
+          "type": "replace",
+          "expected": "He'd",
+          "asr_heard": "He had",
+          "classification": "contraction_expansion",
+          "reason": "ASR expanded the same words; no meaning change is indicated.",
+          "context": "law enforcement as unmistakably as a white coat. He'd actually chosen his tie that morning. It was burgundy",
+          "anchor": {
+            "start_seconds": 206.46,
+            "end_seconds": 206.64,
+            "precision": "word_timestamps",
+            "suggested_clip_start_seconds": 204.46,
+            "suggested_clip_end_seconds": 208.64
+          },
+          "priority": "low"
+        }
+      ]
+    },
+    {
+      "id": "chapter-003-002",
+      "cache_key": "e23bfe019258ed2c93048b7a58c0a3dbc852c4464bc1bc48f53ea82f1c0b80b0",
+      "audio_sha256": "f6f578f8cc35da72e6eea4ea9750443f0bb0788ce69dd194b8abb6db4869b1d4",
+      "request_sha256": "0ef1ec39081e94967a9140e1b4ce7392201b84a1f876b90b610be987208c2e44",
+      "cache_path": "Audiobook/v6/local-checks/cache/chapter-003-002.e23bfe019258ed2c93048b7a58c0a3dbc852c4464bc1bc48f53ea82f1c0b80b0.json",
+      "full_clip_seconds": 241.8,
+      "automated_needs_review": true,
+      "differences": [
+        {
+          "index": 0,
+          "type": "replace",
+          "expected": "counterargument",
+          "asr_heard": "counter-argument",
+          "classification": "orthographic_equivalent",
+          "reason": "Spelling or compound boundary alone cannot change spoken wording.",
+          "context": "in before his survival instincts could mount a counterargument.  \"So how can I help you gentlemen, interested in",
+          "anchor": {
+            "start_seconds": 53.04,
+            "end_seconds": 53.48,
+            "precision": "word_timestamps",
+            "suggested_clip_start_seconds": 51.04,
+            "suggested_clip_end_seconds": 55.48
+          },
+          "priority": "low"
+        },
+        {
+          "index": 1,
+          "type": "replace",
+          "expected": "its occupant",
+          "asr_heard": "a document",
+          "classification": "unresolved_wording_candidate",
+          "reason": "Local excerpt recheck required; ASR is not proof of a narration error.",
+          "context": "trained eye cataloging the room for information about its occupant. Adrian watched him note the bookshelf \u2014 three shelves of",
+          "anchor": {
+            "start_seconds": 88.0,
+            "end_seconds": 88.54,
+            "precision": "word_timestamps",
+            "suggested_clip_start_seconds": 86.0,
+            "suggested_clip_end_seconds": 90.54
+          },
+          "priority": "high"
+        },
+        {
+          "index": 2,
+          "type": "replace",
+          "expected": "Morrow",
+          "asr_heard": "Maro",
+          "classification": "homophonic_transcript_variant",
+          "reason": "Transcript uses an acoustically equivalent or very close spelling; this alone does not establish a spoken error.",
+          "context": "visitors but apparently did not register as evidence. Morrow settled into the chair across Adrian's desk. The desk",
+          "anchor": {
+            "start_seconds": 104.08,
+            "end_seconds": 104.44,
+            "precision": "word_timestamps",
+            "suggested_clip_start_seconds": 102.08,
+            "suggested_clip_end_seconds": 106.44
+          },
+          "priority": "low"
+        },
+        {
+          "index": 3,
+          "type": "insert",
+          "expected": "",
+          "asr_heard": "air",
+          "classification": "unresolved_wording_candidate",
+          "reason": "Local excerpt recheck required; ASR is not proof of a narration error.",
+          "context": "years old in that photograph. Already a billionaire. Not yet a stranger.  Slowly, Morrow extracted a notepad",
+          "anchor": {
+            "start_seconds": 134.8,
+            "end_seconds": 134.92,
+            "precision": "word_timestamps",
+            "suggested_clip_start_seconds": 132.8,
+            "suggested_clip_end_seconds": 136.92
+          },
+          "priority": "medium"
+        },
+        {
+          "index": 4,
+          "type": "replace",
+          "expected": "used",
+          "asr_heard": "use",
+          "classification": "unresolved_wording_candidate",
+          "reason": "Local excerpt recheck required; ASR is not proof of a narration error.",
+          "context": "Good. Adrian used humor the way other people used locked doors \u2014 to control the pace of an interaction",
+          "anchor": {
+            "start_seconds": 167.06,
+            "end_seconds": 167.38,
+            "precision": "word_timestamps",
+            "suggested_clip_start_seconds": 165.06,
+            "suggested_clip_end_seconds": 169.38
+          },
+          "priority": "medium"
+        },
+        {
+          "index": 5,
+          "type": "replace",
+          "expected": "explained",
+          "asr_heard": "explain",
+          "classification": "unresolved_wording_candidate",
+          "reason": "Local excerpt recheck required; ASR is not proof of a narration error.",
+          "context": "my technical people read your papers and then explained them to me in English. You've written compulsively about",
+          "anchor": {
+            "start_seconds": 191.44,
+            "end_seconds": 191.8,
+            "precision": "word_timestamps",
+            "suggested_clip_start_seconds": 189.44,
+            "suggested_clip_end_seconds": 193.8
+          },
+          "priority": "medium"
+        },
+        {
+          "index": 6,
+          "type": "replace",
+          "expected": "NovaMind",
+          "asr_heard": "Novomind",
+          "classification": "proper_name_pronunciation_candidate",
+          "reason": "Inconsistent ASR name rendering; check a representative local excerpt before assessing pronunciation.",
+          "context": "compulsively about AI systems like the ones at NovaMind. Behavioral prediction models. The architecture of control \u2014 I think",
+          "anchor": {
+            "start_seconds": 196.22,
+            "end_seconds": 196.74,
+            "precision": "word_timestamps",
+            "suggested_clip_start_seconds": 194.22,
+            "suggested_clip_end_seconds": 198.74
+          },
+          "priority": "low"
+        },
+        {
+          "index": 7,
+          "type": "replace",
+          "expected": "Morrow",
+          "asr_heard": "Maro",
+          "classification": "homophonic_transcript_variant",
+          "reason": "Transcript uses an acoustically equivalent or very close spelling; this alone does not establish a spoken error.",
+          "context": "your frameworks, working through the weaknesses you described.\"  Morrow let that settle. Then, quieter: \"He hasn't said a",
+          "anchor": {
+            "start_seconds": 227.52,
+            "end_seconds": 227.66,
+            "precision": "word_timestamps",
+            "suggested_clip_start_seconds": 225.52,
+            "suggested_clip_end_seconds": 229.66
+          },
+          "priority": "low"
+        },
+        {
+          "index": 8,
+          "type": "replace",
+          "expected": "NovaMind's",
+          "asr_heard": "Novomind",
+          "classification": "proper_name_pronunciation_candidate",
+          "reason": "Inconsistent ASR name rendering; check a representative local excerpt before assessing pronunciation.",
+          "context": "not to anyone. Whatever he was doing inside NovaMind's systems, he'd rather face federal prison than explain it",
+          "anchor": {
+            "start_seconds": 237.84,
+            "end_seconds": 238.36,
+            "precision": "word_timestamps",
+            "suggested_clip_start_seconds": 235.84,
+            "suggested_clip_end_seconds": 240.36
+          },
+          "priority": "low"
+        }
+      ]
+    },
+    {
+      "id": "chapter-003-003",
+      "cache_key": "052646c6ed60ef17f20e8d4e627558552d85be948c55aa245023b363684b716f",
+      "audio_sha256": "74caebbcc559452798b2b44c0d73519bebfbcf5972a3b5e7a9a8653a3e3267fb",
+      "request_sha256": "cce0a5c7ae24f0020daf84f18f79963e20cc60f2d8881f30f73be0f8ef90deaa",
+      "cache_path": "Audiobook/v6/local-checks/cache/chapter-003-003.052646c6ed60ef17f20e8d4e627558552d85be948c55aa245023b363684b716f.json",
+      "full_clip_seconds": 259.16,
+      "automated_needs_review": false,
+      "differences": [
+        {
+          "index": 0,
+          "type": "replace",
+          "expected": "recognised",
+          "asr_heard": "recognized",
+          "classification": "orthographic_equivalent",
+          "reason": "Spelling or compound boundary alone cannot change spoken wording.",
+          "context": "being collegial and started being an interrogation. Adrian recognised it because he'd studied the architecture of persuasion systems",
+          "anchor": {
+            "start_seconds": 39.02,
+            "end_seconds": 39.56,
+            "precision": "word_timestamps",
+            "suggested_clip_start_seconds": 37.02,
+            "suggested_clip_end_seconds": 41.56
+          },
+          "priority": "low"
+        },
+        {
+          "index": 1,
+          "type": "replace",
+          "expected": "Alpaydin",
+          "asr_heard": "Alpidine",
+          "classification": "proper_name_pronunciation_candidate",
+          "reason": "Inconsistent ASR name rendering; check a representative local excerpt before assessing pronunciation.",
+          "context": "a copy of Introduction to Machine Learning by Alpaydin, I trust you're not interrogating the publisher.\"  \"No, sir",
+          "anchor": {
+            "start_seconds": 74.9,
+            "end_seconds": 75.34,
+            "precision": "word_timestamps",
+            "suggested_clip_start_seconds": 72.9,
+            "suggested_clip_end_seconds": 77.34
+          },
+          "priority": "low"
+        },
+        {
+          "index": 2,
+          "type": "replace",
+          "expected": "Alpaydin",
+          "asr_heard": "Alpidine",
+          "classification": "proper_name_pronunciation_candidate",
+          "reason": "Inconsistent ASR name rendering; check a representative local excerpt before assessing pronunciation.",
+          "context": "you're not interrogating the publisher.\"  \"No, sir. But Alpaydin didn't map the specific vulnerabilities in NovaMind's behavioral prediction",
+          "anchor": {
+            "start_seconds": 79.94,
+            "end_seconds": 80.32,
+            "precision": "word_timestamps",
+            "suggested_clip_start_seconds": 77.94,
+            "suggested_clip_end_seconds": 82.32
+          },
+          "priority": "low"
+        },
+        {
+          "index": 3,
+          "type": "replace",
+          "expected": "NovaMind's",
+          "asr_heard": "Novimind's",
+          "classification": "proper_name_pronunciation_candidate",
+          "reason": "Inconsistent ASR name rendering; check a representative local excerpt before assessing pronunciation.",
+          "context": "But Alpaydin didn't map the specific vulnerabilities in NovaMind's behavioral prediction architecture. You did.\"  That landed. Adrian kept",
+          "anchor": {
+            "start_seconds": 82.64,
+            "end_seconds": 83.28,
+            "precision": "word_timestamps",
+            "suggested_clip_start_seconds": 80.64,
+            "suggested_clip_end_seconds": 85.28
+          },
+          "priority": "low"
+        },
+        {
+          "index": 4,
+          "type": "replace",
+          "expected": "NovaMind",
+          "asr_heard": "Novimind",
+          "classification": "proper_name_pronunciation_candidate",
+          "reason": "Inconsistent ASR name rendering; check a representative local excerpt before assessing pronunciation.",
+          "context": "generalized class of systems. My work doesn't mention NovaMind by name.\"  \"It doesn't need to. NovaMind is the",
+          "anchor": {
+            "start_seconds": 104.12,
+            "end_seconds": 104.62,
+            "precision": "word_timestamps",
+            "suggested_clip_start_seconds": 102.12,
+            "suggested_clip_end_seconds": 106.62
+          },
+          "priority": "low"
+        },
+        {
+          "index": 5,
+          "type": "replace",
+          "expected": "NovaMind",
+          "asr_heard": "Novimind",
+          "classification": "proper_name_pronunciation_candidate",
+          "reason": "Inconsistent ASR name rendering; check a representative local excerpt before assessing pronunciation.",
+          "context": "mention NovaMind by name.\"  \"It doesn't need to. NovaMind is the market leader. If you describe the vulnerabilities",
+          "anchor": {
+            "start_seconds": 107.46,
+            "end_seconds": 107.9,
+            "precision": "word_timestamps",
+            "suggested_clip_start_seconds": 105.46,
+            "suggested_clip_end_seconds": 109.9
+          },
+          "priority": "low"
+        },
+        {
+          "index": 6,
+          "type": "replace",
+          "expected": "that",
+          "asr_heard": "It",
+          "classification": "unresolved_wording_candidate",
+          "reason": "Local excerpt recheck required; ASR is not proof of a narration error.",
+          "context": "about Morrow, a directness, a lack of pretense, that was disorienting in its simplicity. Most people who entered",
+          "anchor": {
+            "start_seconds": 121.06,
+            "end_seconds": 121.18,
+            "precision": "word_timestamps",
+            "suggested_clip_start_seconds": 119.06,
+            "suggested_clip_end_seconds": 123.18
+          },
+          "priority": "medium"
+        },
+        {
+          "index": 7,
+          "type": "replace",
+          "expected": "Morrow",
+          "asr_heard": "If Maro",
+          "classification": "unresolved_wording_candidate",
+          "reason": "Local excerpt recheck required; ASR is not proof of a narration error.",
+          "context": "cards face-up.  \"What do you need, Detective?\"  Morrow leaned forward slightly. \"The espionage case is more complicated",
+          "anchor": {
+            "start_seconds": 134.86,
+            "end_seconds": 136.26,
+            "precision": "word_timestamps",
+            "suggested_clip_start_seconds": 132.86,
+            "suggested_clip_end_seconds": 138.26
+          },
+          "priority": "medium"
+        },
+        {
+          "index": 8,
+          "type": "replace",
+          "expected": "NovaMind",
+          "asr_heard": "Novomind",
+          "classification": "proper_name_pronunciation_candidate",
+          "reason": "Inconsistent ASR name rendering; check a representative local excerpt before assessing pronunciation.",
+          "context": "understand what they are. We have engineers from NovaMind explaining their own technology to us, and I trust",
+          "anchor": {
+            "start_seconds": 150.94,
+            "end_seconds": 151.5,
+            "precision": "word_timestamps",
+            "suggested_clip_start_seconds": 148.94,
+            "suggested_clip_end_seconds": 153.5
+          },
+          "priority": "low"
+        },
+        {
+          "index": 9,
+          "type": "replace",
+          "expected": "Not",
+          "asr_heard": "Now",
+          "classification": "unresolved_wording_candidate",
+          "reason": "Local excerpt recheck required; ASR is not proof of a narration error.",
+          "context": "accessed and tell me what it actually means. Not what NovaMind says it means. What it actually means",
+          "anchor": {
+            "start_seconds": 178.56,
+            "end_seconds": 178.72,
+            "precision": "word_timestamps",
+            "suggested_clip_start_seconds": 176.56,
+            "suggested_clip_end_seconds": 180.72
+          },
+          "priority": "high"
+        },
+        {
+          "index": 10,
+          "type": "replace",
+          "expected": "NovaMind",
+          "asr_heard": "Novomind",
+          "classification": "proper_name_pronunciation_candidate",
+          "reason": "Inconsistent ASR name rendering; check a representative local excerpt before assessing pronunciation.",
+          "context": "tell me what it actually means. Not what NovaMind says it means. What it actually means.\"  Adrian considered",
+          "anchor": {
+            "start_seconds": 178.86,
+            "end_seconds": 179.24,
+            "precision": "word_timestamps",
+            "suggested_clip_start_seconds": 176.86,
+            "suggested_clip_end_seconds": 181.24
+          },
+          "priority": "low"
+        },
+        {
+          "index": 11,
+          "type": "replace",
+          "expected": "considered",
+          "asr_heard": "contrittered",
+          "classification": "unresolved_wording_candidate",
+          "reason": "Local excerpt recheck required; ASR is not proof of a narration error.",
+          "context": "says it means. What it actually means.\"  Adrian considered this. The responsible thing, the safe thing, was to",
+          "anchor": {
+            "start_seconds": 182.92,
+            "end_seconds": 183.46,
+            "precision": "word_timestamps",
+            "suggested_clip_start_seconds": 180.92,
+            "suggested_clip_end_seconds": 185.46
+          },
+          "priority": "medium"
+        },
+        {
+          "index": 12,
+          "type": "replace",
+          "expected": "Morrow",
+          "asr_heard": "Maro",
+          "classification": "homophonic_transcript_variant",
+          "reason": "Transcript uses an acoustically equivalent or very close spelling; this alone does not establish a spoken error.",
+          "context": "thing, the safe thing, was to decline. Refer Morrow to a colleague. There were dozens of qualified people",
+          "anchor": {
+            "start_seconds": 187.66,
+            "end_seconds": 187.94,
+            "precision": "word_timestamps",
+            "suggested_clip_start_seconds": 185.66,
+            "suggested_clip_end_seconds": 189.94
+          },
+          "priority": "low"
+        },
+        {
+          "index": 13,
+          "type": "replace",
+          "expected": "couriered",
+          "asr_heard": "coureered",
+          "classification": "unresolved_wording_candidate",
+          "reason": "Local excerpt recheck required; ASR is not proof of a narration error.",
+          "context": "relief rather than performative gratitude. \"I'll have them couriered to you. Standard NDA, consultant agreement, the usual. Nothing",
+          "anchor": {
+            "start_seconds": 246.32,
+            "end_seconds": 246.68,
+            "precision": "word_timestamps",
+            "suggested_clip_start_seconds": 244.32,
+            "suggested_clip_end_seconds": 248.68
+          },
+          "priority": "medium"
+        }
+      ]
+    },
+    {
+      "id": "chapter-004-003",
+      "cache_key": "e431f056fe405573acecfa74087f37292b0bb3486fbfd570f261bf572637364b",
+      "audio_sha256": "61efad74485a4a34215c497bb330c5e754d0ed7c617ef6ea6a0c7b18dc7ea7f4",
+      "request_sha256": "71633b2370361b6527207f160a3de1e20a3dd5aeea94c544765800e552ac2ead",
+      "cache_path": "Audiobook/v6/local-checks/cache/chapter-004-003.e431f056fe405573acecfa74087f37292b0bb3486fbfd570f261bf572637364b.json",
+      "full_clip_seconds": 12.0,
+      "automated_needs_review": false,
+      "differences": []
+    }
+  ]
+}

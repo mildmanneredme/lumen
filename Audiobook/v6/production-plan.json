@@ -1,0 +1,63 @@
+{
+  "title": "LUMEN",
+  "manuscript": "Draft/v6",
+  "model": "gemini-3.8-flash-lite-tts",
+  "api_key": "Read from project .env at runtime; never copy into outputs",
+  "key_read_only_validation": "Successful model metadata request",
+  "author_credit": "Rob Xie",
+  "distribution_intent": "Gemini edition now; Audible listing deferred",
+  "third_party_ai_authorization": "Not asserted; Audible deferred by user",
+  "voice_plan": "One consistent prebuilt narrator; short pilot before bulk synthesis",
+  "source_chunks": "Draft/v6/audiobook/tts-chunks.jsonl",
+  "expected_narration_hours_at_150_wpm": 15.307,
+  "technical_delivery_plan": {
+    "files": "One chapter or section per file; opening and closing credits separate; retail sample <=5 minutes",
+    "mp3": "44.1 kHz, mono, 192 kbps or higher CBR",
+    "rms_dbfs": [
+      -23,
+      -18
+    ],
+    "peak_dbfs_max": -3,
+    "noise_floor_dbfs_max": -60,
+    "head_and_tail_seconds": [
+      1,
+      5
+    ],
+    "section_duration_minutes_max": 120
+  },
+  "eligibility_note": "Meeting technical specifications does not authorize Gemini narration for Audible/ACX.",
+  "requirements_source": "https://help.acx.com/s/article/what-are-the-acx-audio-submission-requirements",
+  "audio_generated": true,
+  "manuscript_final_review": "Latest complete passes found zero new confirmed narrative discrepancies",
+  "narration_words": 137760,
+  "chunks": 241,
+  "generation_authorized": true,
+  "voice": "Charon",
+  "generation_items_with_closing_credits": 242,
+  "generation_state": "In progress with updated key; resumed requests succeeding",
+  "remote_transcription_qa": "Blocked by automatic approval review; no audio upload occurred",
+  "qa_plan": "Local Whisper transcription and local waveform/mastering checks; no cloud audio upload",
+  "completed_clips": 47,
+  "remaining_clips": 195,
+  "completed_duration_seconds": 9796.24,
+  "completed_paid_rate_equivalent_usd": 1.4861215,
+  "billing_status": "User confirmed project allocated to Batch-1; new TTS requests succeed beyond prior free-tier daily cap",
+  "resume_requirement": "User links Default Gemini Project to existing paid billing account Batch-1, or supplies a key from an already paid project. No billing settings changed by agent.",
+  "generation_budget_usd": 15,
+  "local_qa_checked_available_clips": 46,
+  "local_qa_errors": 0,
+  "local_qa_status": "All 11 available clips transcribed locally; review candidates retained. One apparent passage omission resolved as ASR artifact by excerpt check.",
+  "local_qa_summary": "Audiobook/v6/local-checks/comparison-summary.json",
+  "local_qa_review_assessment": "Audiobook/v6/local-checks/review-assessment.json",
+  "preview_sections": [
+    "Opening credits and epigraph",
+    "Chapter 1",
+    "Chapter 2"
+  ],
+  "preview_directory": "Audiobook/v6/preview-mastered",
+  "full_audiobook_complete": false,
+  "billing_diagnosis": "Read-only AI Studio API Keys page confirms configured Lumen key belongs to Default Gemini Project (gen-lang-client-0835214385), marked Free tier. Existing Batch-1 paid billing account is linked to other projects.",
+  "billing_diagnosis_source": "Observed AI Studio API Keys UI; configured key suffix matches Lumen row. Full key was not logged.",
+  "billing_user_confirmation": "User confirmed replacement API key belongs to project allocated to Batch-1",
+  "last_resume_time_bangkok": "2026-10-09T11:58:16.026724+07:00"
+}

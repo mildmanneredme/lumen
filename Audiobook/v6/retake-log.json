@@ -1,0 +1,168 @@
+{
+  "items": [
+    {
+      "original_id": "chapter-020-002",
+      "replacement_id": "chapter-020-002-take2",
+      "reason": "Background-mode provider response contained only final 0.16 seconds despite 6292 audio output tokens",
+      "original_preserved": true,
+      "request_text_voice_unchanged": true,
+      "recovery_stream_read_only_attempt": "Only final tail was retained on server; complete narration requires an explicit replacement take"
+    },
+    {
+      "original_id": "chapter-003-003",
+      "replacement_id": "chapter-003-003-take2",
+      "reason": "Two independent local Whisper models render Not as Now and considered as contributed/contrittered; regenerate for clear articulation of the original wording",
+      "evidence": "local-checks/medium-review/chapter-003-003.json",
+      "original_preserved": true,
+      "request_text_voice_model_unchanged": true,
+      "direction_change": "Read exactly and articulate short negative words and consonants distinctly"
+    }
+  ],
+  "retakes": [
+    {
+      "original_id": "chapter-055-001",
+      "replacement_id": "chapter-055-001-take2",
+      "reason": "Both full small.en and independent medium.en last66s transcription end at I know Adrian and fail to recover final80-word passage. Replacement for persistent missing-ending evidence.",
+      "evidence": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/medium-review/chapter-055-001-tail.json",
+      "created_at_unix": 1791530313.646067
+    },
+    {
+      "original_id": "chapter-083-002",
+      "replacement_id": "chapter-083-002-take2",
+      "reason": "Small full ASR and independent medium crop both join the surrounding passages while omitting the intervening scene. Remove pause controls and enforce full read.",
+      "evidence": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/medium-review/chapter-083-002-priority.json",
+      "created_at_unix": 1791532049.254017,
+      "spoken_words_preserved": true
+    },
+    {
+      "original_id": "chapter-083-003",
+      "replacement_id": "chapter-083-003-take2",
+      "reason": "Small full ASR and independent medium crop both join the surrounding passages while omitting the intervening scene. Remove pause controls and enforce full read.",
+      "evidence": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/medium-review/chapter-083-003-priority.json",
+      "created_at_unix": 1791532049.2540631,
+      "spoken_words_preserved": true
+    },
+    {
+      "original_id": "chapter-078-003",
+      "replacement_id": "chapter-078-003-take2",
+      "reason": "Full small ASR and independent no-prompt medium crop agree on missing dialogue or non-source rewritten paragraph. Replace for source faithfulness.",
+      "evidence": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/medium-review/chapter-078-003-priority.json",
+      "created_at_unix": 1791532122.598444,
+      "spoken_words_preserved": true
+    },
+    {
+      "original_id": "chapter-084-002",
+      "replacement_id": "chapter-084-002-take2",
+      "reason": "Full small ASR and independent no-prompt medium crop agree on missing dialogue or non-source rewritten paragraph. Replace for source faithfulness.",
+      "evidence": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/medium-review/chapter-084-002-priority.json",
+      "created_at_unix": 1791532122.598481,
+      "spoken_words_preserved": true
+    },
+    {
+      "original_id": "chapter-083-002-take2",
+      "replacement_ids": [
+        "chapter-083-002-scene1-take3",
+        "chapter-083-002-scene2-take3",
+        "chapter-083-002-scene3-take3"
+      ],
+      "reason": "Whole-clip retake still omits the221-word Sophie scene. Split exactly at scene boundaries, preserve every spoken character and verify each scene.",
+      "source_partition_concat_exact": true,
+      "created_at_unix": 1791532471.7183292
+    },
+    {
+      "original_id": "chapter-066-001",
+      "replacement_id": "chapter-066-001-take2",
+      "reason": "Clarity retake for meaning-changing word forms persisting in full small ASR and independent blank-prompt medium with exact source flanks. Not claimed as a human auditory certification.",
+      "evidence": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/qa-review/medium-snapshot-assessment.json",
+      "created_at_unix": 1791533665.9451048,
+      "spoken_words_preserved": true
+    },
+    {
+      "original_id": "chapter-067-002",
+      "replacement_id": "chapter-067-002-take2",
+      "reason": "Clarity retake for meaning-changing word forms persisting in full small ASR and independent blank-prompt medium with exact source flanks. Not claimed as a human auditory certification.",
+      "evidence": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/qa-review/medium-snapshot-assessment.json",
+      "created_at_unix": 1791533665.945201,
+      "spoken_words_preserved": true
+    },
+    {
+      "original_id": "chapter-069-001",
+      "replacement_id": "chapter-069-001-take2",
+      "reason": "Clarity retake for meaning-changing word forms persisting in full small ASR and independent blank-prompt medium with exact source flanks. Not claimed as a human auditory certification.",
+      "evidence": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/qa-review/medium-snapshot-assessment.json",
+      "created_at_unix": 1791533665.945267,
+      "spoken_words_preserved": true
+    },
+    {
+      "original_id": "chapter-071-003",
+      "replacement_id": "chapter-071-003-take2",
+      "reason": "Clarity retake for meaning-changing word forms persisting in full small ASR and independent blank-prompt medium with exact source flanks. Not claimed as a human auditory certification.",
+      "evidence": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/qa-review/medium-snapshot-assessment.json",
+      "created_at_unix": 1791533665.9453251,
+      "spoken_words_preserved": true
+    },
+    {
+      "original_id": "chapter-086-001",
+      "replacement_id": "chapter-086-001-take2",
+      "reason": "Clarity retake for meaning-changing word forms persisting in full small ASR and independent blank-prompt medium with exact source flanks. Not claimed as a human auditory certification.",
+      "evidence": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/qa-review/medium-snapshot-assessment.json",
+      "created_at_unix": 1791533665.945385,
+      "spoken_words_preserved": true
+    },
+    {
+      "original_id": "chapter-086-003",
+      "replacement_id": "chapter-086-003-take2",
+      "reason": "Two-model missing narrative paragraph or persistent ordinary-word/tense clarity signal; descriptive narrative explicitly retained as speech.",
+      "evidence": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/qa-review/medium-snapshot-assessment.json",
+      "created_at_unix": 1791533812.756989,
+      "spoken_words_preserved": true
+    },
+    {
+      "original_id": "chapter-074-002",
+      "replacement_id": "chapter-074-002-take2",
+      "reason": "Two-model missing narrative paragraph or persistent ordinary-word/tense clarity signal; descriptive narrative explicitly retained as speech.",
+      "evidence": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/qa-review/medium-snapshot-assessment.json",
+      "created_at_unix": 1791533812.757029,
+      "spoken_words_preserved": true
+    },
+    {
+      "original_id": "chapter-072-003",
+      "replacement_id": "chapter-072-003-take2",
+      "reason": "Two-model missing narrative paragraph or persistent ordinary-word/tense clarity signal; descriptive narrative explicitly retained as speech.",
+      "evidence": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/qa-review/medium-snapshot-assessment.json",
+      "created_at_unix": 1791533812.7570581,
+      "spoken_words_preserved": true
+    },
+    {
+      "original_id": "chapter-077-002",
+      "replacement_id": "chapter-077-002-take2",
+      "reason": "Two-model missing narrative paragraph or persistent ordinary-word/tense clarity signal; descriptive narrative explicitly retained as speech.",
+      "evidence": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/qa-review/medium-snapshot-assessment.json",
+      "created_at_unix": 1791533812.757087,
+      "spoken_words_preserved": true
+    },
+    {
+      "original_id": "chapter-086-001-take2",
+      "replacement_ids": [
+        "chapter-086-001-segment1-take3",
+        "chapter-086-001-segment2-take3"
+      ],
+      "reason": "Gross shortened whole-retake rejected byduration safeguard. Two exact paragraph partitions; all spoken characters conserved.",
+      "source_partition_concat_exact": true,
+      "failed_take_reported_cost_usd": 0.02193,
+      "created_at_unix": 1791534063.26412
+    },
+    {
+      "original_id": "chapter-066-001-take2",
+      "replacement_ids": [
+        "chapter-066-001-section1-take3",
+        "chapter-066-001-section2-take3",
+        "chapter-066-001-section3-take3"
+      ],
+      "reason": "Relay paragraph omitted in both full small and independently cropped medium ASR; exact paragraph partitions preserve all source characters.",
+      "source_partition_concat_exact": true,
+      "evidence": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/medium-review/chapter-066-001-take2-gap.json",
+      "created_at_unix": 1791534576.789685
+    }
+  ]
+}

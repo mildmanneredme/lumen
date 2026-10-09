@@ -1,0 +1,73 @@
+{
+  "id": "female-despina",
+  "chapter": 1,
+  "chunk": 2,
+  "request_sha256": "e70259fde59048a3200964ce1248047445c09e30aa1d5611c87286f6b0106b44",
+  "model": "gemini-3.8-flash-lite-tts",
+  "voice": "despina",
+  "interaction_status": "completed",
+  "interaction_id": "v1_ChZQYm5JYXFDMUtwYlJnOFVQamFTektREhZQYm5JYXFDMUtwYlJnOFVQamFTektR",
+  "duration_seconds": 36.48,
+  "channels": 1,
+  "sample_rate": 24000,
+  "sample_width": 2,
+  "words": 90,
+  "pace_words_per_minute": 148.0263157894737,
+  "usage": {
+    "total_tokens": 1026,
+    "total_input_tokens": 114,
+    "input_tokens_by_modality": [
+      {
+        "modality": "text",
+        "tokens": 114
+      }
+    ],
+    "total_cached_tokens": 0,
+    "total_output_tokens": 912,
+    "output_tokens_by_modality": [
+      {
+        "modality": "audio",
+        "tokens": 912
+      }
+    ],
+    "total_tool_use_tokens": 0,
+    "total_thought_tokens": 0,
+    "raw_prompt_token": 579,
+    "model_invocation_token_counts": [
+      {
+        "prompt_tokens_details": [
+          {
+            "modality": "text",
+            "tokens": 378
+          }
+        ],
+        "candidates_tokens_details": [
+          {
+            "modality": "text",
+            "tokens": 914
+          }
+        ]
+      }
+    ],
+    "non_grounding_model_invocation_token_counts": [
+      {
+        "prompt_tokens_details": [
+          {
+            "modality": "text",
+            "tokens": 378
+          }
+        ],
+        "candidates_tokens_details": [
+          {
+            "modality": "text",
+            "tokens": 914
+          }
+        ]
+      }
+    ]
+  },
+  "cost_usd_duration_based_estimate": 0.005579124999999999,
+  "audio_sha256": "a8b6fdac9238d59fc11e34ed50c37e7f09fe246eb5f73b762ddb0be5d8298d3d",
+  "cost_usd_from_reported_tokens": 0.005529,
+  "elapsed_seconds": 0.0
+}

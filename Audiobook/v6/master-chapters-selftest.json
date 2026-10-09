@@ -1,0 +1,84 @@
+{
+  "passed": true,
+  "checks": [
+    {
+      "name": "contiguous ordered multi-chunk inputs validated",
+      "passed": true
+    },
+    {
+      "name": "matching outputs reuse checkpoint without mastering",
+      "passed": true
+    },
+    {
+      "name": "chunk boundary timestamps preserve internal cadence",
+      "passed": true
+    },
+    {
+      "name": "duration equals body plus padding",
+      "passed": true
+    },
+    {
+      "name": "corrupt output cannot be reused",
+      "passed": true
+    },
+    {
+      "name": "corrupt output safely remastered",
+      "passed": true
+    },
+    {
+      "name": "settings change invalidates checkpoint",
+      "passed": true
+    },
+    {
+      "name": "helper change invalidates checkpoint",
+      "passed": true
+    },
+    {
+      "name": "request change invalidates checkpoint",
+      "passed": true
+    },
+    {
+      "name": "stale raw request prevented from mastering",
+      "passed": true
+    },
+    {
+      "name": "grossly short long narration rejected by pace",
+      "passed": true
+    },
+    {
+      "name": "partial audio rejected by reported audio-token duration",
+      "passed": true
+    },
+    {
+      "name": "raw audio hash mismatch prevented from mastering",
+      "passed": true
+    },
+    {
+      "name": "preview masters do not infer content approval",
+      "passed": true
+    },
+    {
+      "name": "matching ASR review candidates remain separate",
+      "passed": true
+    },
+    {
+      "name": "internal silence removal rejected",
+      "passed": true
+    },
+    {
+      "name": "sub-millisecond codec padding rounding accepted and recorded",
+      "passed": true
+    },
+    {
+      "name": "decoded duration beyond 2 ms allowance rejected",
+      "passed": true
+    },
+    {
+      "name": "raw path escape rejected",
+      "passed": true
+    }
+  ],
+  "checks_count": 19,
+  "scope": "Mock helper only; no production mastering, model, API, key or cloud access",
+  "created_at_unix": 1791527066.043186
+}

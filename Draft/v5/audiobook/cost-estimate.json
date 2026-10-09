@@ -1,0 +1,57 @@
+{
+  "checked_on": "2026-10-09",
+  "model": "gemini-3.8-flash-lite-tts",
+  "narration_words": 137770,
+  "characters": 855076,
+  "chunks": 241,
+  "input_tokens_estimated_not_measured": 249919,
+  "rates_usd_per_million_tokens": {
+    "standard_text_input": 0.5,
+    "standard_audio_output": 6.0,
+    "batch_text_input": 0.25,
+    "batch_audio_output": 3.0
+  },
+  "audio_tokens_per_second": 25,
+  "rates_expire": "2026-12-31; published rates double on 2027-01-01",
+  "sources": [
+    "https://ai.google.dev/gemini-api/docs/pricing#gemini-3.8-flash-lite-tts",
+    "https://ai.google.dev/gemini-api/docs/models/gemini-3.8-flash-lite-tts"
+  ],
+  "assumptions": [
+    "Single English narrator; one initial pass",
+    "Duration calculated from narration words and assumed pace",
+    "Text tokens approximated as characters divided by four plus 150 instruction tokens per chunk",
+    "Retake scenarios represent 30 percent additional billed generation",
+    "Excluded: tax, editing, mastering, distribution, additional purchased services",
+    "No audio was generated and no API usage was incurred"
+  ],
+  "scenarios": [
+    {
+      "words_per_minute": 130,
+      "hours_before_extra_pauses": 17.663,
+      "audio_tokens": 1589654,
+      "standard_usd": 9.66,
+      "batch_usd": 4.83,
+      "standard_with_30_percent_retakes_usd": 12.56,
+      "batch_with_30_percent_retakes_usd": 6.28
+    },
+    {
+      "words_per_minute": 150,
+      "hours_before_extra_pauses": 15.308,
+      "audio_tokens": 1377700,
+      "standard_usd": 8.39,
+      "batch_usd": 4.2,
+      "standard_with_30_percent_retakes_usd": 10.91,
+      "batch_with_30_percent_retakes_usd": 5.45
+    },
+    {
+      "words_per_minute": 170,
+      "hours_before_extra_pauses": 13.507,
+      "audio_tokens": 1215618,
+      "standard_usd": 7.42,
+      "batch_usd": 3.71,
+      "standard_with_30_percent_retakes_usd": 9.64,
+      "batch_with_30_percent_retakes_usd": 4.82
+    }
+  ]
+}

@@ -1,0 +1,69 @@
+{
+  "version": "hash-bound-retake-record-1",
+  "updated_at_unix": 1791531933.9065511,
+  "record": {
+    "candidate_id": "1b653e3c1f345319dfb48f9a29628485eb13c72631a6397ab3999a2356fcb964",
+    "clip_id": "chapter-055-001",
+    "audio_sha256": "8121b75b9dff20bc527f92adb51bfe5916728fdfd042b9b9e3d40711724edb40",
+    "request_sha256": "27aa4d36c8f105f42aee08e87a4837d344f4b57d3afd1277a7c8694128998b6b",
+    "source_inputtext_sha256": "fe1c920e466cd09ae6881fc8a01a0128bdb4f89a44391c08ff72c609d27b544a",
+    "status": "retake_required_for_clarity",
+    "replacement_clip_id": "chapter-055-001-take2",
+    "replacement_request_sha256": "9090edc35c856145c0a3392d952388a5ee2f9dd385a8d9f6638d73743f5b7f1c",
+    "replacement_source_unchanged": true,
+    "rationale": "The full small.en pass and an independent local medium.en crop both stop at the preceding dialogue, while the exact source continues for a final passage. Root replaced this take to recover the complete reading. This is persistent ASR evidence and a retake decision, not auditory certainty or certification of the replacement.",
+    "original_expected_focus": "The 48-hour window. The zero-day attack the AI had fired as its dying act, a parting gift from their murdered digital guardian, forcing every oligarch company into crisis mode. Engineers at six of the most powerful corporations in the world were currently scrambling to patch exploits they didn't yet understand, their attention turned inward, their surveillance apparatus running at reduced capacity.\n\nIt was the opening Seb had been waiting for.\n\nAnd Seb would never walk through it",
+    "original_asr_focus": "",
+    "source_char_span": [
+      3356,
+      3840
+    ],
+    "source_original_context": "\n\n\"We have to tell the others,\" Adrian said.\n\n\"I know.\"\n\n\"And we have to keep moving. The window —\"\n\n\"I know, Adrian.\"\n\nThe 48-hour window. The zero-day attack the AI had fired as its dying act, a parting gift from their murdered digital guardian, forcing every oligarch company into crisis mode. Engineers at six of the most powerful corporations in the world were currently scrambling to patch exploits they didn't yet understand, their attention turned inward, their surveillance apparatus running at reduced capacity.\n\nIt was the opening Seb had been waiting for.\n\nAnd Seb would never walk through it.",
+    "evidence": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/medium-review/chapter-055-001-tail.json",
+    "evidence_sha256": "0465f6da26a143bcebe1165929be8eb03a8810622d7ad8fc0b3f932dd5051969",
+    "proof": {
+      "independent_local_model": "existing local whisper-medium.en-mlx",
+      "crop_start_seconds": 157.0,
+      "crop_end_seconds": 223.2,
+      "last_transcribed_words": "I know, Adrian.",
+      "recovered_final_passage": false,
+      "first_model_cache_key": "a797fbcf80a0bc4e9b80e4909856530df824814f4a2d6359e504135d8eeec71e"
+    },
+    "reviewed_at_unix": 1791530424.4469981,
+    "confirmed_narration_error": false,
+    "listening_approval": false
+  },
+  "replacement_qa_pending": false,
+  "replacement_tail_verification": {
+    "status": "verified_local_asr_retake_fix",
+    "clip_id": "chapter-055-001-take2",
+    "audio_sha256": "588e73e61b5744ec0f6a0fc22aae7b2a1c5d678855257a407b045c3ea35d8286",
+    "request_sha256": "9090edc35c856145c0a3392d952388a5ee2f9dd385a8d9f6638d73743f5b7f1c",
+    "source_inputtext_sha256": "fe1c920e466cd09ae6881fc8a01a0128bdb4f89a44391c08ff72c609d27b544a",
+    "source_char_span": [
+      3356,
+      3840
+    ],
+    "source_original_context": "now.\"\n\n\"And we have to keep moving. The window —\"\n\n\"I know, Adrian.\"\n\nThe 48-hour window. The zero-day attack the AI had fired as its dying act, a parting gift from their murdered digital guardian, forcing every oligarch company into crisis mode. Engineers at six of the most powerful corporations in the world were currently scrambling to patch exploits they didn't yet understand, their attention turned inward, their surveillance apparatus running at reduced capacity.\n\nIt was the opening Seb had been waiting for.\n\nAnd Seb would never walk through it",
+    "exact_tail_word_count": 79,
+    "contiguous_normalized_word_start": 173,
+    "contiguous_normalized_word_end": 252,
+    "left_source_flanks": [
+      "know",
+      "adrian"
+    ],
+    "expected_final_sentence": "And Seb would never walk through it.",
+    "reaches_transcript_tail": true,
+    "model": "existing local whisper-medium.en-mlx",
+    "crop_start_seconds": 148.6,
+    "crop_end_seconds": 238.6,
+    "source_duration_seconds": 238.6,
+    "evidence": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/medium-review/chapter-055-001-take2-tail.json",
+    "evidence_sha256": "a48079195ba94a28964265796bf308e0ff423f9855b849c1e1af3fdad85ebfd4",
+    "scope": "The replacement recovers the complete final passage contiguously in independently saved local medium ASR. This does not certify listening quality or every word elsewhere in the clip.",
+    "confirmed_narration_error": false,
+    "listening_approval": false,
+    "reviewed_at_unix": 1791531933.90655
+  },
+  "remaining_scope": "Whole clip follows the complete full-pass candidate ledger and focused QA; replacement tail has exact local ASR recovery."
+}

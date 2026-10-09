@@ -1,0 +1,85 @@
+{
+  "id": "chapter-066-001-section3-take3",
+  "chapter": 66,
+  "chunk": 3,
+  "request_sha256": "3e5e12f6d62c648f536c20bd3143a2c9a20a98ddb7a2a3e07eb357dff6c3182a",
+  "model": "gemini-3.8-flash-lite-tts",
+  "voice": "Charon",
+  "interaction_status": "completed",
+  "interaction_id": "v1_Chc5YVhJYXB6V0FfZkJqdU1QMFphUnNBVRIXOWFYSWFweldBX2ZCanVNUDBaYVJzQVU",
+  "duration_seconds": 133.76,
+  "channels": 1,
+  "sample_rate": 24000,
+  "sample_width": 2,
+  "words": 301,
+  "pace_words_per_minute": 135.01794258373207,
+  "usage": {
+    "total_tokens": 3799,
+    "total_input_tokens": 455,
+    "input_tokens_by_modality": [
+      {
+        "modality": "text",
+        "tokens": 455
+      }
+    ],
+    "total_cached_tokens": 0,
+    "total_output_tokens": 3344,
+    "output_tokens_by_modality": [
+      {
+        "modality": "audio",
+        "tokens": 3344
+      }
+    ],
+    "total_tool_use_tokens": 0,
+    "total_thought_tokens": 0,
+    "raw_prompt_token": 1504,
+    "model_invocation_token_counts": [
+      {
+        "prompt_tokens_details": [
+          {
+            "modality": "text",
+            "tokens": 1245
+          }
+        ],
+        "cache_tokens_details": [
+          {
+            "modality": "text",
+            "tokens": 512
+          }
+        ],
+        "candidates_tokens_details": [
+          {
+            "modality": "text",
+            "tokens": 3543
+          }
+        ]
+      }
+    ],
+    "non_grounding_model_invocation_token_counts": [
+      {
+        "prompt_tokens_details": [
+          {
+            "modality": "text",
+            "tokens": 1245
+          }
+        ],
+        "cache_tokens_details": [
+          {
+            "modality": "text",
+            "tokens": 512
+          }
+        ],
+        "candidates_tokens_details": [
+          {
+            "modality": "text",
+            "tokens": 3543
+          }
+        ]
+      }
+    ]
+  },
+  "cost_usd_duration_based_estimate": 0.020433,
+  "audio_sha256": "d4d32387213d23d6722bf1df34688a2ccdc1f93150709eeec9784a9166bf0a2a",
+  "cost_usd_from_reported_tokens": 0.020291499999999997,
+  "elapsed_seconds": 0.01
+}

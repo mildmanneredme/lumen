@@ -1,0 +1,126 @@
+{
+  "identity": {
+    "coordinator_version": "1.0.0",
+    "master_audio_sha256": "369141dcf541fe9920bde4e5ed59ec52bd3731be512f52189f74019d6773dce5",
+    "chapter": 86,
+    "title": "Chapter 86",
+    "book": "LUMEN",
+    "author": "Rob Xie",
+    "narration": "AI-generated Gemini voice, Charon",
+    "settings": {
+      "ffmpeg": "/opt/homebrew/bin/ffmpeg",
+      "ffprobe": "/opt/homebrew/bin/ffprobe",
+      "target_rms_db": -20.0,
+      "peak_ceiling_db": -3.2,
+      "codec_headroom_db": 0.6,
+      "max_gain_db": 30.0,
+      "head_seconds": 1.0,
+      "tail_seconds": 2.0,
+      "silence_db": -60.0,
+      "long_silence_seconds": 2.0,
+      "quiet_window_seconds": 0.5,
+      "quiet_window_db": -50.0,
+      "trim_edges": true,
+      "edge_guard_seconds": 0.02,
+      "max_attempts": 8,
+      "peak_limiter": "auto",
+      "max_limiter_overdrive_db": 6.0
+    },
+    "inputs": [
+      {
+        "id": "chapter-086-001-segment1-take3",
+        "chapter": 86,
+        "chunk": 1,
+        "path": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/raw/chapter-086-001-segment1-take3.wav",
+        "request_sha256": "9374dec4158146180219e7dbb39597f6df9a07bfeebe777de212a65c4ea4d742",
+        "audio_sha256": "735b14d88680206de26207dece63ba89373766e3624c7003407ac19466916623",
+        "native_frames": 2873280,
+        "native_rate": 24000,
+        "duration_seconds": 119.72
+      },
+      {
+        "id": "chapter-086-001-segment2-take3",
+        "chapter": 86,
+        "chunk": 2,
+        "path": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/raw/chapter-086-001-segment2-take3.wav",
+        "request_sha256": "b198a51e3d5ed2d335ef5cf441c1314250bae1af1ad9343fb0d969513467e6ae",
+        "audio_sha256": "3c243efd92e0aa19020fb1736a96aecb815f8ea9dd49d8eebea4ac5f986dc463",
+        "native_frames": 3077760,
+        "native_rate": 24000,
+        "duration_seconds": 128.24
+      },
+      {
+        "id": "chapter-086-002",
+        "chapter": 86,
+        "chunk": 3,
+        "path": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/raw/chapter-086-002.wav",
+        "request_sha256": "76a992f103bb89d50c10669a3743853a17fd37e92004406cf8478bbb3983f882",
+        "audio_sha256": "eef6e53b645980ab5e9c8a51c8e26e7e96118848455e2b166ebb7c53a1b669bb",
+        "native_frames": 6176640,
+        "native_rate": 24000,
+        "duration_seconds": 257.36
+      },
+      {
+        "id": "chapter-086-003-take2",
+        "chapter": 86,
+        "chunk": 4,
+        "path": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/raw/chapter-086-003-take2.wav",
+        "request_sha256": "3e8da0795272f1fa5e38210e582150657849912076762ec4ca0c5de7c787a1b5",
+        "audio_sha256": "5f646bda4fd0c23a4bded5e4d71350d78018310c537de9f4a0a9737d6b9026e5",
+        "native_frames": 6035520,
+        "native_rate": 24000,
+        "duration_seconds": 251.48
+      },
+      {
+        "id": "chapter-086-004",
+        "chapter": 86,
+        "chunk": 5,
+        "path": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/raw/chapter-086-004.wav",
+        "request_sha256": "37fd9956a166e440be7ce25d3f99e7b63540f4e0e377ad0f5177aa27dba15363",
+        "audio_sha256": "75bb7b64c4d795b22d5599890c2ae7150063363e457b0e6b18837e1b9fbddb09",
+        "native_frames": 5459520,
+        "native_rate": 24000,
+        "duration_seconds": 227.48
+      },
+      {
+        "id": "chapter-086-005",
+        "chapter": 86,
+        "chunk": 6,
+        "path": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/raw/chapter-086-005.wav",
+        "request_sha256": "62c7f79700b1b9d011ddfbe539cfe86e6f813b909c123e607a362427204d8fcf",
+        "audio_sha256": "f0b452337e1e7dc3a924c824e10e81e3f6b0d896b8e967b45abf75c8357b85fe",
+        "native_frames": 5028480,
+        "native_rate": 24000,
+        "duration_seconds": 209.52
+      },
+      {
+        "id": "chapter-086-006",
+        "chapter": 86,
+        "chunk": 7,
+        "path": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/raw/chapter-086-006.wav",
+        "request_sha256": "55903deb28980a56b507496dd12898c0716097fc83fb1e3847e4a2220cc28c0e",
+        "audio_sha256": "ebfe331650a89b10ad387a9f645a0d70dcf7819f233f8b5c0e5154079d00c9d9",
+        "native_frames": 4853760,
+        "native_rate": 24000,
+        "duration_seconds": 202.24
+      }
+    ]
+  },
+  "identity_sha256": "feee96f80091440a1dead3c1a7d14db7d1dabc8ec7334679ded52d9f17a67991",
+  "output_sha256": {
+    "lossless_wav": "1cfa159dd09071588888791cfbbe5e47c9b2778b0cd92c7d5f61806c026ce075",
+    "mp3": "a6c3eca40ffe763d6edabd6054894103be218ef02f3b328fd8f916ad25c301cf",
+    "qa": "b8602e012ab255eb0ad1eb0dee036579e356b83395b6ec03e94e546bccca7375"
+  },
+  "summary": {
+    "mp3": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/mastered/chapter-086.mp3",
+    "lossless_wav": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/mastered/chapter-086.wav",
+    "qa": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/mastered/chapter-086.qa.json",
+    "duration_seconds": 1398.61,
+    "rms_dbfs": -20.40401127620143,
+    "sample_peak_dbfs": -4.010561432029373,
+    "warnings": [],
+    "rms_target_met_within_0_5_db": true
+  },
+  "completed_at_unix": 1791538412.247327
+}

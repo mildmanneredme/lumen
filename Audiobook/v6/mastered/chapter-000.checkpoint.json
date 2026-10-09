@@ -1,0 +1,60 @@
+{
+  "identity": {
+    "coordinator_version": "1.0.0",
+    "master_audio_sha256": "369141dcf541fe9920bde4e5ed59ec52bd3731be512f52189f74019d6773dce5",
+    "chapter": 0,
+    "title": "Opening Credits and Epigraph",
+    "book": "LUMEN",
+    "author": "Rob Xie",
+    "narration": "AI-generated Gemini voice, Charon",
+    "settings": {
+      "ffmpeg": "/opt/homebrew/bin/ffmpeg",
+      "ffprobe": "/opt/homebrew/bin/ffprobe",
+      "target_rms_db": -20.0,
+      "peak_ceiling_db": -3.2,
+      "codec_headroom_db": 0.6,
+      "max_gain_db": 30.0,
+      "head_seconds": 1.0,
+      "tail_seconds": 2.0,
+      "silence_db": -60.0,
+      "long_silence_seconds": 2.0,
+      "quiet_window_seconds": 0.5,
+      "quiet_window_db": -50.0,
+      "trim_edges": true,
+      "edge_guard_seconds": 0.02,
+      "max_attempts": 8,
+      "peak_limiter": "auto",
+      "max_limiter_overdrive_db": 6.0
+    },
+    "inputs": [
+      {
+        "id": "chapter-000-001",
+        "chapter": 0,
+        "chunk": 1,
+        "path": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/raw/chapter-000-001.wav",
+        "request_sha256": "f2328bd82481c56f29a48072296c6cb11a6df964f57f5969a11e82b986d71aa6",
+        "audio_sha256": "ea368a27ef293a9324119fdb2188bd6788d89aa3d8321cecc9f1516a2f70ef51",
+        "native_frames": 480960,
+        "native_rate": 24000,
+        "duration_seconds": 20.04
+      }
+    ]
+  },
+  "identity_sha256": "e9f721769c47c651726a34f65f810536b7d457ac21a6c6e13c8b02327c63386d",
+  "output_sha256": {
+    "lossless_wav": "e797e4cd208bd6dcaabcacb5543cc15a1c6ad47cec9a7ddc22f2728397efe44a",
+    "mp3": "e73af5de8889a3fdcfee92351aec83094d618c7626a4ec4dba11df6ea39aa346",
+    "qa": "2a62b6226df250eba5b6bdf354f2d99bd567eaaa416032ffa3ee53cb6d31b568"
+  },
+  "summary": {
+    "mp3": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/mastered/chapter-000.mp3",
+    "lossless_wav": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/mastered/chapter-000.wav",
+    "qa": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/mastered/chapter-000.qa.json",
+    "duration_seconds": 22.77,
+    "rms_dbfs": -20.434274120805224,
+    "sample_peak_dbfs": -4.0548353265480355,
+    "warnings": [],
+    "rms_target_met_within_0_5_db": true
+  },
+  "completed_at_unix": 1791523414.818045
+}

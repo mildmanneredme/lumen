@@ -1,0 +1,85 @@
+{
+  "id": "stream-E-story-Sulafat",
+  "chapter": 1,
+  "chunk": 2,
+  "request_sha256": "079ddf1964fece8c3e0dbf778e2a508030b453fd3d8e41981317299f69fce011",
+  "model": "gemini-3.8-flash-lite-tts",
+  "voice": "Sulafat",
+  "interaction_status": "completed",
+  "interaction_id": "v1_ChdocmJJYXFlU041ZjcxZThQM1AtNHVBNBIXaHJiSWFxZVNONWY3MWU4UDNQLTR1QTQ",
+  "duration_seconds": 33.4,
+  "channels": 1,
+  "sample_rate": 24000,
+  "sample_width": 2,
+  "words": 90,
+  "pace_words_per_minute": 161.67664670658684,
+  "usage": {
+    "total_tokens": 949,
+    "total_input_tokens": 114,
+    "input_tokens_by_modality": [
+      {
+        "modality": "text",
+        "tokens": 114
+      }
+    ],
+    "total_cached_tokens": 0,
+    "total_output_tokens": 835,
+    "output_tokens_by_modality": [
+      {
+        "modality": "audio",
+        "tokens": 835
+      }
+    ],
+    "total_tool_use_tokens": 0,
+    "total_thought_tokens": 0,
+    "raw_prompt_token": 579,
+    "model_invocation_token_counts": [
+      {
+        "prompt_tokens_details": [
+          {
+            "modality": "text",
+            "tokens": 378
+          }
+        ],
+        "cache_tokens_details": [
+          {
+            "modality": "text",
+            "tokens": 378
+          }
+        ],
+        "candidates_tokens_details": [
+          {
+            "modality": "text",
+            "tokens": 837
+          }
+        ]
+      }
+    ],
+    "non_grounding_model_invocation_token_counts": [
+      {
+        "prompt_tokens_details": [
+          {
+            "modality": "text",
+            "tokens": 378
+          }
+        ],
+        "cache_tokens_details": [
+          {
+            "modality": "text",
+            "tokens": 378
+          }
+        ],
+        "candidates_tokens_details": [
+          {
+            "modality": "text",
+            "tokens": 837
+          }
+        ]
+      }
+    ]
+  },
+  "cost_usd_duration_based_estimate": 0.005117124999999999,
+  "audio_sha256": "490be48c5b744e5d45e54d0c8a6ae745fecd8022f938fbc56770dfa006df4bd7",
+  "cost_usd_from_reported_tokens": 0.0050669999999999995,
+  "elapsed_seconds": 0.01
+}

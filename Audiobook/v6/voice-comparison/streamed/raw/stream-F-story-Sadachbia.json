@@ -1,0 +1,85 @@
+{
+  "id": "stream-F-story-Sadachbia",
+  "chapter": 1,
+  "chunk": 2,
+  "request_sha256": "e69f47ad7fee3f794cc92803632c209ecac24ae6b954577d5006294ad58f66c7",
+  "model": "gemini-3.8-flash-lite-tts",
+  "voice": "Sadachbia",
+  "interaction_status": "completed",
+  "interaction_id": "v1_ChdpYmJJYXMtc0J1VF9nOFVQck8yR3lBMBIXaWJiSWFzLXNCdVRfZzhVUHJPMkd5QTA",
+  "duration_seconds": 35.92,
+  "channels": 1,
+  "sample_rate": 24000,
+  "sample_width": 2,
+  "words": 90,
+  "pace_words_per_minute": 150.33407572383072,
+  "usage": {
+    "total_tokens": 1012,
+    "total_input_tokens": 114,
+    "input_tokens_by_modality": [
+      {
+        "modality": "text",
+        "tokens": 114
+      }
+    ],
+    "total_cached_tokens": 0,
+    "total_output_tokens": 898,
+    "output_tokens_by_modality": [
+      {
+        "modality": "audio",
+        "tokens": 898
+      }
+    ],
+    "total_tool_use_tokens": 0,
+    "total_thought_tokens": 0,
+    "raw_prompt_token": 637,
+    "model_invocation_token_counts": [
+      {
+        "prompt_tokens_details": [
+          {
+            "modality": "text",
+            "tokens": 378
+          }
+        ],
+        "cache_tokens_details": [
+          {
+            "modality": "text",
+            "tokens": 378
+          }
+        ],
+        "candidates_tokens_details": [
+          {
+            "modality": "text",
+            "tokens": 900
+          }
+        ]
+      }
+    ],
+    "non_grounding_model_invocation_token_counts": [
+      {
+        "prompt_tokens_details": [
+          {
+            "modality": "text",
+            "tokens": 378
+          }
+        ],
+        "cache_tokens_details": [
+          {
+            "modality": "text",
+            "tokens": 378
+          }
+        ],
+        "candidates_tokens_details": [
+          {
+            "modality": "text",
+            "tokens": 900
+          }
+        ]
+      }
+    ]
+  },
+  "cost_usd_duration_based_estimate": 0.005495125,
+  "audio_sha256": "b0da59e73fee6eb17905ed49eac47d236c2aa3cf5cea79e6ce3c58ad2cd99390",
+  "cost_usd_from_reported_tokens": 0.005445,
+  "elapsed_seconds": 0.0
+}

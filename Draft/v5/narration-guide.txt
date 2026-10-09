@@ -1,0 +1,101 @@
+LUMEN v5 narration guide
+
+Use one consistent narrator voice across the book. Preserve the author's earnest
+philosophical register. Let action scenes move quickly; allow reflective passages
+more space without turning every short sentence into a dramatic pause.
+
+The audiobook folder contains the full narration transcript, individual chapter
+transcripts, and a JSONL chunk manifest. These are local preparation files. No
+audio has been generated. Choose the final voice through a short audition before
+running the whole book.
+
+Working English pronunciation targets
+
+These are practical English performance choices for the fictional cast, not
+claims of exact native pronunciation. Keep each choice consistent across chunks.
+Audition the Icelandic, Portuguese, Ghanaian, Danish, and Dutch names in the chosen
+voice. A listener familiar with the language should check the place names before
+the recording is approved.
+
+Adrian Marsh       AY-dree-an MARSH
+Sebastian Hale     seh-BAS-chun HAYL; Seb is SEHB
+Kai Nakamura       KYE nah-kah-MOO-rah
+Nadia Osei         NAH-dee-ah oh-SAY
+Ólafur Sigurdsson  OH-lah-vur SIG-urd-son
+Tomás Ferreira     toh-MAHSH feh-RAY-rah
+Ines Brandt        ee-NESS BRAHNT
+Andrei Lepp        AHN-dray LEHP
+Sophie Richter     SOH-fee RIKH-ter
+Priya Chandrasekaran PREE-yah chahn-drah-SHAY-kuh-run
+Daniel Yoon        DAN-yul YOON
+James Morrow       JAYMZ MOR-oh
+Harrison Polk      HAIR-ih-sun POHK
+Elias Strutt       eh-LYE-us STRUHT
+Arthur Venn        AR-thur VEHN
+Magnus Cole        MAG-nus KOHL
+Geoffrey Laine     JEFF-ree LAYN
+Clive Barrington   KLYVE BAIR-ing-tun
+Lumen              LOO-men
+NovaMind           NOH-vuh-mynd
+NovaTok            NOH-vuh-tok
+Fjallasel          FYAT-lah-sehl; fictional facility name, working choice
+
+Keep the canonical spellings in the manuscript. Use voice guidance or a
+pronunciation-aware preparation layer for corrections, rather than changing
+the book's proper names into phonetic spellings.
+
+Identity references
+
+Ines is the Scaffold, codename Juno.
+Andrei is the Locksmith, codename Sable.
+Priya's former role, inherited by Adrian, is the Cartographer, codename Atlas.
+Sophie is the Auditor, codename Ledger.
+Tomás is the Courier, codename Vento.
+Ólafur is the Timekeeper, codename Sync.
+Strutt is the Architect; Venn the Machine; Cole the Showman; Laine the
+Philanthropist; Barrington the Narrator; Polk the Broker.
+
+Performance conventions
+
+Italic internal thought: stay in the narrator's voice, with a quieter, closer
+delivery. Preserve the distinction from spoken dialogue using the surrounding
+attribution. Avoid a separate synthetic character voice for every thought.
+
+Quoted messages and terminal output: make the source clear from the narration;
+use a restrained, slightly flatter delivery. Filenames, key commands, and the
+countdown have explicit spoken forms in the exported transcript.
+
+Remembered dialogue: distinguish gently from present dialogue. Keep the same
+character interpretation. Character voices should come from pace, attitude,
+and phrasing; avoid caricatured national accents.
+
+Scene transitions: the exported TTS text uses <short pause>. Chapter boundaries
+are separate files. Add final chapter and part gaps during assembly, rather than
+paying to generate long silence. Do not read formatting marks or this guide.
+
+Gemini preparation
+
+Target model: gemini-3.8-flash-lite-tts.
+Use structured speech_metadata for sustained performance directions. Gemini
+3.8 treats transcript text as verbatim speech, so director's notes and speaker
+labels should not be inserted as ordinary transcript text. The chunk manifest
+stores guidance separately from the text. Its records are preparation data,
+not complete API requests.
+
+Chunks are limited to 700 words at paragraph boundaries. At an assumed
+130 words per minute this is about 5.4 minutes before pauses, below the model's
+published 16,384 audio-token serving limit at 25 tokens per second. If the
+chosen delivery is unusually slow, shorten chunks further. Keep one selected
+voice identifier and pronunciation policy for every request.
+
+After synthesis, verify every chunk for omitted/repeated words, truncation,
+pronunciation, unexpected spoken directions, silence, and changes of voice.
+Repair individual chunks, then listen through the assembled chapters before
+mastering. The cost estimate includes a separate 30 percent retake scenario;
+it is an estimate, not a cap on billed usage.
+
+Sources checked on 9 October 2026
+
+https://ai.google.dev/gemini-api/docs/models/gemini-3.8-flash-lite-tts
+https://ai.google.dev/gemini-api/docs/speech-generation
+https://ai.google.dev/gemini-api/docs/pricing#gemini-3.8-flash-lite-tts

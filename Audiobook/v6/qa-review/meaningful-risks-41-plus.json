@@ -1,0 +1,1000 @@
+{
+  "version": "meaningful-risk-priorities-41-plus-1",
+  "updated_at_unix": 1791530512.9437902,
+  "reviewed_bound_clips": 203,
+  "reviewed_through_chapter": 77,
+  "scope": "Chapters 41 onward in current saved source-bound ASR snapshot. Curated wording priorities; all remaining candidates stay in the complete ledger and queue.",
+  "unresolved_not_confirmed_errors": true,
+  "replaced_clips_excluded": [
+    "chapter-055-001"
+  ],
+  "replacement_note": "chapter-055-001-take2 is pending fresh QA; old tail persistent two-model evidence is stored in chapter-055-retake-record.json.",
+  "items": [
+    {
+      "priority_rank": 1,
+      "candidate_id": "dcdfdd799398f366e8a8fc28444c4dd08ad63e19fe3aede43d02f4431c068c42",
+      "clip_id": "chapter-043-002",
+      "audio_sha256": "41964dee98ccde35fc10dc4df596ef4de4a095ad3704d50bf999989e2fdc9604",
+      "request_sha256": "e922d1bec35153ef59822f3a05272fda15b372dcdaa13b24b4a1661575f24955",
+      "source_inputtext_sha256": "3697ffa3ecb384c8e2e11816cef86d1c16e3e44df785ab9711267c56c1c787a6",
+      "source_char_span": [
+        370,
+        519
+      ],
+      "source_exact_focus": "Received from Cardinal: Cole HQ security audit results. Network penetration test identified 3 unpatched vulnerabilities in building management system",
+      "asr_focus": "Car Car Car Car Car Car Car Car Car Car Car Car Car Car",
+      "source_context": "rs migrated to Frankfurt data center. Internal routing unchanged. Access points via legacy VPN still viable.\n\nReceived from Cardinal: Cole HQ security audit results. Network penetration test identified 3 unpatched vulnerabilities in building management system. Cross-reference with Courier's physical access plan.\n\nAdrian sat back. The bread smell from the bakery below",
+      "audio_anchor": {
+        "start_seconds": 26.12,
+        "end_seconds": 36.06,
+        "precision": "word_timestamps",
+        "suggested_clip_start_seconds": 24.12,
+        "suggested_clip_end_seconds": 38.06
+      },
+      "suggested_recheck_start_seconds": 22.12,
+      "suggested_recheck_end_seconds": 40.06,
+      "reason": "Entire 22-word source message replaced with repeated Car; likely transcription instability, but no contiguous source proof yet.",
+      "confirmed_narration_error": false,
+      "evidence_type": "Saved first local ASR only; awaiting focused or independent proof.",
+      "evidence": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-043-002.1d64bc79b43efb4eca3124eb515f6c14a1fec9fecbb12d203743d86a7e474dc4.json",
+      "evidence_sha256": "2993dcb649275f6dc807fcc9e5e7cc6794784fa104eb205d2b4cac7a1240e9d5"
+    },
+    {
+      "priority_rank": 2,
+      "candidate_id": "f001438ea2eaf37dfcefe625143f9edc5f5869513d0ff812f832bfee615045f1",
+      "clip_id": "chapter-058-002",
+      "audio_sha256": "f6bd053cd57934cac18f0b02639d9e24e4f749612dbb8ae9c4b8f67e5717aac1",
+      "request_sha256": "19c4993ed421d9202ec200bb9498b3f246aa9791916ea68f2f65738517353290",
+      "source_inputtext_sha256": "52851e76637a7197c32615b7f25097333874e9eec19a6792d158f2e1f56c69d5",
+      "source_char_span": [
+        151,
+        151
+      ],
+      "source_exact_focus": "",
+      "asr_focus": "Ólafur Sigurdsson, Adrian Marsh, Sebastian Hale",
+      "source_context": "tell Nadia: He didn't ask permission. He just walked there. Like the room had rearranged itself around him.\n\n\"We go forward,\" Adrian said.\n\nHe let the words settle. Nobody spoke. Sophie poured wine.\n\n\"The zero-day hit th",
+      "audio_anchor": {
+        "start_seconds": 9.76,
+        "end_seconds": 10.0,
+        "precision": "word_timestamps",
+        "suggested_clip_start_seconds": 7.76,
+        "suggested_clip_end_seconds": 12.0
+      },
+      "suggested_recheck_start_seconds": 5.76,
+      "suggested_recheck_end_seconds": 14.0,
+      "reason": "Six added cast-name tokens at an implausibly brief timestamp may be cast-prompt hallucination; additions must be rechecked.",
+      "confirmed_narration_error": false,
+      "evidence_type": "Saved first local ASR only; awaiting focused or independent proof.",
+      "evidence": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-058-002.1fd651ff5e946c99af4a45b601653c0cd5846fc1bcbe0b2f404d933dcae335ac.json",
+      "evidence_sha256": "936d6c748e496d525bddf2d58dfbfea7c8f22cd9d83b2ece686a5a1b8d53c676"
+    },
+    {
+      "priority_rank": 3,
+      "candidate_id": "ca8a2a55280cfbfbfa7fc50fa45ac305aa09bde0f8fb294ae6244094d86c82eb",
+      "clip_id": "chapter-058-002",
+      "audio_sha256": "f6bd053cd57934cac18f0b02639d9e24e4f749612dbb8ae9c4b8f67e5717aac1",
+      "request_sha256": "19c4993ed421d9202ec200bb9498b3f246aa9791916ea68f2f65738517353290",
+      "source_inputtext_sha256": "52851e76637a7197c32615b7f25097333874e9eec19a6792d158f2e1f56c69d5",
+      "source_char_span": [
+        242,
+        242
+      ],
+      "source_exact_focus": "",
+      "asr_focus": "Ólafur Sigurdsson, Adrian Marsh, Sophie Richter, Ines Brandt",
+      "source_context": "self around him.\n\n\"We go forward,\" Adrian said.\n\nHe let the words settle. Nobody spoke. Sophie poured wine.\n\n\"The zero-day hit thirteen hours ago,\" Adrian said. \"Their recovery estimate is Tuesday noon. We aim to trigger",
+      "audio_anchor": {
+        "start_seconds": 17.4,
+        "end_seconds": 17.64,
+        "precision": "word_timestamps",
+        "suggested_clip_start_seconds": 15.399999999999999,
+        "suggested_clip_end_seconds": 19.64
+      },
+      "suggested_recheck_start_seconds": 13.399999999999999,
+      "suggested_recheck_end_seconds": 21.64,
+      "reason": "Eight added cast-name tokens at an implausibly brief timestamp; not accepted as a harmless name spelling.",
+      "confirmed_narration_error": false,
+      "evidence_type": "Saved first local ASR only; awaiting focused or independent proof.",
+      "evidence": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-058-002.1fd651ff5e946c99af4a45b601653c0cd5846fc1bcbe0b2f404d933dcae335ac.json",
+      "evidence_sha256": "936d6c748e496d525bddf2d58dfbfea7c8f22cd9d83b2ece686a5a1b8d53c676"
+    },
+    {
+      "priority_rank": 4,
+      "candidate_id": "9ac4d8d18f9bc25d1418079fb995bd8fc65b6932fcf17d7324b28d85e24f9c4a",
+      "clip_id": "chapter-048-001",
+      "audio_sha256": "4c4b80f4443df577dc0bf92c54e47a48cd09e449e95c5a775a68f5aa1e8696e4",
+      "request_sha256": "acf9ba03bc1da81e78431b9cd646e8afbc3ae25f9b32584b3cb05bb938665723",
+      "source_inputtext_sha256": "67c3abda626f01bc29a7bdd467df4792c7dc297dbb1ea2d753f50d46fe14fcea",
+      "source_char_span": [
+        1345,
+        1380
+      ],
+      "source_exact_focus": "just hadn't been informed yet.\n\nThe",
+      "asr_focus": "",
+      "source_context": "get had been cautious but predictable, and predictable people were, in Raven's experience, already dead. They just hadn't been informed yet.\n\nThe phone sang. She picked it up.\n\nWhat she received was not a contract. It was a data package.\n\nSpecifically, it",
+      "audio_anchor": {
+        "start_seconds": 83.7,
+        "end_seconds": 83.7,
+        "precision": "neighboring_asr_anchor",
+        "suggested_clip_start_seconds": 81.7,
+        "suggested_clip_end_seconds": 85.7
+      },
+      "suggested_recheck_start_seconds": 79.7,
+      "suggested_recheck_end_seconds": 87.7,
+      "reason": "Missing negative sentence ending changes the claim that a target had not been informed.",
+      "confirmed_narration_error": false,
+      "evidence_type": "Saved first local ASR only; awaiting focused or independent proof.",
+      "evidence": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-048-001.fe0359aabdb40ea88a254c8bbfc502f9f36dfd6d39301678a7a3133b962b5cce.json",
+      "evidence_sha256": "19df60f18a3a938ff6e008f05c24b01887899b50159afdb58539d8eef22247a8"
+    },
+    {
+      "priority_rank": 5,
+      "candidate_id": "ff0fd4a46b5695e96e1d37b9a551d762d14c981af91d4cadd8d7aeb32e190dad",
+      "clip_id": "chapter-043-001",
+      "audio_sha256": "835e81a06b2b6b5a84234a2c76263b56b36600a1472c4eeece927f1e3c6227a3",
+      "request_sha256": "b1315c9ab2b5023fec9ae8f50480c74a5f4dcfe49620da4ad6e42ad41f769532",
+      "source_inputtext_sha256": "1b526a5481f1da0315f069aa84fd32e2b2ad0922d46185fd534eb40a202f3c7e",
+      "source_char_span": [
+        4114,
+        4191
+      ],
+      "source_exact_focus": "scattered across multiple files, never explicit, never collected in one place",
+      "asr_focus": "",
+      "source_context": "he was doing.\n\nAnd then, buried in a subfolder labeled simply \"upstream,\" he found the references.\n\nThey were scattered across multiple files, never explicit, never collected in one place, as though Priya had deliberately fragmented them. But once Adrian started looking, the pattern was unmistaka",
+      "audio_anchor": {
+        "start_seconds": 252.22,
+        "end_seconds": 252.22,
+        "precision": "neighboring_asr_anchor",
+        "suggested_clip_start_seconds": 250.22,
+        "suggested_clip_end_seconds": 254.22
+      },
+      "suggested_recheck_start_seconds": 248.22,
+      "suggested_recheck_end_seconds": 256.22,
+      "reason": "Eleven-word omission includes two never assertions.",
+      "confirmed_narration_error": false,
+      "evidence_type": "Saved first local ASR only; awaiting focused or independent proof.",
+      "evidence": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-043-001.d5cb5268eda208e21116ccefb3f50ca604f9859f1597478879047b0c220e42ca.json",
+      "evidence_sha256": "d73b24053c612760c72edb7484fed16ed6062b966e44af1c21ef33e6eadbd383"
+    },
+    {
+      "priority_rank": 6,
+      "candidate_id": "adbfacac0acaead57a033987bae40387e8c72e89d1684de9b835f08cce22af05",
+      "clip_id": "chapter-070-001",
+      "audio_sha256": "05f6409eb24675190ddf94e1fa7963bd2388968df5123639cc372be7ecb4c189",
+      "request_sha256": "ce5cd2ddafc16a6d529996b841b6483b14f8f507241a3df351a5062f31d106b9",
+      "source_inputtext_sha256": "790c6c85e94e210b672715806988eb5b014480cbac9c4bd815583f460f9dbc70",
+      "source_char_span": [
+        1281,
+        1333
+      ],
+      "source_exact_focus": "liaison's latest briefing. Morrow still did not know",
+      "asr_focus": "",
+      "source_context": " where they could see the listed houseboat. Nineteen hours remained before the deadline they had heard in the liaison's latest briefing. Morrow still did not know why that particular hour mattered.\n\nThe houseboat's curtain was drawn. Through a gap he could see a desk lamp",
+      "audio_anchor": {
+        "start_seconds": 83.46,
+        "end_seconds": 83.46,
+        "precision": "neighboring_asr_anchor",
+        "suggested_clip_start_seconds": 81.46,
+        "suggested_clip_end_seconds": 85.46
+      },
+      "suggested_recheck_start_seconds": 79.46,
+      "suggested_recheck_end_seconds": 87.46,
+      "reason": "Missing narrative subject and did not know changes a character knowledge statement.",
+      "confirmed_narration_error": false,
+      "evidence_type": "Saved first local ASR only; awaiting focused or independent proof.",
+      "evidence": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-070-001.90351931950af7556642a3adcd13450cf6e76d1302c10a26d67206a623d64bec.json",
+      "evidence_sha256": "8bb5f65be666abf986e2a7faafd6278f56375ddb571de72a42344162944e640b"
+    },
+    {
+      "priority_rank": 7,
+      "candidate_id": "c2160aaec2d57f84f523c9ce441df661e4fa238b9356475ee22acb4c37966200",
+      "clip_id": "chapter-047-001",
+      "audio_sha256": "5c1c706f282e1314d169454e212018d809846d200fd4c2afe83323aa03181231",
+      "request_sha256": "5ec746b9a05308cdaae8172721ba6f03abb8587e5ce6306ad8bd6bf16f8ad9b4",
+      "source_inputtext_sha256": "e920d75aee7fbc837c08ba0f66f8f948ec25654d5e437dd73d6e8daa0e7223d7",
+      "source_char_span": [
+        22,
+        500
+      ],
+      "source_exact_focus": "At seven on Sunday morning, Adrian's encrypted terminal received a notification it should not have been able to receive.\n\nHe was in Berlin, in Ines Brandt's factory space in Kreuzberg, going over final integration plans with the Scaffold herself. The factory, a converted industrial building that Ines had transformed into something between a server farm and a greenhouse, with racks of humming equipment standing alongside inexplicable clusters of potted ferns, was the closest",
+      "asr_focus": "",
+      "source_context": "Chapter Forty Seven.\n\nAt seven on Sunday morning, Adrian's encrypted terminal received a notification it should not have been able to receive.\n\nHe was in Berlin, in Ines Brandt's factory space in Kreuzberg, going over final integration plans with the Scaffold herself. The factory, a converted industrial building that Ines had transformed into something between a server farm and a greenhouse, with racks of humming equipment standing alongside inexplicable clusters of potted ferns, was the closest thing the movement had to a central nervous system. Not because it housed the AI, but because Ines's distribu",
+      "audio_anchor": {
+        "start_seconds": 1.2,
+        "end_seconds": 30.0,
+        "precision": "neighboring_asr_anchor",
+        "suggested_clip_start_seconds": 0.0,
+        "suggested_clip_end_seconds": 32.0
+      },
+      "suggested_recheck_start_seconds": 0,
+      "suggested_recheck_end_seconds": 34.0,
+      "reason": "Large opening omission ends at the exact first 30-second ASR boundary; resembles a window artifact but remains unresolved.",
+      "confirmed_narration_error": false,
+      "evidence_type": "Saved first local ASR only; awaiting focused or independent proof.",
+      "evidence": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-047-001.070cc76e30d7df9f2c5c8ac48fa9b90f9de8b40ba8e45ceecb492bdbdf1a0fe6.json",
+      "evidence_sha256": "b3216360cb5b9ec31501f5c288b8e38678ccab9cb29d81d4ea2797765e78bed4"
+    },
+    {
+      "priority_rank": 8,
+      "candidate_id": "efaca361bb3c49ddc4c5fd150a5efa7d5ae0f413d22fe124b79a5219a7d167fc",
+      "clip_id": "chapter-058-001",
+      "audio_sha256": "4dc38751172bc90ef0c100551d7edca22743ac2bf2d3b13aa6b06b8d88924a5c",
+      "request_sha256": "a1270041518e341caa85b079f41e5ef0cae8d51f6b47bf67980e19f37c7087ad",
+      "source_inputtext_sha256": "ec2eb16628046ae1fe39f9345c6bd30a69e4a3d52b57ce7b14da820413c84ff6",
+      "source_char_span": [
+        22,
+        74
+      ],
+      "source_exact_focus": "They gathered at 1:17 a.m. on Monday in the basement",
+      "asr_focus": "",
+      "source_context": "Chapter Fifty Eight.\n\nThey gathered at 1:17 a.m. on Monday in the basement of a closed bookshop in Zurich's Niederdorf district. The couriers had directed the evacuating team here hour",
+      "audio_anchor": {
+        "start_seconds": 1.02,
+        "end_seconds": 30.0,
+        "precision": "neighboring_asr_anchor",
+        "suggested_clip_start_seconds": 0.0,
+        "suggested_clip_end_seconds": 32.0
+      },
+      "suggested_recheck_start_seconds": 0,
+      "suggested_recheck_end_seconds": 34.0,
+      "reason": "Opening statement missing through the first 30-second boundary; adjacent long omission should be reviewed together.",
+      "confirmed_narration_error": false,
+      "evidence_type": "Saved first local ASR only; awaiting focused or independent proof.",
+      "evidence": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-058-001.0836c55dd7cd234268068966b5ed47ddabc5760968be83b92c521edf8ca2dbf6.json",
+      "evidence_sha256": "90c7103d007eec186e46354fd50ec5ed13061d2d3dd7e5f48ec72a3fe5943f44"
+    },
+    {
+      "priority_rank": 9,
+      "candidate_id": "567b6228c900f42d78388ee8993bb4de287320c654687ea3bb9184c0e9e35596",
+      "clip_id": "chapter-058-001",
+      "audio_sha256": "4dc38751172bc90ef0c100551d7edca22743ac2bf2d3b13aa6b06b8d88924a5c",
+      "request_sha256": "a1270041518e341caa85b079f41e5ef0cae8d51f6b47bf67980e19f37c7087ad",
+      "source_inputtext_sha256": "ec2eb16628046ae1fe39f9345c6bd30a69e4a3d52b57ce7b14da820413c84ff6",
+      "source_char_span": [
+        78,
+        500
+      ],
+      "source_exact_focus": "a closed bookshop in Zurich's Niederdorf district. The couriers had directed the evacuating team here hours earlier. Nadia's landlord had opened the service door for them. Adrian thought that a room full of unsold German-language novels was an appropriate place to attempt the most ambitious act of civil disobedience in modern history.\n\nThe bookshop belonged to one of Nadia's contacts, a retired professor of comparative",
+      "asr_focus": "",
+      "source_context": "Chapter Fifty Eight.\n\nThey gathered at 1:17 a.m. on Monday in the basement of a closed bookshop in Zurich's Niederdorf district. The couriers had directed the evacuating team here hours earlier. Nadia's landlord had opened the service door for them. Adrian thought that a room full of unsold German-language novels was an appropriate place to attempt the most ambitious act of civil disobedience in modern history.\n\nThe bookshop belonged to one of Nadia's contacts, a retired professor of comparative literature who had gone bankrupt when a certain online retail monolith had destroyed independent bookselling ",
+      "audio_anchor": {
+        "start_seconds": 30.12,
+        "end_seconds": 30.12,
+        "precision": "neighboring_asr_anchor",
+        "suggested_clip_start_seconds": 28.12,
+        "suggested_clip_end_seconds": 32.120000000000005
+      },
+      "suggested_recheck_start_seconds": 26.12,
+      "suggested_recheck_end_seconds": 34.120000000000005,
+      "reason": "Adjacent 68-word opening passage collapsed to a point at 30.12 seconds; widened diagnostic is required.",
+      "confirmed_narration_error": false,
+      "evidence_type": "Saved first local ASR only; awaiting focused or independent proof.",
+      "evidence": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-058-001.0836c55dd7cd234268068966b5ed47ddabc5760968be83b92c521edf8ca2dbf6.json",
+      "evidence_sha256": "90c7103d007eec186e46354fd50ec5ed13061d2d3dd7e5f48ec72a3fe5943f44"
+    },
+    {
+      "priority_rank": 10,
+      "candidate_id": "044724577f3730a62c15fe848c9eadefd8eb82de2857a4958acfae28e310acc4",
+      "clip_id": "chapter-071-003",
+      "audio_sha256": "77ac36d9695ad1a57ce37104cd39fd42b1ec13cf5630246d47bc1b379e681839",
+      "request_sha256": "184667868d03b8635cddbe14090bb1ea02aef670029bd70d655f5ab514d14032",
+      "source_inputtext_sha256": "984feff22dfb1ab7a8b16305b23ddbd8c7552c0368044ce4c6982f06bd145b2e",
+      "source_char_span": [
+        376,
+        449
+      ],
+      "source_exact_focus": "boy's face in the Zurich basement, red-eyed, trying not to cry, but still",
+      "asr_focus": "",
+      "source_context": "ith the patient, methodical intensity of someone who had nothing left to lose.\n\nAdrian thought of Ólafur. The boy's face in the Zurich basement, red-eyed, trying not to cry, but still, beneath everything, in love with the elegance of his own creation. The timing precision... it's like conduct",
+      "audio_anchor": {
+        "start_seconds": 29.98,
+        "end_seconds": 29.98,
+        "precision": "neighboring_asr_anchor",
+        "suggested_clip_start_seconds": 27.98,
+        "suggested_clip_end_seconds": 31.98
+      },
+      "suggested_recheck_start_seconds": 25.98,
+      "suggested_recheck_end_seconds": 33.980000000000004,
+      "reason": "Thirteen-word narrative bridge containing not to cry missing at 29.98-second boundary.",
+      "confirmed_narration_error": false,
+      "evidence_type": "Saved first local ASR only; awaiting focused or independent proof.",
+      "evidence": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-071-003.504accbfbabff48226d571268dc881ccc5a1f9ed86fd63032b21507b44567204.json",
+      "evidence_sha256": "4bbe27790acc789395408c340bc6daf801c419add4e8c7f8c6dd0c4e384c64d7"
+    },
+    {
+      "priority_rank": 11,
+      "candidate_id": "848b0fcda01c49d8e03172cd5b2d3e828bb2600f88a5bc59aa72bf7e7ed6a3f8",
+      "clip_id": "chapter-076-001",
+      "audio_sha256": "b45614380a9bf883e3fed563e32f7a576aa1d49cd282721b34dc2be93470b21e",
+      "request_sha256": "2f7bb8d6e8b89b8e3b4f1a36eec5d93e1fc959bdf1fb9a676f19b2c8308b1786",
+      "source_inputtext_sha256": "7285f8d024ca9538fc4151a9deae5eeec1d633e1c2561e169c4fdbec90851420",
+      "source_char_span": [
+        1215,
+        1304
+      ],
+      "source_exact_focus": "copied with everything else.\n\nThe desktop was chaos. Files everywhere: simulation outputs",
+      "asr_focus": "",
+      "source_context": "ption key for the mirrored drive. The loaned machine opened onto Ólafur's working desktop, files and settings copied with everything else.\n\nThe desktop was chaos. Files everywhere: simulation outputs, calibration scripts, timing models, documentation that ranged from meticulously detailed to barely legible. ",
+      "audio_anchor": {
+        "start_seconds": 82.56,
+        "end_seconds": 82.56,
+        "precision": "neighboring_asr_anchor",
+        "suggested_clip_start_seconds": 80.56,
+        "suggested_clip_end_seconds": 84.56
+      },
+      "suggested_recheck_start_seconds": 78.56,
+      "suggested_recheck_end_seconds": 86.56,
+      "reason": "Thirteen-word narrative transition and complete sentence omitted.",
+      "confirmed_narration_error": false,
+      "evidence_type": "Saved first local ASR only; awaiting focused or independent proof.",
+      "evidence": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-076-001.36ac9b03be79a2921780016dca55cd678780a8a77af96cc2d4b680e9fbb2fb2b.json",
+      "evidence_sha256": "368c8674d9d14880f2e910a6d68def8636a17146c52846a6ea16c39b909b58a7"
+    },
+    {
+      "priority_rank": 12,
+      "candidate_id": "5710ee6245af426884f81028ea2c1f96174371f58548e0dc5061127f89465200",
+      "clip_id": "chapter-063-003",
+      "audio_sha256": "a4678c5ff96f7e503ae3c8be7a9a2bbc55f9e6934f2d5336b1fa42b00858b900",
+      "request_sha256": "63815c048058aeca3c7fbe279fb90be43a25c91a0ee39dc0724a4824dbdbadc8",
+      "source_inputtext_sha256": "e9638fa45b34bdfd22d8a2d2ba6c547e55c8a22e5f9f82a92c0b28665de39cd8",
+      "source_char_span": [
+        1915,
+        1973
+      ],
+      "source_exact_focus": "Andrei's exploit chain cut through it cleanly.\n\nHe ran the",
+      "asr_focus": "Andre's",
+      "source_context": "y was good by industry standards, but it lacked the multiple redundant layers that Strutt and Venn had built. Andrei's exploit chain cut through it cleanly.\n\nHe ran the simulation. Every step executed flawlessly.\n\nToo easy, the paranoid part of his brain whispered. Why is the y",
+      "audio_anchor": {
+        "start_seconds": 110.14,
+        "end_seconds": 110.68,
+        "precision": "word_timestamps",
+        "suggested_clip_start_seconds": 108.14,
+        "suggested_clip_end_seconds": 112.68
+      },
+      "suggested_recheck_start_seconds": 106.14,
+      "suggested_recheck_end_seconds": 114.68,
+      "reason": "Complete sentence plus following lead-in swallowed by a name rendering; not a simple proper-name spelling difference.",
+      "confirmed_narration_error": false,
+      "evidence_type": "Saved first local ASR only; awaiting focused or independent proof.",
+      "evidence": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-063-003.1ba1e598c5d70b58c19f2a4e6675642e9e313b57941d4c2c00d7266e6b4d0a35.json",
+      "evidence_sha256": "17a8aaa131d48a5d79ca4c79f38aa04ddf14cc442aec8bfe8760f6c9b2a8e73a"
+    },
+    {
+      "priority_rank": 13,
+      "candidate_id": "4e6dfa4dfa904a3ee2a3dfd953b21dc70bb885f7da33f042e50eb447e29d313c",
+      "clip_id": "chapter-073-002",
+      "audio_sha256": "ddace7e475e3a4e27bb97b9e359d2d217be95e557af86498b9b392e12b081b61",
+      "request_sha256": "096c48703c9ccc57a9be96581394e69b4fb0e52dd4eaefc9d1e2825b6a581664",
+      "source_inputtext_sha256": "224a83d58a6673d8688c8c863538eda2d2a8a0866604c9e2338a9b73af028b85",
+      "source_char_span": [
+        3073,
+        3145
+      ],
+      "source_exact_focus": "man walked in: pale, fair-haired, wearing a jacket too thin for February",
+      "asr_focus": "",
+      "source_context": "he stillness of a woman who had all the time in the world.\n\nAcross the canal, the cafe's door opened. A young man walked in: pale, fair-haired, wearing a jacket too thin for February. He moved with the self-conscious alertness of someone who was not used to tradecraft. He glanced around the ",
+      "audio_anchor": {
+        "start_seconds": 197.68,
+        "end_seconds": 197.68,
+        "precision": "neighboring_asr_anchor",
+        "suggested_clip_start_seconds": 195.68,
+        "suggested_clip_end_seconds": 199.68
+      },
+      "suggested_recheck_start_seconds": 193.68,
+      "suggested_recheck_end_seconds": 201.68,
+      "reason": "Thirteen-word character description omitted before preserved continuation.",
+      "confirmed_narration_error": false,
+      "evidence_type": "Saved first local ASR only; awaiting focused or independent proof.",
+      "evidence": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-073-002.c0a5ed5587c474b9b01547bb14093b2634d964156f2b4c8122ac6e4d8846724e.json",
+      "evidence_sha256": "4043af6a15aa98bd0708128d67e2ffa85ad6b407634ac25bd3a734e1b1f07d9e"
+    },
+    {
+      "priority_rank": 14,
+      "candidate_id": "2b0304bab88cf2ab7193c16818e675cd32c0bf586ac76f4f1a1ad19d87bb3e7c",
+      "clip_id": "chapter-075-002",
+      "audio_sha256": "4760c0e9c0e63da8bc74424376e6551db0dca0967fbfd4c5150d9fd8e33b767c",
+      "request_sha256": "f14e16ae5968d8c20711d4bcb8f9fef35cf4f72a0a68be4dfd9a87504cefbf56",
+      "source_inputtext_sha256": "8880276f156820c804bf57aed264ca9ad438fdd14bb067009054ec827c231027",
+      "source_char_span": [
+        2061,
+        2096
+      ],
+      "source_exact_focus": "Reykjavik. I want to go to Ólafur's",
+      "asr_focus": "his",
+      "source_context": "dia—\" He stopped. Swallowed. Started again. \"When this is over. When we're on the other side. I want to go to Reykjavik. I want to go to Ólafur's university and talk to his professors. His friends. I want someone to know what he did.\"\n\nSilence. Then, very",
+      "audio_anchor": {
+        "start_seconds": 135.7,
+        "end_seconds": 136.1,
+        "precision": "word_timestamps",
+        "suggested_clip_start_seconds": 133.7,
+        "suggested_clip_end_seconds": 138.1
+      },
+      "suggested_recheck_start_seconds": 131.7,
+      "suggested_recheck_end_seconds": 140.1,
+      "reason": "Dialogue destination and I want to go to omitted or replaced by his; likely name confusion does not establish source equivalence.",
+      "confirmed_narration_error": false,
+      "evidence_type": "Saved first local ASR only; awaiting focused or independent proof.",
+      "evidence": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-075-002.47b249d866a9db0bf8d72c779755b117009cfa5b0374e2238421f92898417bbf.json",
+      "evidence_sha256": "c7d8fe9bedf8b3af5a336ce38e68065dfb3eeba1fe6612cceb205aaf2ad5a94a"
+    },
+    {
+      "priority_rank": 15,
+      "candidate_id": "45a3253eedd08bf91a5d5f3dd6b2ca33ef5439f1d970d377755d55faa40f32d4",
+      "clip_id": "chapter-055-002",
+      "audio_sha256": "9da8f17962f0891c2d8a3919dd856362c228a1d17477a078f842720c338fe63d",
+      "request_sha256": "daf07cce6a22d8e15fc964b9f0829ce20f67ca3013fc04472dafdc212d558362",
+      "source_inputtext_sha256": "683610ca9bf1607b811667dc83e73f3f8d27332d4ccf69a3e01ea919cda76845",
+      "source_char_span": [
+        2504,
+        2576
+      ],
+      "source_exact_focus": "oligarchs dethroned? A better world, risen from the ashes of the old one",
+      "asr_focus": "",
+      "source_context": "gger. Watch the data flood the world like water through a broken dam.\n\nAnd then what? Democracy restored? The oligarchs dethroned? A better world, risen from the ashes of the old one?\n\nMaybe this was how it always went. Build the towers. Watch them become prisons. Tear them down. The species",
+      "audio_anchor": {
+        "start_seconds": 157.66,
+        "end_seconds": 157.66,
+        "precision": "neighboring_asr_anchor",
+        "suggested_clip_start_seconds": 155.66,
+        "suggested_clip_end_seconds": 159.66
+      },
+      "suggested_recheck_start_seconds": 153.66,
+      "suggested_recheck_end_seconds": 161.66,
+      "reason": "Fourteen-word rhetorical question and answer continuation omitted.",
+      "confirmed_narration_error": false,
+      "evidence_type": "Saved first local ASR only; awaiting focused or independent proof.",
+      "evidence": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-055-002.1717d98532d19f3f1d04304d2cddb1d68c5e05105838afbfdcdaa0fd99460592.json",
+      "evidence_sha256": "b723b3abffd87caef238fcbe4dc70bf086ebff45be2a8786892eb32ee3cf0e61"
+    },
+    {
+      "priority_rank": 16,
+      "candidate_id": "7e64898d0186335d6e590563fdf01815dd901889963faaaceb1c043509d2f3bc",
+      "clip_id": "chapter-042-001",
+      "audio_sha256": "f56c6b991b5eeefb72fba62b77323537eebb0733168cdb855c67da89faeb65e9",
+      "request_sha256": "96f0b24e6ed5454f4eebc32fcade090fc5a4d6222f5e9f7b5337f20187442e87",
+      "source_inputtext_sha256": "08ba6a2c430ebf792dfe7f7b340be7114b8c088ec11494cea20e6e86ba71194e",
+      "source_char_span": [
+        2438,
+        2471
+      ],
+      "source_exact_focus": "wealth fund cocktail hour. Twelve",
+      "asr_focus": "",
+      "source_context": " That was the problem.\n\nAfter the panel, the reception circuit. A consulting firm's drinks event. A sovereign wealth fund cocktail hour. Twelve people eating venison while a former head of state remarked on the importance of \"inclusive capitalism.\" At a",
+      "audio_anchor": {
+        "start_seconds": 141.86,
+        "end_seconds": 141.86,
+        "precision": "neighboring_asr_anchor",
+        "suggested_clip_start_seconds": 139.86,
+        "suggested_clip_end_seconds": 143.86
+      },
+      "suggested_recheck_start_seconds": 137.86,
+      "suggested_recheck_end_seconds": 145.86,
+      "reason": "Five-word event description and following number omitted.",
+      "confirmed_narration_error": false,
+      "evidence_type": "Saved first local ASR only; awaiting focused or independent proof.",
+      "evidence": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-042-001.70106d8169d2aef9a40176df2e298ba62c6cad191f31d1eb90b2303c42429f60.json",
+      "evidence_sha256": "7b276d018cef0a3f44032637bd35feb593ad6aa1b2719e797abc94aeac04995e"
+    },
+    {
+      "priority_rank": 17,
+      "candidate_id": "5a90101319131efa295993806908a732a181a2be604d2ea2f4ad100b7fa4eadd",
+      "clip_id": "chapter-066-002",
+      "audio_sha256": "bb31c421f454b6ff14c73caff864091a98e29653efe99f8df1a937bad650c202",
+      "request_sha256": "69ada38247ff36dd63f5f5d207bd409bd8f7d0ded4e66eb534c18177d37d8b6c",
+      "source_inputtext_sha256": "a09d7fdf12600389a3ea8ab970a73ddd242db5c0fe26b60eb01ebfba35a9b2cd",
+      "source_char_span": [
+        3606,
+        3632
+      ],
+      "source_exact_focus": "Kreuzberg factory.\n\nInes's",
+      "asr_focus": "He and his",
+      "source_context": "ike Amsterdam, was a city where bicycle couriers attracted no attention) who carried messages to and from the Kreuzberg factory.\n\nInes's response: Network at full surviving capacity. 3,100 of 11,000 nodes active — AI compromise killed the rest. E",
+      "audio_anchor": {
+        "start_seconds": 214.92,
+        "end_seconds": 216.76,
+        "precision": "word_timestamps",
+        "suggested_clip_start_seconds": 212.92,
+        "suggested_clip_end_seconds": 218.76
+      },
+      "suggested_recheck_start_seconds": 210.92,
+      "suggested_recheck_end_seconds": 220.76,
+      "reason": "Place description and possessive subject replaced by He and his; meaningful text remains unverified.",
+      "confirmed_narration_error": false,
+      "evidence_type": "Saved first local ASR only; awaiting focused or independent proof.",
+      "evidence": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-066-002.190933b39999dc358522129dfcd028946ac09e1ce78a30e86606fe22e16b81b1.json",
+      "evidence_sha256": "8e2b0a9de9a51e64d6a1726fda47f6290e3a3ba5025e338c42fd05ff0febe821"
+    },
+    {
+      "priority_rank": 18,
+      "candidate_id": "948678d24216f74578774638b4d46121ff3efcf904d4217e640944b2342d61fb",
+      "clip_id": "chapter-061-001",
+      "audio_sha256": "3159858cb2758fff206fd2ca2c3a3d9623405066e290d537340afb894c101302",
+      "request_sha256": "c3b8e43afe63dc95baafd51fbd7c317ebc30566036c1c47b669c299a4f0e7dc6",
+      "source_inputtext_sha256": "70fd662d5e816f3521114d8f15676f26e14f266089e8671f79d9b98b621e4a23",
+      "source_char_span": [
+        4400,
+        4408
+      ],
+      "source_exact_focus": "what she",
+      "asr_focus": "which he",
+      "source_context": "g the architecture from within. Adrian was working from the outside, reconstructing from memory and inference what she had known from experience.",
+      "audio_anchor": {
+        "start_seconds": 262.62,
+        "end_seconds": 263.08,
+        "precision": "word_timestamps",
+        "suggested_clip_start_seconds": 260.62,
+        "suggested_clip_end_seconds": 264.68
+      },
+      "suggested_recheck_start_seconds": 258.62,
+      "suggested_recheck_end_seconds": 264.68,
+      "reason": "what she versus which he changes a pronoun and reference.",
+      "confirmed_narration_error": false,
+      "evidence_type": "Saved first local ASR only; awaiting focused or independent proof.",
+      "evidence": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-061-001.5effcac70db9550a3abeb11c6637c543139b4ff3b62788ad55fec01cde1fe362.json",
+      "evidence_sha256": "ded1dc272ad1d3accb8862aaf103706590ac8dcab07e25d9bc1a6517ab7af549"
+    },
+    {
+      "priority_rank": 19,
+      "candidate_id": "6410c8b69e284f53a8843b1ededc15dc78ca56f2a23044e4e3a38d16864f4fa1",
+      "clip_id": "chapter-057-001",
+      "audio_sha256": "95093c974d7092f990a44d5a24afd1cf8eba91275c981b6c23c475c3c50a9a92",
+      "request_sha256": "9a8130d9a8cf77f666e5628b9ad1ce203eb78be7462f5a9b215100d939872df1",
+      "source_inputtext_sha256": "352583df07d8aa0a8b0435a92a101ba10449e81cde193a9654f9883971fb2c8e",
+      "source_char_span": [
+        3201,
+        3216
+      ],
+      "source_exact_focus": "does Tomás land",
+      "asr_focus": "is to Mossland",
+      "source_context": " discussed.\"\n\n\"Maria has the access instructions,\" Yannis said. \"My driver can collect them before dawn. When does Tomás land?\"\n\n\"Just after three. Lisbon airport.\"\n\n\"Have him wait outside arrivals. The van will be there.\"\n\n\"The other ",
+      "audio_anchor": {
+        "start_seconds": 197.02,
+        "end_seconds": 197.74,
+        "precision": "word_timestamps",
+        "suggested_clip_start_seconds": 195.02,
+        "suggested_clip_end_seconds": 199.74
+      },
+      "suggested_recheck_start_seconds": 193.02,
+      "suggested_recheck_end_seconds": 201.74,
+      "reason": "Question about a named person landing is garbled; no broad name alias can recover all words safely.",
+      "confirmed_narration_error": false,
+      "evidence_type": "Saved first local ASR only; awaiting focused or independent proof.",
+      "evidence": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-057-001.42686b343160e78314ee9284bda6acb69dcdb12bb1de6bbda3d8f5a46ce78abc.json",
+      "evidence_sha256": "840f2ac0dea29a59493c8dfd125ad93147552aec2006d7ba020c1428fdc1af35"
+    },
+    {
+      "priority_rank": 20,
+      "candidate_id": "78df227b6b96e4c4914e68d98af89fdef7a10fbc9fd00d82bbf45ce3a368f8c9",
+      "clip_id": "chapter-074-001",
+      "audio_sha256": "4b7c5d37bb076d21871135ea6a1b01a1397a0f5284352f829be8f4e93fa21337",
+      "request_sha256": "6eeb72d3ae427a2b7f5de076155c5adf78dbb714ecd59282124cc37cd586e72f",
+      "source_inputtext_sha256": "a55eb8c8321c9290a647e0b136ecc4cad70782d95eb69b836baa8a8ca4d56bd9",
+      "source_char_span": [
+        3576,
+        3600
+      ],
+      "source_exact_focus": "Ólafur watched her leave",
+      "asr_focus": "All of our watch to relief",
+      "source_context": "rier nodded once, zipped her backpack, and walked out. The entire exchange had taken less than forty seconds. Ólafur watched her leave, then turned the USB drive over in his hands. Such a small thing. Such an enormous weight.\n\nHe needed to get ",
+      "audio_anchor": {
+        "start_seconds": 223.54,
+        "end_seconds": 224.38,
+        "precision": "word_timestamps",
+        "suggested_clip_start_seconds": 221.54,
+        "suggested_clip_end_seconds": 226.38
+      },
+      "suggested_recheck_start_seconds": 219.54,
+      "suggested_recheck_end_seconds": 228.38,
+      "reason": "Name plus action phrase garbled, so not safely equivalent from name spelling alone.",
+      "confirmed_narration_error": false,
+      "evidence_type": "Saved first local ASR only; awaiting focused or independent proof.",
+      "evidence": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-074-001.4e67fbe8d4c829e00525f2decc7ecc9e74f5c2b4f506d24b19e15771f61084d0.json",
+      "evidence_sha256": "f3eae49546a1cd8da29643f69657a43e370d4422f7f0fa113846a1054f908577"
+    },
+    {
+      "priority_rank": 21,
+      "candidate_id": "04d06d2cf5718dc1751c954dc0cfddb97bf5bd3cdf5fbad911fe6795dae6cb21",
+      "clip_id": "chapter-047-001",
+      "audio_sha256": "5c1c706f282e1314d169454e212018d809846d200fd4c2afe83323aa03181231",
+      "request_sha256": "5ec746b9a05308cdaae8172721ba6f03abb8587e5ce6306ad8bd6bf16f8ad9b4",
+      "source_inputtext_sha256": "e920d75aee7fbc837c08ba0f66f8f948ec25654d5e437dd73d6e8daa0e7223d7",
+      "source_char_span": [
+        2404,
+        2407
+      ],
+      "source_exact_focus": "How",
+      "asr_focus": "",
+      "source_context": "the plan she'd hoped she'd never need. \"Someone's inside the encryption layer. They're reading everything.\"\n\n\"How?\"\n\n\"I don't know how. The question isn't how. The question is how much.\"\n\nHer monitoring displays answered th",
+      "audio_anchor": {
+        "start_seconds": 142.68,
+        "end_seconds": 145.36,
+        "precision": "neighboring_asr_anchor",
+        "suggested_clip_start_seconds": 140.68,
+        "suggested_clip_end_seconds": 147.36
+      },
+      "suggested_recheck_start_seconds": 138.68,
+      "suggested_recheck_end_seconds": 149.36,
+      "reason": "Entire How? dialogue utterance absent.",
+      "confirmed_narration_error": false,
+      "evidence_type": "Saved first local ASR only; awaiting focused or independent proof.",
+      "evidence": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-047-001.070cc76e30d7df9f2c5c8ac48fa9b90f9de8b40ba8e45ceecb492bdbdf1a0fe6.json",
+      "evidence_sha256": "b3216360cb5b9ec31501f5c288b8e38678ccab9cb29d81d4ea2797765e78bed4"
+    },
+    {
+      "priority_rank": 22,
+      "candidate_id": "c3ca4c0d322b10b50b87fb8122b146fc43721bce454b51f383be1f71458beb28",
+      "clip_id": "chapter-043-001",
+      "audio_sha256": "835e81a06b2b6b5a84234a2c76263b56b36600a1472c4eeece927f1e3c6227a3",
+      "request_sha256": "b1315c9ab2b5023fec9ae8f50480c74a5f4dcfe49620da4ad6e42ad41f769532",
+      "source_inputtext_sha256": "1b526a5481f1da0315f069aa84fd32e2b2ad0922d46185fd534eb40a202f3c7e",
+      "source_char_span": [
+        4307,
+        4319
+      ],
+      "source_exact_focus": "Instructions",
+      "asr_focus": "",
+      "source_context": "hough Priya had deliberately fragmented them. But once Adrian started looking, the pattern was unmistakable.\n\nInstructions. Guidance. Information delivered from above.\n\nNot from Seb. The Original Leader's communications with Priya w",
+      "audio_anchor": {
+        "start_seconds": 259.76,
+        "end_seconds": 262.12,
+        "precision": "neighboring_asr_anchor",
+        "suggested_clip_start_seconds": 257.76,
+        "suggested_clip_end_seconds": 264.12
+      },
+      "suggested_recheck_start_seconds": 255.76,
+      "suggested_recheck_end_seconds": 266.12,
+      "reason": "Whole Instructions. utterance absent.",
+      "confirmed_narration_error": false,
+      "evidence_type": "Saved first local ASR only; awaiting focused or independent proof.",
+      "evidence": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-043-001.d5cb5268eda208e21116ccefb3f50ca604f9859f1597478879047b0c220e42ca.json",
+      "evidence_sha256": "d73b24053c612760c72edb7484fed16ed6062b966e44af1c21ef33e6eadbd383"
+    },
+    {
+      "priority_rank": 23,
+      "candidate_id": "c2a90932d35bc7a96cb3d9ca24ff40a3cbd52ffbafeba3767042029d4d80d971",
+      "clip_id": "chapter-046-001",
+      "audio_sha256": "aac7fba4a7947c619f3a53bb81741e991d2bc3198d0872000f986a805cb44882",
+      "request_sha256": "0b9ab757b4e65f24b2d1c379fa9fc64d265c3f4cb7d3a97c1882c64c7974f841",
+      "source_inputtext_sha256": "198c9136153d54f8aef3ea11db5a21954eefb96060a5b1284e2ce9a817efe507",
+      "source_char_span": [
+        3531,
+        3538
+      ],
+      "source_exact_focus": "Silence",
+      "asr_focus": "",
+      "source_context": "ys and the encryption strength momentarily drops. The next window opens in approximately seventy-two hours.\"\n\nSilence. The kind that descends on a room when the people in it realize that the thing they've been fighting for is s",
+      "audio_anchor": {
+        "start_seconds": 216.68,
+        "end_seconds": 218.9,
+        "precision": "neighboring_asr_anchor",
+        "suggested_clip_start_seconds": 214.68,
+        "suggested_clip_end_seconds": 220.9
+      },
+      "suggested_recheck_start_seconds": 212.68,
+      "suggested_recheck_end_seconds": 222.9,
+      "reason": "Plain narrative Silence. absent; this word is not an explicit silent control tag.",
+      "confirmed_narration_error": false,
+      "evidence_type": "Saved first local ASR only; awaiting focused or independent proof.",
+      "evidence": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-046-001.76f89107c481d26c73967af1d97259bc66244eb96574ebdc2e27e1212d87907d.json",
+      "evidence_sha256": "614b818c3a470cb7edeb8167ccecbc50c95b7280a748b482cd2e4c4871ae864c"
+    },
+    {
+      "priority_rank": 24,
+      "candidate_id": "6c358fd5b8fa3fd6115bc8a27d475439125856374a403e103d7db1f45d8f2490",
+      "clip_id": "chapter-053-001",
+      "audio_sha256": "6de3216b3c71ed66f7092ea18ab8f92a01892cd14ec7f8add943f5f3abc8a052",
+      "request_sha256": "28e8d169efb0eaa3c22cdc6b714eb402cb7935b46856e94f85bfca0612508a8d",
+      "source_inputtext_sha256": "dfec0e8d508bdc8db1ffcf81d26d9f81753251a764ec82c96b3c9de84cc39886",
+      "source_char_span": [
+        4160,
+        4160
+      ],
+      "source_exact_focus": "",
+      "asr_focus": "Okay",
+      "source_context": "dy.\"\n\n\"And the trigger?\"\n\n\"On his way to the rendezvous. Then London. Nadia has replacement hardware waiting.\"",
+      "audio_anchor": {
+        "start_seconds": 266.68,
+        "end_seconds": 266.8,
+        "precision": "word_timestamps",
+        "suggested_clip_start_seconds": 264.68,
+        "suggested_clip_end_seconds": 267.16
+      },
+      "suggested_recheck_start_seconds": 262.68,
+      "suggested_recheck_end_seconds": 267.16,
+      "reason": "Added Okay after the source ends; requires actual file-tail proof.",
+      "confirmed_narration_error": false,
+      "evidence_type": "Saved first local ASR only; awaiting focused or independent proof.",
+      "evidence": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-053-001.c553de10b287eac6a2117c1b7458ea217c03db950dcdf7fbc8a87072922625c2.json",
+      "evidence_sha256": "dc9c0f6728bdbb743eaf765bb85803ae9b6812d55d60282997e35a533f62d33e"
+    },
+    {
+      "priority_rank": 25,
+      "candidate_id": "c8a29a314743e92a12448dc4bae5f438ee12af5055d14335dd57eb324e0e79ff",
+      "clip_id": "chapter-056-001",
+      "audio_sha256": "a31619b260f97cc0ca94395fc3a8fe03181b4b33f73a6fbd489cb8df24527fcb",
+      "request_sha256": "16dea9968597c1ea5bdf0e19eb6cfd18202b4b68ad77fbde128a0f78b02275c6",
+      "source_inputtext_sha256": "35641562322be8ef5b6c60ea568d638359bc372b980c25d3e643546fc6c6fad5",
+      "source_char_span": [
+        1339,
+        1339
+      ],
+      "source_exact_focus": "",
+      "asr_focus": "variables",
+      "source_context": " systems, and Raven didn't like acceleration. Acceleration meant pressure, and pressure introduced variables, and variables were the enemy of craft.\n\nShe had received the Hale contract six hours before the kill. She'd us",
+      "audio_anchor": {
+        "start_seconds": 81.98,
+        "end_seconds": 82.16,
+        "precision": "word_timestamps",
+        "suggested_clip_start_seconds": 79.98,
+        "suggested_clip_end_seconds": 84.16
+      },
+      "suggested_recheck_start_seconds": 77.98,
+      "suggested_recheck_end_seconds": 86.16,
+      "reason": "Repeated variables added near the source occurrence.",
+      "confirmed_narration_error": false,
+      "evidence_type": "Saved first local ASR only; awaiting focused or independent proof.",
+      "evidence": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-056-001.929d42702c831f8170f4fbae34b373cb7be4266a537d4fe58877850ddb69b876.json",
+      "evidence_sha256": "a74e5c710924171cbd2370918e56dd53441c5189a93ef55250eb887bc990efca"
+    },
+    {
+      "priority_rank": 26,
+      "candidate_id": "509ac11ca90f7ecfff0a0af3679db9889011092bbf1709693ef59cfe3b3929e8",
+      "clip_id": "chapter-073-001",
+      "audio_sha256": "5f309c1f251e98e4116508a2e0c60bedde5062022d53fea27ec532bc7f4f37cb",
+      "request_sha256": "8fe7c2c90db5ec4d862c9ad740278774e02f3634941aa7e483a7604b80055cc0",
+      "source_inputtext_sha256": "78fd4195dd7c1de181d1d88824b6691b9aea21e250efc465f065ae7d2e4b4cea",
+      "source_char_span": [
+        2731,
+        2731
+      ],
+      "source_exact_focus": "",
+      "asr_focus": "first",
+      "source_context": "fore selecting the model. The hesitation of a person buying their fourth or fifth disposable phone, not their first. Raven had contacts in the telecom gray market, people who tracked bulk burner purchases for various int",
+      "audio_anchor": {
+        "start_seconds": 163.02,
+        "end_seconds": 163.3,
+        "precision": "word_timestamps",
+        "suggested_clip_start_seconds": 161.02,
+        "suggested_clip_end_seconds": 165.3
+      },
+      "suggested_recheck_start_seconds": 159.02,
+      "suggested_recheck_end_seconds": 167.3,
+      "reason": "Added first changes an ordinal or introduces extra wording.",
+      "confirmed_narration_error": false,
+      "evidence_type": "Saved first local ASR only; awaiting focused or independent proof.",
+      "evidence": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-073-001.6eb51d7c4e2b199d5a0df638ac896d201f280bc86a853e644fd2b32e72bccb48.json",
+      "evidence_sha256": "a710955bf71b5dbd12eb21bb80e85ba02735b8c8f1ba8b81de0c362e09a7d617"
+    },
+    {
+      "priority_rank": 27,
+      "candidate_id": "802ed6f4ac25ce89de759ee85e41aa859dc322b18f3c326dcbdefe558c1e3457",
+      "clip_id": "chapter-058-003",
+      "audio_sha256": "e533d096d1ad535ea51b7182c1cda20ead037a92bf306909e914f0774242a308",
+      "request_sha256": "d472a6faee395dc9ef0f20c4eb05d68c939cbfbab53c53514d24e95a08a29b8f",
+      "source_inputtext_sha256": "a448daea9de0965428adb3a624dfa93bc8f644d29c20407f752d2c1e9421c5ec",
+      "source_char_span": [
+        2366,
+        2366
+      ],
+      "source_exact_focus": "",
+      "asr_focus": "did the",
+      "source_context": "e same time will that it should become a universal law.\n\nWell. Here he was. Willing it.\n\nGrief or principle — did the distinction matter when the action was the same? The world didn't care why he acted. The world only ca",
+      "audio_anchor": {
+        "start_seconds": 160.68,
+        "end_seconds": 161.12,
+        "precision": "word_timestamps",
+        "suggested_clip_start_seconds": 158.68,
+        "suggested_clip_end_seconds": 163.12
+      },
+      "suggested_recheck_start_seconds": 156.68,
+      "suggested_recheck_end_seconds": 165.12,
+      "reason": "Repeated did the added before the existing source phrase.",
+      "confirmed_narration_error": false,
+      "evidence_type": "Saved first local ASR only; awaiting focused or independent proof.",
+      "evidence": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-058-003.e7bb97d1375bc1abafdb787b3e6446833ebb0a38a321b773058c6c4d7795ed45.json",
+      "evidence_sha256": "3163bcc247d1efaf4386578429c6f8bf870455a8389cc1f3c49d175f08eed186"
+    },
+    {
+      "priority_rank": 28,
+      "candidate_id": "a73abe673318ea587ae0e68cb422268e01399d4b67ee452ac799f5169b0f7eb4",
+      "clip_id": "chapter-051-001",
+      "audio_sha256": "9f15f730d06b8b1b3157a43465d069536ec915808a92ee20704be1611d8be61e",
+      "request_sha256": "4b0e5436fc63fca01093a5aa88219de02bdce54151ea999a706c4b0db0e7975f",
+      "source_inputtext_sha256": "f9a134c8aead91de61e6a1c688dad771a69ead1452edb6db59cca1c84761a69c",
+      "source_char_span": [
+        3705,
+        3707
+      ],
+      "source_exact_focus": "We",
+      "asr_focus": "",
+      "source_context": "The window closes Tuesday at 12:17,\" Nadia said, tapping the table. \"Forty-two hours. They're looking inward. We use that.\"\n\n\"Not without coordination,\" Seb said. \"The AI handled communications, logistics, timing. Without ",
+      "audio_anchor": {
+        "start_seconds": 227.18,
+        "end_seconds": 227.76,
+        "precision": "neighboring_asr_anchor",
+        "suggested_clip_start_seconds": 225.18,
+        "suggested_clip_end_seconds": 229.76
+      },
+      "suggested_recheck_start_seconds": 223.18,
+      "suggested_recheck_end_seconds": 231.76,
+      "reason": "Missing We removes the subject of a dialogue sentence.",
+      "confirmed_narration_error": false,
+      "evidence_type": "Saved first local ASR only; awaiting focused or independent proof.",
+      "evidence": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-051-001.5b70428bbd5b2d7747fcee72cda7f48e82f65a34dbd0bc44fbf83437f651c6ea.json",
+      "evidence_sha256": "10b0a93010b3c145feecf9d968d548bd5960b18f8876b353eced3880c1d49b24"
+    },
+    {
+      "priority_rank": 29,
+      "candidate_id": "4c635fb0320702fe9b769f461410d34deb4c75033ff3a2eb45ec6fed65176d75",
+      "clip_id": "chapter-052-001",
+      "audio_sha256": "438c03c05dd3abaf9e7ca59a8aa65035e19f6ed5a00f55264c8470a3bcfee158",
+      "request_sha256": "5a86022056bd6428ce82e15e07a13ee5af7d4fe3b1410999dd9644f791f3513a",
+      "source_inputtext_sha256": "18b6e95330d3d8bccdcd370505e1cdd51cb5a884b45e72884da3e84ed4e8a553",
+      "source_char_span": [
+        2942,
+        2946
+      ],
+      "source_exact_focus": "Cole",
+      "asr_focus": "",
+      "source_context": "s of moral flexibility. He knew each of them well enough to predict their positions before they stated them.\n\nCole: yes, enthusiastically. The Showman viewed direct action as proof of strength.\n\nStrutt: yes, analytically. Th",
+      "audio_anchor": {
+        "start_seconds": 166.96,
+        "end_seconds": 167.92,
+        "precision": "neighboring_asr_anchor",
+        "suggested_clip_start_seconds": 164.96,
+        "suggested_clip_end_seconds": 169.92
+      },
+      "suggested_recheck_start_seconds": 162.96,
+      "suggested_recheck_end_seconds": 171.92,
+      "reason": "Missing Cole removes an attribution in the vote listing.",
+      "confirmed_narration_error": false,
+      "evidence_type": "Saved first local ASR only; awaiting focused or independent proof.",
+      "evidence": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-052-001.be99689adf86898ea4e83e49e3d36975f7c8af1adfed1ffb98898863e878fad9.json",
+      "evidence_sha256": "49a1dc0e814726a3c7c0ebd1a0c16c8cef03667dcf263a242c7b8c5e18ca066c"
+    },
+    {
+      "priority_rank": 30,
+      "candidate_id": "331e2201ca922a0b88e038e0d53581ad5fbfa2f7aefea34cdd0e477e2970e5ff",
+      "clip_id": "chapter-066-001",
+      "audio_sha256": "e949d47c98b8bb479986c51d4223b1977e1ec56ad68bc67941ca167b3adfb766",
+      "request_sha256": "dc85cecfad71aea89256f9b7f20ba57c0143228fa46fdc3b93c320c9d4502143",
+      "source_inputtext_sha256": "35b2f6eb53c7af33d43d8a916a3fb1ab7e660d8331a7d7c0bb2e35adbcbba870",
+      "source_char_span": [
+        1083,
+        1088
+      ],
+      "source_exact_focus": "three",
+      "asr_focus": "through",
+      "source_context": "s. I'll be downstairs running the shop.\"\n\nWhat Nadia needed was a table, six burner phones, a stack of paper, three pencils, and silence. Danny provided all of these, along with unsolicited portions of fish and chips that app",
+      "audio_anchor": {
+        "start_seconds": 64.86,
+        "end_seconds": 65.02,
+        "precision": "word_timestamps",
+        "suggested_clip_start_seconds": 62.86,
+        "suggested_clip_end_seconds": 67.02
+      },
+      "suggested_recheck_start_seconds": 60.86,
+      "suggested_recheck_end_seconds": 69.02,
+      "reason": "three rendered through may change a numeric count; not treated as same-value representation.",
+      "confirmed_narration_error": false,
+      "evidence_type": "Saved first local ASR only; awaiting focused or independent proof.",
+      "evidence": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-066-001.990c8c273e4add6e65ba4b1942e48c83f7f90316bcde56b8946ffda51d0902e7.json",
+      "evidence_sha256": "ba4b61d40104d20da66642e20feb26e74dfb09ea05ffee7b4303942310b09e9f"
+    },
+    {
+      "priority_rank": 31,
+      "candidate_id": "faf9ae997db139e7623c1d70da8f5697b952aafcffc71ab8d4f416dde2bf3927",
+      "clip_id": "chapter-072-001",
+      "audio_sha256": "cdb634540634c41f1aa4ecea7f1c851269eb78eee424848cd9653ca9a90e479b",
+      "request_sha256": "b7d9c6e4d89bf6e94dd6274533108b0161f21c66140d3dc37ea98e53b5e67dcb",
+      "source_inputtext_sha256": "43e75cacfb8f7641a6182fe45b78ddb92bb3555b43464cc8a45da86d061d6d2f",
+      "source_char_span": [
+        4142,
+        4145
+      ],
+      "source_exact_focus": "one",
+      "asr_focus": "when",
+      "source_context": "he moment: Tuesday, 12:17:03 Central European Time. An authorization arriving early would be held until then; one arriving after the epoch would be rejected. They were all counting down to the same heartbeat, independently,",
+      "audio_anchor": {
+        "start_seconds": 265.06,
+        "end_seconds": 265.26,
+        "precision": "word_timestamps",
+        "suggested_clip_start_seconds": 263.06,
+        "suggested_clip_end_seconds": 267.26
+      },
+      "suggested_recheck_start_seconds": 261.06,
+      "suggested_recheck_end_seconds": 269.26,
+      "reason": "one rendered when may change a numeric count.",
+      "confirmed_narration_error": false,
+      "evidence_type": "Saved first local ASR only; awaiting focused or independent proof.",
+      "evidence": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-072-001.d671316d9448fb9d58989edaf209ee8f4096093344c4322fe8851dde4a25d004.json",
+      "evidence_sha256": "0fdcea334064e45442e6fc02849f1d5b33c2188d848633554bd2393cbdd4ed49"
+    },
+    {
+      "priority_rank": 32,
+      "candidate_id": "6884cfb7754ca9d37f1dec26781c96214e4535b6213d9a0daa4988e0413f5d5c",
+      "clip_id": "chapter-074-002",
+      "audio_sha256": "344fcac511f37b87baa11cd70aa788342084e20cf2cacd4929c09d0827990327",
+      "request_sha256": "6b1ffc2c2cedabb077b10e4721257accdf2b60618a88a1287a25daaf62f4c2fb",
+      "source_inputtext_sha256": "85a6256fa58faa46a17f064419a89d3a62691bdddb3ec826ce5f261fc8f9076b",
+      "source_char_span": [
+        3171,
+        3174
+      ],
+      "source_exact_focus": "Nod",
+      "asr_focus": "None",
+      "source_context": "with a box cutter and you will bleed out on this nice Danish floor before anyone thinks to call an ambulance. Nod if you understand.\"\n\nÓlafur nodded.\n\nShe released his wrist and walked toward the door. He followed, because ",
+      "audio_anchor": {
+        "start_seconds": 212.7,
+        "end_seconds": 212.96,
+        "precision": "word_timestamps",
+        "suggested_clip_start_seconds": 210.7,
+        "suggested_clip_end_seconds": 214.96
+      },
+      "suggested_recheck_start_seconds": 208.7,
+      "suggested_recheck_end_seconds": 216.96,
+      "reason": "Nod versus None changes the word and may add negation.",
+      "confirmed_narration_error": false,
+      "evidence_type": "Saved first local ASR only; awaiting focused or independent proof.",
+      "evidence": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-074-002.3f86dab72d5ff2cf9ddab6deaf8b2ef5c6872af6e293887b5988502eab5b0581.json",
+      "evidence_sha256": "c35e0fa5ae51f33e5018e62abf398f7170a44d73707a28db89e482e7eb8a1c11"
+    },
+    {
+      "priority_rank": 33,
+      "candidate_id": "786c8b0a206d6dc26b37c091f71a8f7afc619acc85573341ba9df4449724ee37",
+      "clip_id": "chapter-071-001",
+      "audio_sha256": "7ce8dcc029e6bd0989b22396b16d9351d8f3f1ab95f5d8d980c5409ca88123b3",
+      "request_sha256": "1defd599c463f9818ce004ac0c13b6206931b974a74f3d28f6db36ff880dc083",
+      "source_inputtext_sha256": "603750a5c57c38118383b5aad05a662aaf8e8123e257623323d56bc28923a430",
+      "source_char_span": [
+        2917,
+        2924
+      ],
+      "source_exact_focus": "blacken",
+      "asr_focus": "",
+      "source_context": "ther way, the team was in danger.\n\nAdrian burned Nadia's note over the gas stove, watching the paper curl and blacken, Nadia's handwriting disappearing into ash, and then systematically thought through the vulnerability assessm",
+      "audio_anchor": {
+        "start_seconds": 184.42,
+        "end_seconds": 184.42,
+        "precision": "neighboring_asr_anchor",
+        "suggested_clip_start_seconds": 182.42,
+        "suggested_clip_end_seconds": 186.42
+      },
+      "suggested_recheck_start_seconds": 180.42,
+      "suggested_recheck_end_seconds": 188.42,
+      "reason": "blacken omitted amid an in black addition; review both as one changed phrase rather than separate harmless insertions.",
+      "confirmed_narration_error": false,
+      "evidence_type": "Saved first local ASR only; awaiting focused or independent proof.",
+      "evidence": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-071-001.259a1f18d9f499ea7941504e9173bcfe7e3b71d2a465799920f0264138f87db2.json",
+      "evidence_sha256": "6222f1db5aa8962dd3542173be531567bcacee6c353d7c27a18eb9cb245112f6"
+    },
+    {
+      "priority_rank": 34,
+      "candidate_id": "97441fe09ee29fe1216a91bd5ab1c496ea1b652d50747f3d05b6e056c9692c05",
+      "clip_id": "chapter-071-001",
+      "audio_sha256": "7ce8dcc029e6bd0989b22396b16d9351d8f3f1ab95f5d8d980c5409ca88123b3",
+      "request_sha256": "1defd599c463f9818ce004ac0c13b6206931b974a74f3d28f6db36ff880dc083",
+      "source_inputtext_sha256": "603750a5c57c38118383b5aad05a662aaf8e8123e257623323d56bc28923a430",
+      "source_char_span": [
+        2913,
+        2913
+      ],
+      "source_exact_focus": "",
+      "asr_focus": "in black",
+      "source_context": "\n\nEither way, the team was in danger.\n\nAdrian burned Nadia's note over the gas stove, watching the paper curl and blacken, Nadia's handwriting disappearing into ash, and then systematically thought through the vulnerabil",
+      "audio_anchor": {
+        "start_seconds": 183.68,
+        "end_seconds": 184.22,
+        "precision": "word_timestamps",
+        "suggested_clip_start_seconds": 181.68,
+        "suggested_clip_end_seconds": 186.22
+      },
+      "suggested_recheck_start_seconds": 179.68,
+      "suggested_recheck_end_seconds": 188.22,
+      "reason": "in black added where the source says and blacken; paired source omission remains unresolved.",
+      "confirmed_narration_error": false,
+      "evidence_type": "Saved first local ASR only; awaiting focused or independent proof.",
+      "evidence": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-071-001.259a1f18d9f499ea7941504e9173bcfe7e3b71d2a465799920f0264138f87db2.json",
+      "evidence_sha256": "6222f1db5aa8962dd3542173be531567bcacee6c353d7c27a18eb9cb245112f6"
+    }
+  ]
+}

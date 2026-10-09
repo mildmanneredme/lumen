@@ -1,0 +1,60 @@
+{
+  "identity": {
+    "coordinator_version": "1.0.0",
+    "master_audio_sha256": "369141dcf541fe9920bde4e5ed59ec52bd3731be512f52189f74019d6773dce5",
+    "chapter": 64,
+    "title": "Chapter 64",
+    "book": "LUMEN",
+    "author": "Rob Xie",
+    "narration": "AI-generated Gemini voice, Charon",
+    "settings": {
+      "ffmpeg": "/opt/homebrew/bin/ffmpeg",
+      "ffprobe": "/opt/homebrew/bin/ffprobe",
+      "target_rms_db": -20.0,
+      "peak_ceiling_db": -3.2,
+      "codec_headroom_db": 0.6,
+      "max_gain_db": 30.0,
+      "head_seconds": 1.0,
+      "tail_seconds": 2.0,
+      "silence_db": -60.0,
+      "long_silence_seconds": 2.0,
+      "quiet_window_seconds": 0.5,
+      "quiet_window_db": -50.0,
+      "trim_edges": true,
+      "edge_guard_seconds": 0.02,
+      "max_attempts": 8,
+      "peak_limiter": "auto",
+      "max_limiter_overdrive_db": 6.0
+    },
+    "inputs": [
+      {
+        "id": "chapter-064-001",
+        "chapter": 64,
+        "chunk": 1,
+        "path": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/raw/chapter-064-001.wav",
+        "request_sha256": "997814bd166c3fc47985a1ebea81b186552fa1b64ed84ff558a8d69f105f5cfa",
+        "audio_sha256": "9ac38c04505bd61b261c322936c3fa6e0a085b773a2a9aceca7fe3d6630322bd",
+        "native_frames": 4834560,
+        "native_rate": 24000,
+        "duration_seconds": 201.44
+      }
+    ]
+  },
+  "identity_sha256": "d201bc0b8126cc01e61888efcf5bb0163732bf0eab535a6552fb3d4d16628d05",
+  "output_sha256": {
+    "lossless_wav": "4c0fbb5fd1c9a1911f6e63f645f362c4e41d7b3750dd8b57a8946f3a0e5ff6c7",
+    "mp3": "4fbb9007fa5133dfa3abf9394dd8f7f857a36811c64e80449a5b64e2f1ae10aa",
+    "qa": "0ff5affd3c772b9ad3cfafbdc845263ae399593ad586011a28ca2e5daa0ee320"
+  },
+  "summary": {
+    "mp3": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/mastered/chapter-064.mp3",
+    "lossless_wav": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/mastered/chapter-064.wav",
+    "qa": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/mastered/chapter-064.qa.json",
+    "duration_seconds": 204.04,
+    "rms_dbfs": -20.453038255622932,
+    "sample_peak_dbfs": -4.030327693315099,
+    "warnings": [],
+    "rms_target_met_within_0_5_db": true
+  },
+  "completed_at_unix": 1791528858.139698
+}

@@ -1,0 +1,60 @@
+{
+  "identity": {
+    "coordinator_version": "1.0.0",
+    "master_audio_sha256": "369141dcf541fe9920bde4e5ed59ec52bd3731be512f52189f74019d6773dce5",
+    "chapter": 90,
+    "title": "Closing Credits",
+    "book": "LUMEN",
+    "author": "Rob Xie",
+    "narration": "AI-generated Gemini voice, Charon",
+    "settings": {
+      "ffmpeg": "/opt/homebrew/bin/ffmpeg",
+      "ffprobe": "/opt/homebrew/bin/ffprobe",
+      "target_rms_db": -20.0,
+      "peak_ceiling_db": -3.2,
+      "codec_headroom_db": 0.6,
+      "max_gain_db": 30.0,
+      "head_seconds": 1.0,
+      "tail_seconds": 2.0,
+      "silence_db": -60.0,
+      "long_silence_seconds": 2.0,
+      "quiet_window_seconds": 0.5,
+      "quiet_window_db": -50.0,
+      "trim_edges": true,
+      "edge_guard_seconds": 0.02,
+      "max_attempts": 8,
+      "peak_limiter": "auto",
+      "max_limiter_overdrive_db": 6.0
+    },
+    "inputs": [
+      {
+        "id": "closing-credits",
+        "chapter": 90,
+        "chunk": 1,
+        "path": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/raw/closing-credits.wav",
+        "request_sha256": "08211fc9f7f294856472dd1b36e43b60949055e984b317d3c3296482fcd4b96f",
+        "audio_sha256": "7d68df8691854294478fd68f762f7af8a42b6ea70f641a3c1d760ceb9b1ae490",
+        "native_frames": 185280,
+        "native_rate": 24000,
+        "duration_seconds": 7.72
+      }
+    ]
+  },
+  "identity_sha256": "2282cb318c04c6f346a5ed8d9dd14e9ff82022d19d56f8b4093003054bedd656",
+  "output_sha256": {
+    "lossless_wav": "0cd2ee6a97288836daccecd156848074b68aa4c7fd5a4b794f3286243f407fbb",
+    "mp3": "361ee065929df2f0c0dcca3b017fcecf18080c4a98c5b19677771a84ab94c5e1",
+    "qa": "0340b2f2efbd664aa917d09072d77b69c4905491ad689a093a011e11113a3e35"
+  },
+  "summary": {
+    "mp3": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/mastered/chapter-090.mp3",
+    "lossless_wav": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/mastered/chapter-090.wav",
+    "qa": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/mastered/chapter-090.qa.json",
+    "duration_seconds": 10.46,
+    "rms_dbfs": -20.4811301637414,
+    "sample_peak_dbfs": -4.052306494703058,
+    "warnings": [],
+    "rms_target_met_within_0_5_db": true
+  },
+  "completed_at_unix": 1791530250.447568
+}

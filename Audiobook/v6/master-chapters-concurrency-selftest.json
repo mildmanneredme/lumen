@@ -1,0 +1,51 @@
+{
+  "passed": true,
+  "checks_count": 11,
+  "checks": [
+    {
+      "name": "two distinct chapter jobs overlap with bound exactly two",
+      "passed": true
+    },
+    {
+      "name": "out of order jobs complete before chapter zero",
+      "passed": true
+    },
+    {
+      "name": "report remains ordered despite completion order",
+      "passed": true
+    },
+    {
+      "name": "aggregate report writes occur only on main thread",
+      "passed": true
+    },
+    {
+      "name": "missing 88 chapters prevents final completeness",
+      "passed": true
+    },
+    {
+      "name": "matching parallel resume does no mastering",
+      "passed": true
+    },
+    {
+      "name": "parallel resume preserves exact output and checkpoint bytes",
+      "passed": true
+    },
+    {
+      "name": "stop cancels queued third chapter while two active jobs drain",
+      "passed": true
+    },
+    {
+      "name": "active jobs finish atomic checkpoints before stop returns",
+      "passed": true
+    },
+    {
+      "name": "interrupted resume masters only the cancelled chapter",
+      "passed": true
+    },
+    {
+      "name": "concurrent mastering never changes raw sources",
+      "passed": true
+    }
+  ],
+  "scope": "Isolated mock chapter files only; no production audio, DSP, API, key or GPU access"
+}

@@ -1,0 +1,34 @@
+{
+  "input_list": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/preview-chapters.json",
+  "output_dir": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/preview-mastered",
+  "chapters": [
+    {
+      "chapter": "000",
+      "mp3": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/preview-mastered/chapter-000.mp3",
+      "qa": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/preview-mastered/chapter-000.qa.json",
+      "rms_dbfs": -20.434274120805224,
+      "sample_peak_dbfs": -4.0548353265480355,
+      "warnings": []
+    },
+    {
+      "chapter": "001",
+      "mp3": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/preview-mastered/chapter-001.mp3",
+      "qa": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/preview-mastered/chapter-001.qa.json",
+      "rms_dbfs": -20.42989119540628,
+      "sample_peak_dbfs": -4.0269499404883415,
+      "warnings": []
+    },
+    {
+      "chapter": "002",
+      "mp3": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/preview-mastered/chapter-002.mp3",
+      "qa": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/preview-mastered/chapter-002.qa.json",
+      "rms_dbfs": -20.59324285252088,
+      "sample_peak_dbfs": -4.022033430801973,
+      "warnings": [
+        "RMS target remains constrained by peak ceiling, gentle-limiter budget, or maximum gain; inspect the reported deficit",
+        "Decoded resampled PCM exceeds full scale; interpolation can cause overshoot. Check native sample measurements before inferring source clipping"
+      ]
+    }
+  ],
+  "complete": true
+}

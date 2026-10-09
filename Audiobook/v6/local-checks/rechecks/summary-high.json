@@ -1,0 +1,763 @@
+{
+  "version": "local-excerpt-recheck-1",
+  "queue_sha256": "e5b67a24d433a2fc249e4e98ef7843203199d29428669f5673b3b7884f4c3b84",
+  "generation_manifest_sha256": "11294b53a329988da4356a8f5be72c954c05e384f854f640e3cd5b68e64894bd",
+  "priority": "high",
+  "selected_excerpts": 6,
+  "processed_excerpts": 6,
+  "source_snapshot_changed_during_run": false,
+  "complete_selected_queue": true,
+  "model_identity": {
+    "path": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/asr-model",
+    "files_sha256": {
+      "config.json": "40028e43687458e79ba89cc16bf14184c5414a5cbc00fd511f8f78d138647afd",
+      "weights.npz": "1bb29b030aca711a035f7a084a0eefac6251ecc2bdd356fa748858fbad082f5a"
+    },
+    "mlx_whisper_version": "0.4.3"
+  },
+  "updated_at_unix": 1791524815.065863,
+  "candidate_ids": [
+    "05dd5bf4723b05d3982a13345caa341fa3376e1a402e5c6bc3cc2499a9035d74",
+    "193aeb9420dce0ad342deb7cb03ec246304e78e3037ce58486454e028e3712ad",
+    "1a006069364310058ae68f421c847237c6ac3a7402df4046fa7fc5763056f3fe",
+    "2dcf79561a61fbd054495c706e4035a58c5077152ded37998eadd002cb1d0da9",
+    "2ecd398745434dd7edbddc024a4673d4958a1be9c41aef046795217421058d4e",
+    "4a716e887d8a200f79369d09115ecf0dec965ae7fbbdc3738317d26475e2d7f5",
+    "6d5a5d17bedc997ae7882c9668cf78f0ac2b3c59b2e80313901bd24976462732",
+    "7450610f641cc2094672f77a9f60aa62738fd9c0cdab4cb22b701d7ea80c54b5",
+    "793b8438d64e3f51f0a007f11e67e2bdd1b210f96e715c9e9e3b70263b554c53",
+    "85e047cd2056cae9b5d38bee9f7ddcdd815819dd9ed2110c9a714a655245bb5b",
+    "8845ee484671bbc555524aa6b6d41437427c7a76069598102abfd349ecdb5ab2",
+    "b05df8867a32a85cec9549e6f619fe61faff2a27aa57a86955e688cea2535c21",
+    "c58932e080395d069c3857c494bd54c0e0a30d42611a0b37efff01a5a2c8dab3",
+    "e0bc7660f2f1a0438746ae289c3a7aadd5fbf54a47cc04992c5b336eace7e2aa"
+  ],
+  "resolved_candidate_ids": [
+    "6d5a5d17bedc997ae7882c9668cf78f0ac2b3c59b2e80313901bd24976462732"
+  ],
+  "unresolved_candidate_ids": [
+    "05dd5bf4723b05d3982a13345caa341fa3376e1a402e5c6bc3cc2499a9035d74",
+    "193aeb9420dce0ad342deb7cb03ec246304e78e3037ce58486454e028e3712ad",
+    "1a006069364310058ae68f421c847237c6ac3a7402df4046fa7fc5763056f3fe",
+    "2dcf79561a61fbd054495c706e4035a58c5077152ded37998eadd002cb1d0da9",
+    "2ecd398745434dd7edbddc024a4673d4958a1be9c41aef046795217421058d4e",
+    "4a716e887d8a200f79369d09115ecf0dec965ae7fbbdc3738317d26475e2d7f5",
+    "7450610f641cc2094672f77a9f60aa62738fd9c0cdab4cb22b701d7ea80c54b5",
+    "793b8438d64e3f51f0a007f11e67e2bdd1b210f96e715c9e9e3b70263b554c53",
+    "85e047cd2056cae9b5d38bee9f7ddcdd815819dd9ed2110c9a714a655245bb5b",
+    "8845ee484671bbc555524aa6b6d41437427c7a76069598102abfd349ecdb5ab2",
+    "b05df8867a32a85cec9549e6f619fe61faff2a27aa57a86955e688cea2535c21",
+    "c58932e080395d069c3857c494bd54c0e0a30d42611a0b37efff01a5a2c8dab3",
+    "e0bc7660f2f1a0438746ae289c3a7aadd5fbf54a47cc04992c5b336eace7e2aa"
+  ],
+  "retake_candidate_ids": [
+    "05dd5bf4723b05d3982a13345caa341fa3376e1a402e5c6bc3cc2499a9035d74",
+    "193aeb9420dce0ad342deb7cb03ec246304e78e3037ce58486454e028e3712ad",
+    "1a006069364310058ae68f421c847237c6ac3a7402df4046fa7fc5763056f3fe",
+    "2dcf79561a61fbd054495c706e4035a58c5077152ded37998eadd002cb1d0da9",
+    "2ecd398745434dd7edbddc024a4673d4958a1be9c41aef046795217421058d4e",
+    "4a716e887d8a200f79369d09115ecf0dec965ae7fbbdc3738317d26475e2d7f5",
+    "7450610f641cc2094672f77a9f60aa62738fd9c0cdab4cb22b701d7ea80c54b5",
+    "85e047cd2056cae9b5d38bee9f7ddcdd815819dd9ed2110c9a714a655245bb5b",
+    "8845ee484671bbc555524aa6b6d41437427c7a76069598102abfd349ecdb5ab2",
+    "b05df8867a32a85cec9549e6f619fe61faff2a27aa57a86955e688cea2535c21",
+    "c58932e080395d069c3857c494bd54c0e0a30d42611a0b37efff01a5a2c8dab3",
+    "e0bc7660f2f1a0438746ae289c3a7aadd5fbf54a47cc04992c5b336eace7e2aa"
+  ],
+  "candidate_results": [
+    {
+      "candidate_id": "05dd5bf4723b05d3982a13345caa341fa3376e1a402e5c6bc3cc2499a9035d74",
+      "status": "unresolved_second_pass_mismatch",
+      "covered_expected_token_indices": [],
+      "clip_id": "chapter-003-003",
+      "audio_sha256": "74caebbcc559452798b2b44c0d73519bebfbcf5972a3b5e7a9a8653a3e3267fb",
+      "request_sha256": "cce0a5c7ae24f0020daf84f18f79963e20cc60f2d8881f30f73be0f8ef90deaa",
+      "combined_fragment_coverage": false,
+      "evidence": [
+        {
+          "candidate_id": "05dd5bf4723b05d3982a13345caa341fa3376e1a402e5c6bc3cc2499a9035d74",
+          "status": "unresolved_second_pass_mismatch",
+          "reason": "Interior focal wording or contiguous source context still differs; retake candidate requires adjudication",
+          "expected_text": "considered",
+          "original_asr_text": "contrittered",
+          "expected_normalized_words": [
+            "considered"
+          ],
+          "observed_matched_normalized_words": "",
+          "covered_expected_token_indices": [],
+          "expected_token_count": 1,
+          "insertion_candidate": false,
+          "source_char_span": [
+            2972,
+            2982
+          ],
+          "source_reference_contains_full_focus": true,
+          "context_coherent": false,
+          "audio_anchor": {
+            "start_seconds": 182.92,
+            "end_seconds": 183.46,
+            "precision": "word_timestamps",
+            "suggested_clip_start_seconds": 180.92,
+            "suggested_clip_end_seconds": 185.46
+          },
+          "retake_candidate": true,
+          "confirmed_narration_error": false,
+          "listening_approval": false,
+          "excerpt_id": "b2540e36cd1628621bfd299ebdb685949f86bc496df8be14280d9db32c54184d",
+          "clip_id": "chapter-003-003",
+          "audio_sha256": "74caebbcc559452798b2b44c0d73519bebfbcf5972a3b5e7a9a8653a3e3267fb",
+          "request_sha256": "cce0a5c7ae24f0020daf84f18f79963e20cc60f2d8881f30f73be0f8ef90deaa",
+          "evidence_file": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/rechecks/cache/b2540e36cd1628621bfd299ebdb685949f86bc496df8be14280d9db32c54184d.5474c09326565bdc5d28a9d62ad13b7d9c8f91e4eb7dc99425011517411bf8ea.json"
+        }
+      ],
+      "confirmed_narration_error": false,
+      "listening_approval": false
+    },
+    {
+      "candidate_id": "193aeb9420dce0ad342deb7cb03ec246304e78e3037ce58486454e028e3712ad",
+      "status": "unresolved_second_pass_mismatch",
+      "covered_expected_token_indices": [],
+      "clip_id": "chapter-003-003",
+      "audio_sha256": "74caebbcc559452798b2b44c0d73519bebfbcf5972a3b5e7a9a8653a3e3267fb",
+      "request_sha256": "cce0a5c7ae24f0020daf84f18f79963e20cc60f2d8881f30f73be0f8ef90deaa",
+      "combined_fragment_coverage": false,
+      "evidence": [
+        {
+          "candidate_id": "193aeb9420dce0ad342deb7cb03ec246304e78e3037ce58486454e028e3712ad",
+          "status": "unresolved_second_pass_mismatch",
+          "reason": "Interior focal wording or contiguous source context still differs; retake candidate requires adjudication",
+          "expected_text": "Not",
+          "original_asr_text": "Now",
+          "expected_normalized_words": [
+            "not"
+          ],
+          "observed_matched_normalized_words": "",
+          "covered_expected_token_indices": [],
+          "expected_token_count": 1,
+          "insertion_candidate": false,
+          "source_char_span": [
+            2906,
+            2909
+          ],
+          "source_reference_contains_full_focus": true,
+          "context_coherent": false,
+          "audio_anchor": {
+            "start_seconds": 178.56,
+            "end_seconds": 178.72,
+            "precision": "word_timestamps",
+            "suggested_clip_start_seconds": 176.56,
+            "suggested_clip_end_seconds": 180.72
+          },
+          "retake_candidate": true,
+          "confirmed_narration_error": false,
+          "listening_approval": false,
+          "excerpt_id": "b2540e36cd1628621bfd299ebdb685949f86bc496df8be14280d9db32c54184d",
+          "clip_id": "chapter-003-003",
+          "audio_sha256": "74caebbcc559452798b2b44c0d73519bebfbcf5972a3b5e7a9a8653a3e3267fb",
+          "request_sha256": "cce0a5c7ae24f0020daf84f18f79963e20cc60f2d8881f30f73be0f8ef90deaa",
+          "evidence_file": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/rechecks/cache/b2540e36cd1628621bfd299ebdb685949f86bc496df8be14280d9db32c54184d.5474c09326565bdc5d28a9d62ad13b7d9c8f91e4eb7dc99425011517411bf8ea.json"
+        }
+      ],
+      "confirmed_narration_error": false,
+      "listening_approval": false
+    },
+    {
+      "candidate_id": "1a006069364310058ae68f421c847237c6ac3a7402df4046fa7fc5763056f3fe",
+      "status": "unresolved_second_pass_mismatch",
+      "covered_expected_token_indices": [],
+      "clip_id": "chapter-003-003",
+      "audio_sha256": "74caebbcc559452798b2b44c0d73519bebfbcf5972a3b5e7a9a8653a3e3267fb",
+      "request_sha256": "cce0a5c7ae24f0020daf84f18f79963e20cc60f2d8881f30f73be0f8ef90deaa",
+      "combined_fragment_coverage": false,
+      "evidence": [
+        {
+          "candidate_id": "1a006069364310058ae68f421c847237c6ac3a7402df4046fa7fc5763056f3fe",
+          "status": "unresolved_second_pass_mismatch",
+          "reason": "Interior focal wording or contiguous source context still differs; retake candidate requires adjudication",
+          "expected_text": "NovaMind",
+          "original_asr_text": "Novomind",
+          "expected_normalized_words": [
+            "novamind"
+          ],
+          "observed_matched_normalized_words": "",
+          "covered_expected_token_indices": [],
+          "expected_token_count": 1,
+          "insertion_candidate": false,
+          "source_char_span": [
+            2915,
+            2923
+          ],
+          "source_reference_contains_full_focus": true,
+          "context_coherent": false,
+          "audio_anchor": {
+            "start_seconds": 178.86,
+            "end_seconds": 179.24,
+            "precision": "word_timestamps",
+            "suggested_clip_start_seconds": 176.86,
+            "suggested_clip_end_seconds": 181.24
+          },
+          "retake_candidate": true,
+          "confirmed_narration_error": false,
+          "listening_approval": false,
+          "excerpt_id": "b2540e36cd1628621bfd299ebdb685949f86bc496df8be14280d9db32c54184d",
+          "clip_id": "chapter-003-003",
+          "audio_sha256": "74caebbcc559452798b2b44c0d73519bebfbcf5972a3b5e7a9a8653a3e3267fb",
+          "request_sha256": "cce0a5c7ae24f0020daf84f18f79963e20cc60f2d8881f30f73be0f8ef90deaa",
+          "evidence_file": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/rechecks/cache/b2540e36cd1628621bfd299ebdb685949f86bc496df8be14280d9db32c54184d.5474c09326565bdc5d28a9d62ad13b7d9c8f91e4eb7dc99425011517411bf8ea.json"
+        }
+      ],
+      "confirmed_narration_error": false,
+      "listening_approval": false
+    },
+    {
+      "candidate_id": "2dcf79561a61fbd054495c706e4035a58c5077152ded37998eadd002cb1d0da9",
+      "status": "unresolved_second_pass_mismatch",
+      "covered_expected_token_indices": [],
+      "clip_id": "chapter-008-002",
+      "audio_sha256": "cbae3b82196fc2248bf1e4cc767ef93c29436283d466b68aaaaef18c50272cc6",
+      "request_sha256": "29386e1e6714e47c4d6194f701e8dd098c1be7405794b9f5faaee461e641549d",
+      "combined_fragment_coverage": false,
+      "evidence": [
+        {
+          "candidate_id": "2dcf79561a61fbd054495c706e4035a58c5077152ded37998eadd002cb1d0da9",
+          "status": "unresolved_second_pass_mismatch",
+          "reason": "Interior focal wording or contiguous source context still differs; retake candidate requires adjudication",
+          "expected_text": "00",
+          "original_asr_text": "",
+          "expected_normalized_words": [
+            "num:0"
+          ],
+          "observed_matched_normalized_words": "",
+          "covered_expected_token_indices": [],
+          "expected_token_count": 1,
+          "insertion_candidate": false,
+          "source_char_span": [
+            3365,
+            3367
+          ],
+          "source_reference_contains_full_focus": true,
+          "context_coherent": false,
+          "audio_anchor": {
+            "start_seconds": 195.32,
+            "end_seconds": 195.32,
+            "precision": "neighboring_asr_anchor",
+            "suggested_clip_start_seconds": 193.32,
+            "suggested_clip_end_seconds": 197.32
+          },
+          "retake_candidate": true,
+          "confirmed_narration_error": false,
+          "listening_approval": false,
+          "excerpt_id": "5e60c83cd833167fb5a34d9fda828b4efe4fd58c1e2fe933b1eb33bcc1f34b4f",
+          "clip_id": "chapter-008-002",
+          "audio_sha256": "cbae3b82196fc2248bf1e4cc767ef93c29436283d466b68aaaaef18c50272cc6",
+          "request_sha256": "29386e1e6714e47c4d6194f701e8dd098c1be7405794b9f5faaee461e641549d",
+          "evidence_file": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/rechecks/cache/5e60c83cd833167fb5a34d9fda828b4efe4fd58c1e2fe933b1eb33bcc1f34b4f.41df9aa794bdd674facc7bb18830299d852604d66b69d19212fa13a56bd0ec6c.json"
+        }
+      ],
+      "confirmed_narration_error": false,
+      "listening_approval": false
+    },
+    {
+      "candidate_id": "2ecd398745434dd7edbddc024a4673d4958a1be9c41aef046795217421058d4e",
+      "status": "unresolved_second_pass_mismatch",
+      "covered_expected_token_indices": [],
+      "clip_id": "chapter-002-002",
+      "audio_sha256": "4ef590cde0f3133f002c9f803752308c32aa902443d5571db4dafccd8ca737d5",
+      "request_sha256": "3e6609f1aeee470576e6dbd5b210ef830794427d2104f497493a3c1b0f4b871e",
+      "combined_fragment_coverage": false,
+      "evidence": [
+        {
+          "candidate_id": "2ecd398745434dd7edbddc024a4673d4958a1be9c41aef046795217421058d4e",
+          "status": "unresolved_second_pass_mismatch",
+          "reason": "Interior focal wording or contiguous source context still differs; retake candidate requires adjudication",
+          "expected_text": "Cell 4-C",
+          "original_asr_text": "Self-forcy",
+          "expected_normalized_words": [
+            "cell",
+            "num:4",
+            "c"
+          ],
+          "observed_matched_normalized_words": "num:4 c",
+          "covered_expected_token_indices": [],
+          "expected_token_count": 3,
+          "insertion_candidate": false,
+          "source_char_span": [
+            1639,
+            1647
+          ],
+          "source_reference_contains_full_focus": true,
+          "context_coherent": false,
+          "audio_anchor": {
+            "start_seconds": 95.3,
+            "end_seconds": 95.86,
+            "precision": "word_timestamps",
+            "suggested_clip_start_seconds": 93.3,
+            "suggested_clip_end_seconds": 97.86
+          },
+          "retake_candidate": true,
+          "confirmed_narration_error": false,
+          "listening_approval": false,
+          "excerpt_id": "9f1c6cb2534f480ccbe7586398984db1b5d79c047af1bd04fc1ae898b2768c96",
+          "clip_id": "chapter-002-002",
+          "audio_sha256": "4ef590cde0f3133f002c9f803752308c32aa902443d5571db4dafccd8ca737d5",
+          "request_sha256": "3e6609f1aeee470576e6dbd5b210ef830794427d2104f497493a3c1b0f4b871e",
+          "evidence_file": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/rechecks/cache/9f1c6cb2534f480ccbe7586398984db1b5d79c047af1bd04fc1ae898b2768c96.6aad8d26be01f83960acd8eff04de61660eefa738b37ea8273eca24912092289.json"
+        }
+      ],
+      "confirmed_narration_error": false,
+      "listening_approval": false
+    },
+    {
+      "candidate_id": "4a716e887d8a200f79369d09115ecf0dec965ae7fbbdc3738317d26475e2d7f5",
+      "status": "unresolved_second_pass_mismatch",
+      "covered_expected_token_indices": [],
+      "clip_id": "chapter-002-001",
+      "audio_sha256": "ec0c02df9a099e4e7f69590b9972db3bb57cd48a072e5145232194c5f2d5c913",
+      "request_sha256": "b0b3fa67460b3b7fa43c212201a35ef2ca518a14166f590523d4446a395ee666",
+      "combined_fragment_coverage": false,
+      "evidence": [
+        {
+          "candidate_id": "4a716e887d8a200f79369d09115ecf0dec965ae7fbbdc3738317d26475e2d7f5",
+          "status": "unresolved_second_pass_mismatch",
+          "reason": "Interior focal wording or contiguous source context still differs; retake candidate requires adjudication",
+          "expected_text": "hearing",
+          "original_asr_text": "hearings",
+          "expected_normalized_words": [
+            "hearing"
+          ],
+          "observed_matched_normalized_words": "",
+          "covered_expected_token_indices": [],
+          "expected_token_count": 1,
+          "insertion_candidate": false,
+          "source_char_span": [
+            2597,
+            2604
+          ],
+          "source_reference_contains_full_focus": true,
+          "context_coherent": false,
+          "audio_anchor": {
+            "start_seconds": 166.08,
+            "end_seconds": 166.5,
+            "precision": "word_timestamps",
+            "suggested_clip_start_seconds": 164.08,
+            "suggested_clip_end_seconds": 168.5
+          },
+          "retake_candidate": true,
+          "confirmed_narration_error": false,
+          "listening_approval": false,
+          "excerpt_id": "e99e84318e04de2a0d34a79a4718af05a12666d7f402d7944e314f658411cd8f",
+          "clip_id": "chapter-002-001",
+          "audio_sha256": "ec0c02df9a099e4e7f69590b9972db3bb57cd48a072e5145232194c5f2d5c913",
+          "request_sha256": "b0b3fa67460b3b7fa43c212201a35ef2ca518a14166f590523d4446a395ee666",
+          "evidence_file": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/rechecks/cache/e99e84318e04de2a0d34a79a4718af05a12666d7f402d7944e314f658411cd8f.297a0738699e799aacf6714a33097bc16670b0db29af4f4822609b6f2dc754e0.json"
+        }
+      ],
+      "confirmed_narration_error": false,
+      "listening_approval": false
+    },
+    {
+      "candidate_id": "6d5a5d17bedc997ae7882c9668cf78f0ac2b3c59b2e80313901bd24976462732",
+      "status": "resolved_asr_artifact",
+      "covered_expected_token_indices": [
+        0
+      ],
+      "clip_id": "chapter-017-003",
+      "audio_sha256": "0bca708acb71b78211513b630b4dc410adeada56f82d9d7ef6d1c9e8a95bb46d",
+      "request_sha256": "32cb4195a7143917763c4ec49c5acaaa05147e2c19cfe3d7b656e048558c3b32",
+      "combined_fragment_coverage": true,
+      "evidence": [
+        {
+          "candidate_id": "6d5a5d17bedc997ae7882c9668cf78f0ac2b3c59b2e80313901bd24976462732",
+          "status": "resolved_asr_artifact",
+          "reason": "Exact focal wording and contiguous two-word source context recovered by independent local ASR",
+          "expected_text": "Morrow",
+          "original_asr_text": "Moro",
+          "expected_normalized_words": [
+            "morrow"
+          ],
+          "observed_matched_normalized_words": "morrow",
+          "covered_expected_token_indices": [
+            0
+          ],
+          "expected_token_count": 1,
+          "insertion_candidate": false,
+          "source_char_span": [
+            1049,
+            1055
+          ],
+          "source_reference_contains_full_focus": true,
+          "context_coherent": true,
+          "audio_anchor": {
+            "start_seconds": 64.46000000000001,
+            "end_seconds": 64.46000000000001,
+            "precision": "word_timestamps",
+            "suggested_clip_start_seconds": 62.46,
+            "suggested_clip_end_seconds": 66.46000000000001
+          },
+          "retake_candidate": false,
+          "confirmed_narration_error": false,
+          "listening_approval": false,
+          "excerpt_id": "5b0f975520b3f4253e746d5b6bb991f87b76dd6f15ddfea0af3507ed237f8345",
+          "clip_id": "chapter-017-003",
+          "audio_sha256": "0bca708acb71b78211513b630b4dc410adeada56f82d9d7ef6d1c9e8a95bb46d",
+          "request_sha256": "32cb4195a7143917763c4ec49c5acaaa05147e2c19cfe3d7b656e048558c3b32",
+          "evidence_file": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/rechecks/cache/5b0f975520b3f4253e746d5b6bb991f87b76dd6f15ddfea0af3507ed237f8345.f7e69f324a33a78302c9f2556d90be0aa324ce510a2054f3009398f81a9ddd3c.json"
+        }
+      ],
+      "confirmed_narration_error": false,
+      "listening_approval": false
+    },
+    {
+      "candidate_id": "7450610f641cc2094672f77a9f60aa62738fd9c0cdab4cb22b701d7ea80c54b5",
+      "status": "unresolved_second_pass_mismatch",
+      "covered_expected_token_indices": [],
+      "clip_id": "chapter-002-001",
+      "audio_sha256": "ec0c02df9a099e4e7f69590b9972db3bb57cd48a072e5145232194c5f2d5c913",
+      "request_sha256": "b0b3fa67460b3b7fa43c212201a35ef2ca518a14166f590523d4446a395ee666",
+      "combined_fragment_coverage": false,
+      "evidence": [
+        {
+          "candidate_id": "7450610f641cc2094672f77a9f60aa62738fd9c0cdab4cb22b701d7ea80c54b5",
+          "status": "unresolved_second_pass_mismatch",
+          "reason": "Interior focal wording or contiguous source context still differs; retake candidate requires adjudication",
+          "expected_text": "",
+          "original_asr_text": "8",
+          "expected_normalized_words": [],
+          "observed_matched_normalized_words": "street holding",
+          "covered_expected_token_indices": [],
+          "expected_token_count": 0,
+          "insertion_candidate": true,
+          "source_char_span": [
+            2519,
+            2519
+          ],
+          "source_reference_contains_full_focus": true,
+          "context_coherent": false,
+          "audio_anchor": {
+            "start_seconds": 158.9,
+            "end_seconds": 160.22,
+            "precision": "word_timestamps",
+            "suggested_clip_start_seconds": 156.9,
+            "suggested_clip_end_seconds": 162.22
+          },
+          "retake_candidate": true,
+          "confirmed_narration_error": false,
+          "listening_approval": false,
+          "excerpt_id": "e99e84318e04de2a0d34a79a4718af05a12666d7f402d7944e314f658411cd8f",
+          "clip_id": "chapter-002-001",
+          "audio_sha256": "ec0c02df9a099e4e7f69590b9972db3bb57cd48a072e5145232194c5f2d5c913",
+          "request_sha256": "b0b3fa67460b3b7fa43c212201a35ef2ca518a14166f590523d4446a395ee666",
+          "evidence_file": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/rechecks/cache/e99e84318e04de2a0d34a79a4718af05a12666d7f402d7944e314f658411cd8f.297a0738699e799aacf6714a33097bc16670b0db29af4f4822609b6f2dc754e0.json"
+        }
+      ],
+      "confirmed_narration_error": false,
+      "listening_approval": false
+    },
+    {
+      "candidate_id": "793b8438d64e3f51f0a007f11e67e2bdd1b210f96e715c9e9e3b70263b554c53",
+      "status": "insufficient_context_or_error",
+      "covered_expected_token_indices": [],
+      "clip_id": "chapter-017-003",
+      "audio_sha256": "0bca708acb71b78211513b630b4dc410adeada56f82d9d7ef6d1c9e8a95bb46d",
+      "request_sha256": "32cb4195a7143917763c4ec49c5acaaa05147e2c19cfe3d7b656e048558c3b32",
+      "combined_fragment_coverage": false,
+      "evidence": [
+        {
+          "candidate_id": "793b8438d64e3f51f0a007f11e67e2bdd1b210f96e715c9e9e3b70263b554c53",
+          "status": "insufficient_context",
+          "reason": "Focal wording lacks two source context words on both sides",
+          "expected_text": "Professor — you should know that what you're proposing is dangerous. Not in the abstract",
+          "original_asr_text": "",
+          "expected_normalized_words": [
+            "professor",
+            "you",
+            "should",
+            "know",
+            "that",
+            "what",
+            "youre",
+            "proposing",
+            "is",
+            "dangerous",
+            "not",
+            "in",
+            "the",
+            "abstract"
+          ],
+          "observed_matched_normalized_words": "know that what youre proposing is dangerous not in the abstract",
+          "covered_expected_token_indices": [],
+          "expected_token_count": 14,
+          "insertion_candidate": false,
+          "source_char_span": [
+            837,
+            925
+          ],
+          "source_reference_contains_full_focus": true,
+          "context_coherent": false,
+          "audio_anchor": {
+            "start_seconds": 53.04,
+            "end_seconds": 56.46,
+            "precision": "word_timestamps",
+            "suggested_clip_start_seconds": 52.78,
+            "suggested_clip_end_seconds": 58.46
+          },
+          "retake_candidate": false,
+          "confirmed_narration_error": false,
+          "listening_approval": false,
+          "excerpt_id": "5b0f975520b3f4253e746d5b6bb991f87b76dd6f15ddfea0af3507ed237f8345",
+          "clip_id": "chapter-017-003",
+          "audio_sha256": "0bca708acb71b78211513b630b4dc410adeada56f82d9d7ef6d1c9e8a95bb46d",
+          "request_sha256": "32cb4195a7143917763c4ec49c5acaaa05147e2c19cfe3d7b656e048558c3b32",
+          "evidence_file": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/rechecks/cache/5b0f975520b3f4253e746d5b6bb991f87b76dd6f15ddfea0af3507ed237f8345.f7e69f324a33a78302c9f2556d90be0aa324ce510a2054f3009398f81a9ddd3c.json"
+        }
+      ],
+      "confirmed_narration_error": false,
+      "listening_approval": false
+    },
+    {
+      "candidate_id": "85e047cd2056cae9b5d38bee9f7ddcdd815819dd9ed2110c9a714a655245bb5b",
+      "status": "unresolved_second_pass_mismatch",
+      "covered_expected_token_indices": [],
+      "clip_id": "chapter-008-002",
+      "audio_sha256": "cbae3b82196fc2248bf1e4cc767ef93c29436283d466b68aaaaef18c50272cc6",
+      "request_sha256": "29386e1e6714e47c4d6194f701e8dd098c1be7405794b9f5faaee461e641549d",
+      "combined_fragment_coverage": false,
+      "evidence": [
+        {
+          "candidate_id": "85e047cd2056cae9b5d38bee9f7ddcdd815819dd9ed2110c9a714a655245bb5b",
+          "status": "unresolved_second_pass_mismatch",
+          "reason": "Interior focal wording or contiguous source context still differs; retake candidate requires adjudication",
+          "expected_text": "00",
+          "original_asr_text": "",
+          "expected_normalized_words": [
+            "num:0"
+          ],
+          "observed_matched_normalized_words": "",
+          "covered_expected_token_indices": [],
+          "expected_token_count": 1,
+          "insertion_candidate": false,
+          "source_char_span": [
+            3357,
+            3359
+          ],
+          "source_reference_contains_full_focus": true,
+          "context_coherent": false,
+          "audio_anchor": {
+            "start_seconds": 194.98,
+            "end_seconds": 194.98,
+            "precision": "neighboring_asr_anchor",
+            "suggested_clip_start_seconds": 192.98,
+            "suggested_clip_end_seconds": 196.98
+          },
+          "retake_candidate": true,
+          "confirmed_narration_error": false,
+          "listening_approval": false,
+          "excerpt_id": "5e60c83cd833167fb5a34d9fda828b4efe4fd58c1e2fe933b1eb33bcc1f34b4f",
+          "clip_id": "chapter-008-002",
+          "audio_sha256": "cbae3b82196fc2248bf1e4cc767ef93c29436283d466b68aaaaef18c50272cc6",
+          "request_sha256": "29386e1e6714e47c4d6194f701e8dd098c1be7405794b9f5faaee461e641549d",
+          "evidence_file": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/rechecks/cache/5e60c83cd833167fb5a34d9fda828b4efe4fd58c1e2fe933b1eb33bcc1f34b4f.41df9aa794bdd674facc7bb18830299d852604d66b69d19212fa13a56bd0ec6c.json"
+        }
+      ],
+      "confirmed_narration_error": false,
+      "listening_approval": false
+    },
+    {
+      "candidate_id": "8845ee484671bbc555524aa6b6d41437427c7a76069598102abfd349ecdb5ab2",
+      "status": "unresolved_second_pass_mismatch",
+      "covered_expected_token_indices": [],
+      "clip_id": "chapter-010-002",
+      "audio_sha256": "e5b4c2a75e89e2dbc8f31591905604816dffda7d4b1b414bb6699a0a5d24e420",
+      "request_sha256": "410234ac46363759d5efc446a7f8c6c456c9e86367d9294bf18a74eb2f9107e3",
+      "combined_fragment_coverage": false,
+      "evidence": [
+        {
+          "candidate_id": "8845ee484671bbc555524aa6b6d41437427c7a76069598102abfd349ecdb5ab2",
+          "status": "unresolved_second_pass_mismatch",
+          "reason": "Interior focal wording or contiguous source context still differs; retake candidate requires adjudication",
+          "expected_text": "8:14",
+          "original_asr_text": "814",
+          "expected_normalized_words": [
+            "num:8",
+            "num:14"
+          ],
+          "observed_matched_normalized_words": "",
+          "covered_expected_token_indices": [],
+          "expected_token_count": 2,
+          "insertion_candidate": false,
+          "source_char_span": [
+            1796,
+            1800
+          ],
+          "source_reference_contains_full_focus": true,
+          "context_coherent": false,
+          "audio_anchor": {
+            "start_seconds": 107.42,
+            "end_seconds": 108.04,
+            "precision": "word_timestamps",
+            "suggested_clip_start_seconds": 105.42,
+            "suggested_clip_end_seconds": 110.04
+          },
+          "retake_candidate": true,
+          "confirmed_narration_error": false,
+          "listening_approval": false,
+          "excerpt_id": "330adfa75288b2f89f19c1a8d3583e3f2e93c78971a5074f2f212311436850a5",
+          "clip_id": "chapter-010-002",
+          "audio_sha256": "e5b4c2a75e89e2dbc8f31591905604816dffda7d4b1b414bb6699a0a5d24e420",
+          "request_sha256": "410234ac46363759d5efc446a7f8c6c456c9e86367d9294bf18a74eb2f9107e3",
+          "evidence_file": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/rechecks/cache/330adfa75288b2f89f19c1a8d3583e3f2e93c78971a5074f2f212311436850a5.3ec4709ce225015b7db2671ad0e2554bceca261e0202a7567e66eb0539c8b1ba.json"
+        }
+      ],
+      "confirmed_narration_error": false,
+      "listening_approval": false
+    },
+    {
+      "candidate_id": "b05df8867a32a85cec9549e6f619fe61faff2a27aa57a86955e688cea2535c21",
+      "status": "unresolved_second_pass_mismatch",
+      "covered_expected_token_indices": [],
+      "clip_id": "chapter-003-003",
+      "audio_sha256": "74caebbcc559452798b2b44c0d73519bebfbcf5972a3b5e7a9a8653a3e3267fb",
+      "request_sha256": "cce0a5c7ae24f0020daf84f18f79963e20cc60f2d8881f30f73be0f8ef90deaa",
+      "combined_fragment_coverage": false,
+      "evidence": [
+        {
+          "candidate_id": "b05df8867a32a85cec9549e6f619fe61faff2a27aa57a86955e688cea2535c21",
+          "status": "unresolved_second_pass_mismatch",
+          "reason": "Interior focal wording or contiguous source context still differs; retake candidate requires adjudication",
+          "expected_text": "Morrow",
+          "original_asr_text": "Maro",
+          "expected_normalized_words": [
+            "morrow"
+          ],
+          "observed_matched_normalized_words": "",
+          "covered_expected_token_indices": [],
+          "expected_token_count": 1,
+          "insertion_candidate": false,
+          "source_char_span": [
+            3050,
+            3056
+          ],
+          "source_reference_contains_full_focus": true,
+          "context_coherent": false,
+          "audio_anchor": {
+            "start_seconds": 187.66,
+            "end_seconds": 187.94,
+            "precision": "word_timestamps",
+            "suggested_clip_start_seconds": 185.66,
+            "suggested_clip_end_seconds": 189.94
+          },
+          "retake_candidate": true,
+          "confirmed_narration_error": false,
+          "listening_approval": false,
+          "excerpt_id": "b2540e36cd1628621bfd299ebdb685949f86bc496df8be14280d9db32c54184d",
+          "clip_id": "chapter-003-003",
+          "audio_sha256": "74caebbcc559452798b2b44c0d73519bebfbcf5972a3b5e7a9a8653a3e3267fb",
+          "request_sha256": "cce0a5c7ae24f0020daf84f18f79963e20cc60f2d8881f30f73be0f8ef90deaa",
+          "evidence_file": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/rechecks/cache/b2540e36cd1628621bfd299ebdb685949f86bc496df8be14280d9db32c54184d.5474c09326565bdc5d28a9d62ad13b7d9c8f91e4eb7dc99425011517411bf8ea.json"
+        }
+      ],
+      "confirmed_narration_error": false,
+      "listening_approval": false
+    },
+    {
+      "candidate_id": "c58932e080395d069c3857c494bd54c0e0a30d42611a0b37efff01a5a2c8dab3",
+      "status": "unresolved_second_pass_mismatch",
+      "covered_expected_token_indices": [],
+      "clip_id": "chapter-002-001",
+      "audio_sha256": "ec0c02df9a099e4e7f69590b9972db3bb57cd48a072e5145232194c5f2d5c913",
+      "request_sha256": "b0b3fa67460b3b7fa43c212201a35ef2ca518a14166f590523d4446a395ee666",
+      "combined_fragment_coverage": false,
+      "evidence": [
+        {
+          "candidate_id": "c58932e080395d069c3857c494bd54c0e0a30d42611a0b37efff01a5a2c8dab3",
+          "status": "unresolved_second_pass_mismatch",
+          "reason": "Interior focal wording or contiguous source context still differs; retake candidate requires adjudication",
+          "expected_text": "Bryant",
+          "original_asr_text": "Bryan",
+          "expected_normalized_words": [
+            "bryant"
+          ],
+          "observed_matched_normalized_words": "",
+          "covered_expected_token_indices": [],
+          "expected_token_count": 1,
+          "insertion_candidate": false,
+          "source_char_span": [
+            2504,
+            2510
+          ],
+          "source_reference_contains_full_focus": true,
+          "context_coherent": false,
+          "audio_anchor": {
+            "start_seconds": 158.46,
+            "end_seconds": 158.88,
+            "precision": "word_timestamps",
+            "suggested_clip_start_seconds": 156.46,
+            "suggested_clip_end_seconds": 160.88
+          },
+          "retake_candidate": true,
+          "confirmed_narration_error": false,
+          "listening_approval": false,
+          "excerpt_id": "e99e84318e04de2a0d34a79a4718af05a12666d7f402d7944e314f658411cd8f",
+          "clip_id": "chapter-002-001",
+          "audio_sha256": "ec0c02df9a099e4e7f69590b9972db3bb57cd48a072e5145232194c5f2d5c913",
+          "request_sha256": "b0b3fa67460b3b7fa43c212201a35ef2ca518a14166f590523d4446a395ee666",
+          "evidence_file": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/rechecks/cache/e99e84318e04de2a0d34a79a4718af05a12666d7f402d7944e314f658411cd8f.297a0738699e799aacf6714a33097bc16670b0db29af4f4822609b6f2dc754e0.json"
+        }
+      ],
+      "confirmed_narration_error": false,
+      "listening_approval": false
+    },
+    {
+      "candidate_id": "e0bc7660f2f1a0438746ae289c3a7aadd5fbf54a47cc04992c5b336eace7e2aa",
+      "status": "unresolved_second_pass_mismatch",
+      "covered_expected_token_indices": [],
+      "clip_id": "chapter-008-002",
+      "audio_sha256": "cbae3b82196fc2248bf1e4cc767ef93c29436283d466b68aaaaef18c50272cc6",
+      "request_sha256": "29386e1e6714e47c4d6194f701e8dd098c1be7405794b9f5faaee461e641549d",
+      "combined_fragment_coverage": false,
+      "evidence": [
+        {
+          "candidate_id": "e0bc7660f2f1a0438746ae289c3a7aadd5fbf54a47cc04992c5b336eace7e2aa",
+          "status": "unresolved_second_pass_mismatch",
+          "reason": "Interior focal wording or contiguous source context still differs; retake candidate requires adjudication",
+          "expected_text": "in 773",
+          "original_asr_text": "and 7 7 3",
+          "expected_normalized_words": [
+            "in",
+            "num:773"
+          ],
+          "observed_matched_normalized_words": "in num:773",
+          "covered_expected_token_indices": [],
+          "expected_token_count": 2,
+          "insertion_candidate": false,
+          "source_char_span": [
+            3374,
+            3380
+          ],
+          "source_reference_contains_full_focus": true,
+          "context_coherent": false,
+          "audio_anchor": {
+            "start_seconds": 195.67999999999998,
+            "end_seconds": 196.7,
+            "precision": "word_timestamps",
+            "suggested_clip_start_seconds": 193.67999999999998,
+            "suggested_clip_end_seconds": 198.7
+          },
+          "retake_candidate": true,
+          "confirmed_narration_error": false,
+          "listening_approval": false,
+          "excerpt_id": "5e60c83cd833167fb5a34d9fda828b4efe4fd58c1e2fe933b1eb33bcc1f34b4f",
+          "clip_id": "chapter-008-002",
+          "audio_sha256": "cbae3b82196fc2248bf1e4cc767ef93c29436283d466b68aaaaef18c50272cc6",
+          "request_sha256": "29386e1e6714e47c4d6194f701e8dd098c1be7405794b9f5faaee461e641549d",
+          "evidence_file": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/rechecks/cache/5e60c83cd833167fb5a34d9fda828b4efe4fd58c1e2fe933b1eb33bcc1f34b4f.41df9aa794bdd674facc7bb18830299d852604d66b69d19212fa13a56bd0ec6c.json"
+        }
+      ],
+      "confirmed_narration_error": false,
+      "listening_approval": false
+    }
+  ],
+  "errors": [],
+  "confirmed_narration_errors": 0,
+  "listening_approval": false
+}

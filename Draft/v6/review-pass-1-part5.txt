@@ -1,0 +1,75 @@
+LUMEN — fresh Part 5 review, pass 1
+Reviewed source: Draft/v5/part5.md, all 2,103 lines / 33,132 words.
+Also read revision_canon.json completely and checked relevant passages in Parts 1–4.
+Read-only manuscript audit. This report does not change prose.
+All anchors below refer to v5, before subsequent edits.
+
+CONFIRMED DISCREPANCIES TO FIX BEFORE NARRATION
+
+1. Late integration claims to recalibrate hardware clocks after planting.
+   High confidence; technical continuity.
+   Part 5:39 fixes the epoch before deployment and says changing it requires recalling every implant. Yet :81 says the late package has offsets to “lock each timing crystal”; :215 says specifications to “calibrate each timing crystal”; :221 says “adjusting the timing crystals’ calibration”; :537 says offsets “tune each implant’s timing crystal” to network latency. The Seattle failure in :547–555 is specifically an exploit-stage timeout, which provides the consistent solution.
+   Minimal correction: late data supplies device serials, target routes, and exploit-stage timeout parameters. Integration validates the pre-synchronized clocks and fixed epoch; it does not change them. At :221 use “checking each parameter against his models, adjusting the exploit-stage timeouts, verifying the fixed clock calibration.” At :537 use “Seven measured route profiles and sets of stage-timeout parameters.” At :547 use “Venn third-stage latency is higher than estimated. Update the stage timeout; do not move the activation epoch.” At :555 use “The integration framework cannot validate Seattle’s exploit stages without them.” Align :81/:215 accordingly.
+
+2. Ólafur’s promised local escort disappears without an explanation.
+   High confidence; causal continuity.
+   Part 4:1578 promises a local courier will check the flat and stay until the handoff; :1612 promises protection. Part 5:199–201 instead says he is alone because there are seven team members and five tasks. That arithmetic does not account for the already-promised local courier. The delivery courier at :219 leaves immediately.
+   Minimal correction: add one brief explanation at :199–201 that the escort’s route became exposed/delayed and a replacement had not arrived; Ólafur was instructed to wait but chose the public cafe to preserve the handoff. Or revise the earlier guarantee to a pending attempt and explicitly show its failure. Preserve the ordinary delivery courier as a separate person.
+
+3. Morrow’s realization resets and definitive proof arrives too early.
+   High confidence; character knowledge and timeline.
+   Part 5:719 says it had “never occurred to him” to ask who built the trail. He asks exactly that in Part 3:787/795/807 and remains actively suspicious in Part 4:593/613/1460–1488. Part 5:721 puts Sanne’s definitive trace to Polk seventy-two hours before Tuesday 06:17, making it Saturday, even though the Monday scenes still seek proof of the unidentified source. :729 then says he spent the next forty-eight hours dismantling his case.
+   Minimal correction: :719 becomes “The question he had been asking for days finally had an answer.” :721 becomes “Overnight, Sanne had called back with the original database entry.” :729 becomes “Morrow had spent the remaining hours testing the evidence against his own case.” :717 can refer to learning the names “over the past few days.”
+
+4. The announced houseboat approach has no outcome or relocation bridge.
+   High confidence as a missing causal beat; repair is small.
+   Part 4:1500–1502 explicitly commits Morrow and Santos to approach the occupied Amsterdam houseboat. Part 5:391 places Adrian in Brussels, and :717/:763 brings Morrow to his Brussels door, without showing how the earlier approach failed or how either man moved.
+   Minimal correction: at Part 5:391 establish that a precautionary courier/driver relocated Adrian from the houseboat Monday evening. At :719 establish that Morrow reached an empty boat, then followed a checkable subsequent lead to Brussels. This can be two sentences; no new scene is required.
+
+5. The ending incorrectly says Priya completed every map and maintained all targets.
+   High confidence; core story continuity.
+   Part 5:983 says “She’d finished the maps first”; :1497 repeats “finished her maps before she died.” Part 2:347/523 and Part 4:553 explicitly leave two of six maps unfinished for Adrian to complete. Part 5:985 says seven corporate empires were mapped by a woman who maintained them. Part 2:343 specifies one employer and former-colleague contacts; the seventh endpoint is Polk’s office, separately added in Part 4:707–711.
+   Minimal correction: :983 “She had left the maps and working files where the movement could recover them.” :1497 “For Priya, whose unfinished maps he had carried forward.” :985 “The architectures assembled from Priya’s files, her contacts, and Adrian’s final work lay across the desk: six companies and Polk’s lobbying network.” Priya remains foundational without erasing Adrian’s job.
+
+6. All data is said to finish distributing before an alert ends, despite explicit multi-minute replication.
+   High confidence; technical timing.
+   Part 5:1387 says data was “copied, exfiltrated, and distributed before the first alert had finished sounding.” Part 5:1287 gives replication intervals of one, two, and five minutes. Part 4:1176 also gives Strutt navigation pauses lasting thirty seconds to four minutes.
+   Minimal correction at :1387: “The implants had already opened their channels. The first records were beyond the perimeter; copying and replication continued as the analysts tried to contain them.” Preserve simultaneous activation while allowing subsequent transfer time. If the Strutt slow crawl remains, do not claim all its records are already gone at the first alert.
+
+7. An air-gapped laptop directly queries remote components.
+   High confidence as a mechanism-clarity seam.
+   Part 5:873 explicitly gives Adrian’s laptop no network connection, and commands travel by a human relay. Part 5:963 says his script queries each component through that relay, without describing manual input.
+   Minimal correction: “Adrian entered the latest status values read back over the relay. Ólafur’s sanity-check script validated their calibration, drift compensation, and readiness.” The human relay queries; the isolated script validates its readback.
+
+8. Eleven hours on the Copenhagen floor contradicts the earlier four hours.
+   High confidence; local elapsed time.
+   Part 5:19 says eleven hours since London and four hours on the Copenhagen floor. :85 says “eleven hours on the floor.”
+   Minimal correction: “eleven hours of work,” or “last four hours on the floor.”
+
+LOWER-PRIORITY CONTINUITY CLARIFICATIONS
+
+9. Kai’s claim at Part 5:1679, “Every piece of intelligence the team used came from me,” overstates his contribution relative to Priya’s independent contacts, Sophie’s tracing, and the human reconstruction of missing maps.
+   High confidence that the absolute conflicts with the described work; a character could exaggerate, but the surrounding narration accepts the claim.
+   Minimal correction: “Much of the intelligence that arrived anonymously came from me,” followed by the existing explanation of council intelligence. This retains the reveal and the team’s own work.
+
+10. Part 5:607 gives the actual technician a complimentary “weekend stay” at the moment Tomás enters Monday evening. Use “two-night stay.”
+   High confidence; small calendar wording.
+
+11. Part 5:235 places Adrian’s relayed warning exactly six hours earlier, while Part 4:1564 says its ordinary relay takes at least an hour after the Monday 18:17 warning. Use “earlier that evening.”
+   Medium confidence because an emergency route could be faster; avoid unnecessary false precision.
+
+PASSED CROSS-CHECKS
+
+The stated T-minus anchors match the CET master clock. Tuesday 12:17:03 is the fixed activation epoch. Part 5 explicitly covers all seven roots: Strutt, Cole, Venn, Laine, Barrington, NovaTok, and the separately planted Polk endpoint. Primary/backup activation paths retain seven targets rather than losing targets. Arrival spread and local root completion are now distinct. Raven’s Arnhem ribs, two left fingers, and fragment side wound match the middle. Her failed Brussels hunt leads to the later Polk hunt. Seb’s gun death and last farmhouse conversation match the canon. Kai’s authorship is withheld until the cafe confession; earlier suspicious behavior remains ambiguous. Epilogue Thursday +9 days, Saturday +11, Sunday preparation, and Wednesday +15 agree. Kai’s 2009 age nineteen and present age thirty-six agree with the seventeen-year memory.
+
+OPTIONAL AUDIO / STYLE POLISH, NOT DISCREPANCY BLOCKERS
+
+Part 5:525 and :963 need explicit spoken treatment of function identifiers and sanity_check.py in the narration guide; do not rely on punctuation/underscores to imply pronunciation. Initials at :567/:987 and timestamps should also have a fixed spoken form. The technical decimals are already written as words.
+
+Part 5:97–99 and :181–183 repeat the foretelling that Ólafur has four/two hours left; this is an intentional choice but weakens uncertainty immediately before his death. One ominous cue would suffice.
+
+The ethical monologue at :1193–1259, cafe judgment at :1789–1801, and hearing at :1965–1981 revisit related framework arguments. Their roles differ, so trimming is optional. For listening, the long climax reflection and long epilogue testimony may feel heavier than they look on a page.
+
+Nadia has six years of focused investigation in Part 1, eight years of journalism in Part 5, and “the better part of a decade” observing the machine in Part 3. These can coexist as different phases, but one brief distinction would remove ambiguity. Likewise Kai’s eight-year realization and six-year undercover mission can coexist with a two-year planning period; do not force all durations to the same number without choosing the author’s intended chronology.
+
+No biological or harmful mechanism refinement is recommended. Any later pass over such material should preserve narrative abstraction and focus on character consequence.

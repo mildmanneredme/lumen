@@ -1,0 +1,12 @@
+{
+  "checks_passed": 5,
+  "checks": [
+    "background creation followed by retrieval; cache avoids repeats",
+    "completed ledger and cost installed",
+    "durable in-progress receipt resumes only GET; transient GET retry",
+    "fatal GET authentication error preserves receipt and stops",
+    "mismatching polled ID rejected"
+  ],
+  "no_API_calls": true,
+  "no_production_cache_mutations": true
+}

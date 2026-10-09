@@ -1,0 +1,2073 @@
+{
+  "checker_version": "local-qa-2",
+  "comparison_version": "local-comparison-3",
+  "model_identity": {
+    "path": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/asr-model",
+    "files_sha256": {
+      "config.json": "40028e43687458e79ba89cc16bf14184c5414a5cbc00fd511f8f78d138647afd",
+      "weights.npz": "1bb29b030aca711a035f7a084a0eefac6251ecc2bdd356fa748858fbad082f5a"
+    },
+    "mlx_whisper_version": "0.4.3"
+  },
+  "updated_at_unix": 1791534681.848331,
+  "selected": 247,
+  "pending_audio": 0,
+  "checked": 247,
+  "errors": 0,
+  "review_ids": [
+    "chapter-002-001",
+    "chapter-002-002",
+    "chapter-002-003",
+    "chapter-003-001",
+    "chapter-003-002",
+    "chapter-004-001",
+    "chapter-004-002",
+    "chapter-006-003",
+    "chapter-007-001",
+    "chapter-010-001",
+    "chapter-011-001",
+    "chapter-011-002",
+    "chapter-013-002",
+    "chapter-013-003",
+    "chapter-016-002",
+    "chapter-017-003",
+    "chapter-019-001",
+    "chapter-019-002",
+    "chapter-021-002",
+    "chapter-022-001",
+    "chapter-023-002",
+    "chapter-025-001",
+    "chapter-025-002",
+    "chapter-026-001",
+    "chapter-026-002",
+    "chapter-028-001",
+    "chapter-029-002",
+    "chapter-031-001",
+    "chapter-034-002",
+    "chapter-037-001",
+    "chapter-039-003",
+    "chapter-040-001",
+    "chapter-040-002",
+    "chapter-043-001",
+    "chapter-043-002",
+    "chapter-046-001",
+    "chapter-047-001",
+    "chapter-048-001",
+    "chapter-048-002",
+    "chapter-052-001",
+    "chapter-052-002",
+    "chapter-053-001",
+    "chapter-054-002",
+    "chapter-054-003",
+    "chapter-055-001-take2",
+    "chapter-055-002",
+    "chapter-056-002",
+    "chapter-058-001",
+    "chapter-058-002",
+    "chapter-059-002",
+    "chapter-062-001",
+    "chapter-063-003",
+    "chapter-064-001",
+    "chapter-065-002",
+    "chapter-066-001-section1-take3",
+    "chapter-066-001-section3-take3",
+    "chapter-070-001",
+    "chapter-071-002",
+    "chapter-072-003-take2",
+    "chapter-073-002",
+    "chapter-074-001",
+    "chapter-074-002-take2",
+    "chapter-075-001",
+    "chapter-076-001",
+    "chapter-077-004",
+    "chapter-078-003-take2",
+    "chapter-079-001",
+    "chapter-080-001",
+    "chapter-083-001",
+    "chapter-083-002-scene2-take3",
+    "chapter-083-002-scene3-take3",
+    "chapter-085-001",
+    "chapter-086-003-take2",
+    "chapter-088-001"
+  ],
+  "outcomes": [
+    {
+      "id": "chapter-000-001",
+      "status": "cached",
+      "cache_key": "d81caa2ce3d82650dbb5bc13a1b082f7e89396aa8a15e769d990ec9ea0104693",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-000-001.d81caa2ce3d82650dbb5bc13a1b082f7e89396aa8a15e769d990ec9ea0104693.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.0
+    },
+    {
+      "id": "chapter-001-001",
+      "status": "cached",
+      "cache_key": "9eccfe2df25fc48592ee98ef9b364d01f316961914c2147b6e26afbd03527445",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-001-001.9eccfe2df25fc48592ee98ef9b364d01f316961914c2147b6e26afbd03527445.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.005925925925925926
+    },
+    {
+      "id": "chapter-001-002",
+      "status": "cached",
+      "cache_key": "17a32e2fbd773d1be2a48dab45b021c257a7033048d89a99e777341bd16cf461",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-001-002.17a32e2fbd773d1be2a48dab45b021c257a7033048d89a99e777341bd16cf461.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.019548872180451128
+    },
+    {
+      "id": "chapter-001-003",
+      "status": "cached",
+      "cache_key": "49e38060e20ac0693b835e69dc8535d15e3aecdac0ed625df5677fcde602a23b",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-001-003.49e38060e20ac0693b835e69dc8535d15e3aecdac0ed625df5677fcde602a23b.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.0
+    },
+    {
+      "id": "chapter-002-001",
+      "status": "cached",
+      "cache_key": "959ff3b72c28dfd884725072f75c8c7e2c6347c826c9c0594cd394dd55736f7c",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-002-001.959ff3b72c28dfd884725072f75c8c7e2c6347c826c9c0594cd394dd55736f7c.json",
+      "needs_review": true,
+      "changed_word_fraction": 0.02086677367576244
+    },
+    {
+      "id": "chapter-002-002",
+      "status": "cached",
+      "cache_key": "28839bbfb3e5dd5bf62050e55297f11e2148f605cd8a397ccdd08f00a2b4e8cf",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-002-002.28839bbfb3e5dd5bf62050e55297f11e2148f605cd8a397ccdd08f00a2b4e8cf.json",
+      "needs_review": true,
+      "changed_word_fraction": 0.008955223880597015
+    },
+    {
+      "id": "chapter-002-003",
+      "status": "cached",
+      "cache_key": "a7715d6f3ad66962c1da80d0350901c170ccc483d99f7378ddf3a2bc47c9b03f",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-002-003.a7715d6f3ad66962c1da80d0350901c170ccc483d99f7378ddf3a2bc47c9b03f.json",
+      "needs_review": true,
+      "changed_word_fraction": 0.28434504792332266
+    },
+    {
+      "id": "chapter-003-001",
+      "status": "cached",
+      "cache_key": "94ea8ff8b1b6f73a3fe343c5cf9f72753115a10000a5f5af1063c22db93deb37",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-003-001.94ea8ff8b1b6f73a3fe343c5cf9f72753115a10000a5f5af1063c22db93deb37.json",
+      "needs_review": true,
+      "changed_word_fraction": 0.01601164483260553
+    },
+    {
+      "id": "chapter-003-002",
+      "status": "cached",
+      "cache_key": "e23bfe019258ed2c93048b7a58c0a3dbc852c4464bc1bc48f53ea82f1c0b80b0",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-003-002.e23bfe019258ed2c93048b7a58c0a3dbc852c4464bc1bc48f53ea82f1c0b80b0.json",
+      "needs_review": true,
+      "changed_word_fraction": 0.015942028985507246
+    },
+    {
+      "id": "chapter-003-003-take2",
+      "status": "cached",
+      "cache_key": "154f4b3c417169526953cead64a15c653f91a981511bc152e98b0b2dcadf3df8",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-003-003-take2.154f4b3c417169526953cead64a15c653f91a981511bc152e98b0b2dcadf3df8.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.019971469329529243
+    },
+    {
+      "id": "chapter-003-004",
+      "status": "cached",
+      "cache_key": "28156905719d62e6cf2bbe03d5ebf811ea5b76230dbce80b5b28d03125353c90",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-003-004.28156905719d62e6cf2bbe03d5ebf811ea5b76230dbce80b5b28d03125353c90.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.017660044150110375
+    },
+    {
+      "id": "chapter-004-001",
+      "status": "cached",
+      "cache_key": "35e2924e413f4adf4c310c23f140612de149b2d8e81a3afa97371ad2d0ef01b3",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-004-001.35e2924e413f4adf4c310c23f140612de149b2d8e81a3afa97371ad2d0ef01b3.json",
+      "needs_review": true,
+      "changed_word_fraction": 0.016417910447761194
+    },
+    {
+      "id": "chapter-004-002",
+      "status": "cached",
+      "cache_key": "46cc7fbb8aaf25835da702397025632e694bb72ec6b3435ba240db034a3f80cf",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-004-002.46cc7fbb8aaf25835da702397025632e694bb72ec6b3435ba240db034a3f80cf.json",
+      "needs_review": true,
+      "changed_word_fraction": 0.014388489208633094
+    },
+    {
+      "id": "chapter-004-003",
+      "status": "cached",
+      "cache_key": "e431f056fe405573acecfa74087f37292b0bb3486fbfd570f261bf572637364b",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-004-003.e431f056fe405573acecfa74087f37292b0bb3486fbfd570f261bf572637364b.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.0
+    },
+    {
+      "id": "chapter-005-001",
+      "status": "cached",
+      "cache_key": "860abd4ba0cf54f64ed632921063dae9555e07d782f719b60266cc47e531563e",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-005-001.860abd4ba0cf54f64ed632921063dae9555e07d782f719b60266cc47e531563e.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.020378457059679767
+    },
+    {
+      "id": "chapter-005-002",
+      "status": "cached",
+      "cache_key": "ae3394a6ec78d4a32199d462c649599113dc0a93ba3ae85e512e40428b19e6c7",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-005-002.ae3394a6ec78d4a32199d462c649599113dc0a93ba3ae85e512e40428b19e6c7.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.011904761904761904
+    },
+    {
+      "id": "chapter-006-001",
+      "status": "cached",
+      "cache_key": "df3f2f61cbdc3a9bb2c8c3b14ab58e080eb307af597b39d40c48004d04fb3266",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-006-001.df3f2f61cbdc3a9bb2c8c3b14ab58e080eb307af597b39d40c48004d04fb3266.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.030523255813953487
+    },
+    {
+      "id": "chapter-006-002",
+      "status": "cached",
+      "cache_key": "467782326d653dd9124ff3565d35e84ffdfc63a7cf347fa2cd29f8117d79d9d3",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-006-002.467782326d653dd9124ff3565d35e84ffdfc63a7cf347fa2cd29f8117d79d9d3.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.01721664275466284
+    },
+    {
+      "id": "chapter-006-003",
+      "status": "cached",
+      "cache_key": "2328fc98a76266e06e70ed1d3f87077044e7ee9fb2cb6b65b7cf3049bf2503c9",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-006-003.2328fc98a76266e06e70ed1d3f87077044e7ee9fb2cb6b65b7cf3049bf2503c9.json",
+      "needs_review": true,
+      "changed_word_fraction": 0.07291666666666667
+    },
+    {
+      "id": "chapter-007-001",
+      "status": "cached",
+      "cache_key": "585de33e39e9d1060db75110b4385cae0a47d9d6bf8a0e89355e7f2a116da6a8",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-007-001.585de33e39e9d1060db75110b4385cae0a47d9d6bf8a0e89355e7f2a116da6a8.json",
+      "needs_review": true,
+      "changed_word_fraction": 0.018571428571428572
+    },
+    {
+      "id": "chapter-007-002",
+      "status": "cached",
+      "cache_key": "93b66e0eaa7849f4a1e0a559f975c4a10774ca11063f2662502d650fd2c251ea",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-007-002.93b66e0eaa7849f4a1e0a559f975c4a10774ca11063f2662502d650fd2c251ea.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.00510204081632653
+    },
+    {
+      "id": "chapter-008-001",
+      "status": "cached",
+      "cache_key": "b31e752567c89e83fa4f165b57374e997d60e9fb3d7837802ae7abb2f53b6927",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-008-001.b31e752567c89e83fa4f165b57374e997d60e9fb3d7837802ae7abb2f53b6927.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.016272189349112426
+    },
+    {
+      "id": "chapter-008-002",
+      "status": "cached",
+      "cache_key": "cfca6b44fb9f7de6fe36a962831cacb9f21f20da4782bf3c312f3341153e73c1",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-008-002.cfca6b44fb9f7de6fe36a962831cacb9f21f20da4782bf3c312f3341153e73c1.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.02476780185758514
+    },
+    {
+      "id": "chapter-008-003",
+      "status": "cached",
+      "cache_key": "cf9602769fce7fc40cec7e4a1e66c0f3962df6a2d1d114d35a7a06f5cb73e8df",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-008-003.cf9602769fce7fc40cec7e4a1e66c0f3962df6a2d1d114d35a7a06f5cb73e8df.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.01937984496124031
+    },
+    {
+      "id": "chapter-009-001",
+      "status": "cached",
+      "cache_key": "e1f3f7a8387eb2a96aa513466281c63c9deaa17c547233d05b9f35d5d39412cb",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-009-001.e1f3f7a8387eb2a96aa513466281c63c9deaa17c547233d05b9f35d5d39412cb.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.021021021021021023
+    },
+    {
+      "id": "chapter-009-002",
+      "status": "cached",
+      "cache_key": "fd2ea29ea520b07ce97232e40d3f25e4cdfc3daea35243b7d1a81df9686af71d",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-009-002.fd2ea29ea520b07ce97232e40d3f25e4cdfc3daea35243b7d1a81df9686af71d.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.01804511278195489
+    },
+    {
+      "id": "chapter-009-003",
+      "status": "cached",
+      "cache_key": "649701635111bab4bb1c9a743754465bce1e7900f24f1ae90dd8933a5b619902",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-009-003.649701635111bab4bb1c9a743754465bce1e7900f24f1ae90dd8933a5b619902.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.008912655971479501
+    },
+    {
+      "id": "chapter-010-001",
+      "status": "cached",
+      "cache_key": "23da6215833e88512f7056d484ec88739e5a51d9b877d49aa5aa1100e3c1a38e",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-010-001.23da6215833e88512f7056d484ec88739e5a51d9b877d49aa5aa1100e3c1a38e.json",
+      "needs_review": true,
+      "changed_word_fraction": 0.0140625
+    },
+    {
+      "id": "chapter-010-002",
+      "status": "cached",
+      "cache_key": "a78adad4f5edcf9d957df92e86f180a63eb005ff6123764f15a80030cd8ea990",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-010-002.a78adad4f5edcf9d957df92e86f180a63eb005ff6123764f15a80030cd8ea990.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.01943198804185351
+    },
+    {
+      "id": "chapter-010-003",
+      "status": "cached",
+      "cache_key": "0a61c08db9cb97dc0471393d01d1365516f270c7ce8766ad34081b28a1adef1d",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-010-003.0a61c08db9cb97dc0471393d01d1365516f270c7ce8766ad34081b28a1adef1d.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.016200294550810016
+    },
+    {
+      "id": "chapter-010-004",
+      "status": "cached",
+      "cache_key": "f2fe783086689113c4bfd3ac106bbfe7f7c266ae122d3e8f9d4f8a7b710f5b15",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-010-004.f2fe783086689113c4bfd3ac106bbfe7f7c266ae122d3e8f9d4f8a7b710f5b15.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.009174311926605505
+    },
+    {
+      "id": "chapter-011-001",
+      "status": "cached",
+      "cache_key": "cd97ec7dd459d6d8d16ba99871ae6bfdc55364fbb4b7b79570b63a3af7a654df",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-011-001.cd97ec7dd459d6d8d16ba99871ae6bfdc55364fbb4b7b79570b63a3af7a654df.json",
+      "needs_review": true,
+      "changed_word_fraction": 0.015804597701149427
+    },
+    {
+      "id": "chapter-011-002",
+      "status": "cached",
+      "cache_key": "48d046151f41ef74fe12ece8dd05256f25e6674e5aa3f9260bad22b8982cfd6f",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-011-002.48d046151f41ef74fe12ece8dd05256f25e6674e5aa3f9260bad22b8982cfd6f.json",
+      "needs_review": true,
+      "changed_word_fraction": 0.01601164483260553
+    },
+    {
+      "id": "chapter-012-001",
+      "status": "cached",
+      "cache_key": "842ca393e353eb9dbe1f980db32e4a88de4f174f9128fa6f73a81aefd3f8300c",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-012-001.842ca393e353eb9dbe1f980db32e4a88de4f174f9128fa6f73a81aefd3f8300c.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.014204545454545454
+    },
+    {
+      "id": "chapter-012-002",
+      "status": "cached",
+      "cache_key": "265bc4591cb84b541ec699e608fc64cf064f3e84352a0037bf03b75ed4a2a017",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-012-002.265bc4591cb84b541ec699e608fc64cf064f3e84352a0037bf03b75ed4a2a017.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.007112375533428165
+    },
+    {
+      "id": "chapter-012-003",
+      "status": "cached",
+      "cache_key": "3a4e659a4def08818802f2b4be14f31e61185b1e09b4d371c327b4818e89e80b",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-012-003.3a4e659a4def08818802f2b4be14f31e61185b1e09b4d371c327b4818e89e80b.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.0
+    },
+    {
+      "id": "chapter-013-001",
+      "status": "cached",
+      "cache_key": "73e8ff50951e35e909789586e12d7a693a2188269dd06d36ef1b6004747ab969",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-013-001.73e8ff50951e35e909789586e12d7a693a2188269dd06d36ef1b6004747ab969.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.0072992700729927005
+    },
+    {
+      "id": "chapter-013-002",
+      "status": "cached",
+      "cache_key": "099b2aa37fb32c6a3f464dbe74cb2d53eb2ddf03f6ec2852d4e1cadb593bfc38",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-013-002.099b2aa37fb32c6a3f464dbe74cb2d53eb2ddf03f6ec2852d4e1cadb593bfc38.json",
+      "needs_review": true,
+      "changed_word_fraction": 0.011834319526627219
+    },
+    {
+      "id": "chapter-013-003",
+      "status": "cached",
+      "cache_key": "0a0e021157c875e6e2a0242f87899c59134bc712abccb43377470c3a925021d2",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-013-003.0a0e021157c875e6e2a0242f87899c59134bc712abccb43377470c3a925021d2.json",
+      "needs_review": true,
+      "changed_word_fraction": 0.018518518518518517
+    },
+    {
+      "id": "chapter-013-004",
+      "status": "cached",
+      "cache_key": "2200d06e20514d4319dbe12ee1e520953bfc7074651db8c595de02e1c62131e5",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-013-004.2200d06e20514d4319dbe12ee1e520953bfc7074651db8c595de02e1c62131e5.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.0
+    },
+    {
+      "id": "chapter-014-001",
+      "status": "cached",
+      "cache_key": "8d0401ad2152babc9d24125c4fc271632a240af958b02c2ca443dc78683a623c",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-014-001.8d0401ad2152babc9d24125c4fc271632a240af958b02c2ca443dc78683a623c.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.01721664275466284
+    },
+    {
+      "id": "chapter-014-002",
+      "status": "cached",
+      "cache_key": "4bb918334a154df8ef71bc498fd0fc698df40c6c9c7cb17f0a2e973ad028ef39",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-014-002.4bb918334a154df8ef71bc498fd0fc698df40c6c9c7cb17f0a2e973ad028ef39.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.023547880690737835
+    },
+    {
+      "id": "chapter-015-001",
+      "status": "cached",
+      "cache_key": "1a9a6172c700696881c53c7c21c6eb9d655ecfb5a91781cca061ed7c1eaab08a",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-015-001.1a9a6172c700696881c53c7c21c6eb9d655ecfb5a91781cca061ed7c1eaab08a.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.00872093023255814
+    },
+    {
+      "id": "chapter-015-002",
+      "status": "cached",
+      "cache_key": "fdcc5bc364e21e057552bb49e4b7b44e9e32bc151ab1c5deb516ca9ab2fc5483",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-015-002.fdcc5bc364e21e057552bb49e4b7b44e9e32bc151ab1c5deb516ca9ab2fc5483.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.0196078431372549
+    },
+    {
+      "id": "chapter-016-001",
+      "status": "cached",
+      "cache_key": "5cfcae7efcace5a5903a9312bffd06993e4c53873edbaf1f8c479cf1a6148c0e",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-016-001.5cfcae7efcace5a5903a9312bffd06993e4c53873edbaf1f8c479cf1a6148c0e.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.006153846153846154
+    },
+    {
+      "id": "chapter-016-002",
+      "status": "cached",
+      "cache_key": "0921fdbfc5757071af4b8d2109f0c35c359f8a6085b2fb8593b13526c985de93",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-016-002.0921fdbfc5757071af4b8d2109f0c35c359f8a6085b2fb8593b13526c985de93.json",
+      "needs_review": true,
+      "changed_word_fraction": 0.012987012987012988
+    },
+    {
+      "id": "chapter-016-003",
+      "status": "cached",
+      "cache_key": "9f0d0ee1f6a24eb57bd6838b5d0a93f6df6ab27ffdb0e73d9424d4b920905424",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-016-003.9f0d0ee1f6a24eb57bd6838b5d0a93f6df6ab27ffdb0e73d9424d4b920905424.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.0038314176245210726
+    },
+    {
+      "id": "chapter-017-001",
+      "status": "cached",
+      "cache_key": "18b94ab448a8b5c37bdbb5394d6421af3e4cc11fb18b14dc90cab8883834aa58",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-017-001.18b94ab448a8b5c37bdbb5394d6421af3e4cc11fb18b14dc90cab8883834aa58.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.013138686131386862
+    },
+    {
+      "id": "chapter-017-002",
+      "status": "cached",
+      "cache_key": "7d14f16ce99e44cd5d8ec21a660c7804f237b3b81a3379f527c4c74c5d1cd408",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-017-002.7d14f16ce99e44cd5d8ec21a660c7804f237b3b81a3379f527c4c74c5d1cd408.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.0103397341211226
+    },
+    {
+      "id": "chapter-017-003",
+      "status": "cached",
+      "cache_key": "3163c0ae9176ab61f0633b5d51ae52c70d743208a826c4a4cda70ec8d39be4df",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-017-003.3163c0ae9176ab61f0633b5d51ae52c70d743208a826c4a4cda70ec8d39be4df.json",
+      "needs_review": true,
+      "changed_word_fraction": 0.033582089552238806
+    },
+    {
+      "id": "chapter-018-001",
+      "status": "cached",
+      "cache_key": "28201ff8b414ca8e5aa38d506c3f6bdbb9ae3e6697770066778672d09e35c54c",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-018-001.28201ff8b414ca8e5aa38d506c3f6bdbb9ae3e6697770066778672d09e35c54c.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.012968299711815562
+    },
+    {
+      "id": "chapter-018-002",
+      "status": "cached",
+      "cache_key": "7560f0ca43e5f83b019678c7acb33f53a7a57b02b88b58f19e265ce1fb29d498",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-018-002.7560f0ca43e5f83b019678c7acb33f53a7a57b02b88b58f19e265ce1fb29d498.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.0103397341211226
+    },
+    {
+      "id": "chapter-018-003",
+      "status": "cached",
+      "cache_key": "6a46ca5c62e44ca76d2d608ea6cd3ed78aaf09947470796ac0a9556b56eb0104",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-018-003.6a46ca5c62e44ca76d2d608ea6cd3ed78aaf09947470796ac0a9556b56eb0104.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.0
+    },
+    {
+      "id": "chapter-019-001",
+      "status": "cached",
+      "cache_key": "7a069551a0359aa8cc08be02c11d43cc466d165763cce69d2431c16af8152a92",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-019-001.7a069551a0359aa8cc08be02c11d43cc466d165763cce69d2431c16af8152a92.json",
+      "needs_review": true,
+      "changed_word_fraction": 0.01779935275080906
+    },
+    {
+      "id": "chapter-019-002",
+      "status": "cached",
+      "cache_key": "e8d098f8f002a5a22f307b4732127b4599f9954d6e928e051351a45872d0a293",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-019-002.e8d098f8f002a5a22f307b4732127b4599f9954d6e928e051351a45872d0a293.json",
+      "needs_review": true,
+      "changed_word_fraction": 0.016166281755196306
+    },
+    {
+      "id": "chapter-020-001",
+      "status": "cached",
+      "cache_key": "932429f26955a5db7b1bb18ca9b80dd50b4bd1b6ea309a762f08d9f29893b6d6",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-020-001.932429f26955a5db7b1bb18ca9b80dd50b4bd1b6ea309a762f08d9f29893b6d6.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.014367816091954023
+    },
+    {
+      "id": "chapter-020-002-take2",
+      "status": "cached",
+      "cache_key": "e3eb0592ad8b1058aba1595db1b4246694f0e26dff7a28549f1b24d2e8bcfb0a",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-020-002-take2.e3eb0592ad8b1058aba1595db1b4246694f0e26dff7a28549f1b24d2e8bcfb0a.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.004777070063694267
+    },
+    {
+      "id": "chapter-020-003",
+      "status": "cached",
+      "cache_key": "d2ec8ca969163dc215b3e07c0425bdff3da786a73c3da70ad40306a0cbb0464f",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-020-003.d2ec8ca969163dc215b3e07c0425bdff3da786a73c3da70ad40306a0cbb0464f.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.011419249592169658
+    },
+    {
+      "id": "chapter-021-001",
+      "status": "cached",
+      "cache_key": "d9fa0fa49d0b2f03a999d169ffd4da8a37af4bbd0395d8402545bc6b7e57af29",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-021-001.d9fa0fa49d0b2f03a999d169ffd4da8a37af4bbd0395d8402545bc6b7e57af29.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.014641288433382138
+    },
+    {
+      "id": "chapter-021-002",
+      "status": "cached",
+      "cache_key": "22346080e9ba42db39313f9cdbdec80a655ef84c14cbbfa0a488c1b342f070be",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-021-002.22346080e9ba42db39313f9cdbdec80a655ef84c14cbbfa0a488c1b342f070be.json",
+      "needs_review": true,
+      "changed_word_fraction": 0.025602409638554216
+    },
+    {
+      "id": "chapter-021-003",
+      "status": "cached",
+      "cache_key": "5cc1bb39e38df93110b860ef7afac9a283f56b4c2ab4f48dab43526f356a31d9",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-021-003.5cc1bb39e38df93110b860ef7afac9a283f56b4c2ab4f48dab43526f356a31d9.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.022684310018903593
+    },
+    {
+      "id": "chapter-022-001",
+      "status": "cached",
+      "cache_key": "a0140a209b2f63980df3a6f4081a2a3f32ca640c944e678e3fb68a3633c80c92",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-022-001.a0140a209b2f63980df3a6f4081a2a3f32ca640c944e678e3fb68a3633c80c92.json",
+      "needs_review": true,
+      "changed_word_fraction": 0.008571428571428572
+    },
+    {
+      "id": "chapter-022-002",
+      "status": "cached",
+      "cache_key": "37f13fa89939128ce819dbdedbe99121b4b4f00ec340c371ee9fc396c0c9be33",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-022-002.37f13fa89939128ce819dbdedbe99121b4b4f00ec340c371ee9fc396c0c9be33.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.01098901098901099
+    },
+    {
+      "id": "chapter-023-001",
+      "status": "cached",
+      "cache_key": "360b21281333525c0ab1858765fe5cff612c8b76297ef11b220193321321f7b5",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-023-001.360b21281333525c0ab1858765fe5cff612c8b76297ef11b220193321321f7b5.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.025185185185185185
+    },
+    {
+      "id": "chapter-023-002",
+      "status": "cached",
+      "cache_key": "32f618215c985af0c3d5c21957732d9b4bc054ec3813a15620054b4a90690a16",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-023-002.32f618215c985af0c3d5c21957732d9b4bc054ec3813a15620054b4a90690a16.json",
+      "needs_review": true,
+      "changed_word_fraction": 0.02821316614420063
+    },
+    {
+      "id": "chapter-024-001",
+      "status": "cached",
+      "cache_key": "812fcd805be3ac6a3dd456ed59ed659f4d4ece5fccf45167d8d835c0a4d6c9d6",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-024-001.812fcd805be3ac6a3dd456ed59ed659f4d4ece5fccf45167d8d835c0a4d6c9d6.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.016467065868263474
+    },
+    {
+      "id": "chapter-024-002",
+      "status": "cached",
+      "cache_key": "66a5c62c6d89a718342415a3f77f13d9c4f8f44e94c970417a84dc40d37f6320",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-024-002.66a5c62c6d89a718342415a3f77f13d9c4f8f44e94c970417a84dc40d37f6320.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.013254786450662739
+    },
+    {
+      "id": "chapter-024-003",
+      "status": "cached",
+      "cache_key": "9bad13d5bb36bb280e392166740b762530d688e1f3939e1b71131c4d43708805",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-024-003.9bad13d5bb36bb280e392166740b762530d688e1f3939e1b71131c4d43708805.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.014957264957264958
+    },
+    {
+      "id": "chapter-025-001",
+      "status": "cached",
+      "cache_key": "69ff2c0053690545ee67c4ccb3943490d9712fa68442dd2da967facbf0a5e970",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-025-001.69ff2c0053690545ee67c4ccb3943490d9712fa68442dd2da967facbf0a5e970.json",
+      "needs_review": true,
+      "changed_word_fraction": 0.1343065693430657
+    },
+    {
+      "id": "chapter-025-002",
+      "status": "cached",
+      "cache_key": "baa8e4f97a23f4897d38597625ce08f8c72b4f1fa55977d241ea92ce7d65f0cd",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-025-002.baa8e4f97a23f4897d38597625ce08f8c72b4f1fa55977d241ea92ce7d65f0cd.json",
+      "needs_review": true,
+      "changed_word_fraction": 0.01884057971014493
+    },
+    {
+      "id": "chapter-025-003",
+      "status": "cached",
+      "cache_key": "5ff39e1ea5cd1fbc806f4724505cceb200f2525adb73ac3cd0ece9181f8a39ae",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-025-003.5ff39e1ea5cd1fbc806f4724505cceb200f2525adb73ac3cd0ece9181f8a39ae.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.012012012012012012
+    },
+    {
+      "id": "chapter-026-001",
+      "status": "cached",
+      "cache_key": "197a1125631e2d5a2bd009055c92af021180f8bb468df432656cc68c3b2612e8",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-026-001.197a1125631e2d5a2bd009055c92af021180f8bb468df432656cc68c3b2612e8.json",
+      "needs_review": true,
+      "changed_word_fraction": 0.03
+    },
+    {
+      "id": "chapter-026-002",
+      "status": "cached",
+      "cache_key": "9cba82d6565632bd58687a5bb44d3a238c90d4add849b9e6713b8caaf667aa7d",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-026-002.9cba82d6565632bd58687a5bb44d3a238c90d4add849b9e6713b8caaf667aa7d.json",
+      "needs_review": true,
+      "changed_word_fraction": 0.010471204188481676
+    },
+    {
+      "id": "chapter-027-001",
+      "status": "cached",
+      "cache_key": "dbc582d5b8474cda25c72aa01cb242733b7cb0a31c23f3301812d2d1161868b5",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-027-001.dbc582d5b8474cda25c72aa01cb242733b7cb0a31c23f3301812d2d1161868b5.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.011146496815286623
+    },
+    {
+      "id": "chapter-027-002",
+      "status": "cached",
+      "cache_key": "e18ba538d2ae0116bf08c1fa09851c1422547968e18106bf64a233590c0555db",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-027-002.e18ba538d2ae0116bf08c1fa09851c1422547968e18106bf64a233590c0555db.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.015827338129496403
+    },
+    {
+      "id": "chapter-027-003",
+      "status": "cached",
+      "cache_key": "ac4e96f3a2bbd647e37a66e1559f311b06b2fd893221e4aa0a0fa37673bedc8e",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-027-003.ac4e96f3a2bbd647e37a66e1559f311b06b2fd893221e4aa0a0fa37673bedc8e.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.012875536480686695
+    },
+    {
+      "id": "chapter-028-001",
+      "status": "cached",
+      "cache_key": "1fc98800bb20136010b310200211e5661e611849892159f0323f1fd33b763f5b",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-028-001.1fc98800bb20136010b310200211e5661e611849892159f0323f1fd33b763f5b.json",
+      "needs_review": true,
+      "changed_word_fraction": 0.039538714991762765
+    },
+    {
+      "id": "chapter-028-002",
+      "status": "cached",
+      "cache_key": "ebab7d30319b540bacd5614e6c22ff473062123e35bc2f8ef34b6cbb57095dc3",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-028-002.ebab7d30319b540bacd5614e6c22ff473062123e35bc2f8ef34b6cbb57095dc3.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.011627906976744186
+    },
+    {
+      "id": "chapter-028-003",
+      "status": "cached",
+      "cache_key": "e0221bf82048bc21614b216afe36633d664697ddc531eab63aef7ade1535a35b",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-028-003.e0221bf82048bc21614b216afe36633d664697ddc531eab63aef7ade1535a35b.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.0
+    },
+    {
+      "id": "chapter-029-001",
+      "status": "cached",
+      "cache_key": "a33fc9500fe3692ff05aa3aa508fb4467f35d85efe5361a4b93a149fd6b12321",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-029-001.a33fc9500fe3692ff05aa3aa508fb4467f35d85efe5361a4b93a149fd6b12321.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.02269503546099291
+    },
+    {
+      "id": "chapter-029-002",
+      "status": "cached",
+      "cache_key": "849896783f4ed0d8bdbd35b184b14b7cbe5b647cb511162d347da8b81a55321e",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-029-002.849896783f4ed0d8bdbd35b184b14b7cbe5b647cb511162d347da8b81a55321e.json",
+      "needs_review": true,
+      "changed_word_fraction": 0.02318840579710145
+    },
+    {
+      "id": "chapter-029-003",
+      "status": "cached",
+      "cache_key": "d97003a5915b6daef5d68279f117a1f56cb6ee8972ab98ea2dbeb41a1e49ea49",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-029-003.d97003a5915b6daef5d68279f117a1f56cb6ee8972ab98ea2dbeb41a1e49ea49.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.018387553041018388
+    },
+    {
+      "id": "chapter-029-004",
+      "status": "cached",
+      "cache_key": "c013f9b1cf35636bcac631f4067a2f42a2ab0d56b38313a3dc7aa55350cb3744",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-029-004.c013f9b1cf35636bcac631f4067a2f42a2ab0d56b38313a3dc7aa55350cb3744.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.011538461538461539
+    },
+    {
+      "id": "chapter-030-001",
+      "status": "cached",
+      "cache_key": "f94d7a8fc7133f0d18fa014ace7cebc2bf6d25f93885afcebc27472dcbc71171",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-030-001.f94d7a8fc7133f0d18fa014ace7cebc2bf6d25f93885afcebc27472dcbc71171.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.013574660633484163
+    },
+    {
+      "id": "chapter-030-002",
+      "status": "cached",
+      "cache_key": "5d96920b004e3f6036569b61f97d2064deae1b923ea4aa79e0d3e08ccda6023b",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-030-002.5d96920b004e3f6036569b61f97d2064deae1b923ea4aa79e0d3e08ccda6023b.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.01059001512859304
+    },
+    {
+      "id": "chapter-031-001",
+      "status": "cached",
+      "cache_key": "1d9139eb772fa66861c0f18fe56cd631d93c74981ca5813e17664b1c73939adb",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-031-001.1d9139eb772fa66861c0f18fe56cd631d93c74981ca5813e17664b1c73939adb.json",
+      "needs_review": true,
+      "changed_word_fraction": 0.015895953757225433
+    },
+    {
+      "id": "chapter-031-002",
+      "status": "cached",
+      "cache_key": "6ad7c1252fc9045697a8e22729971f7506c74d99c8f80e7a187c636f79c208bf",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-031-002.6ad7c1252fc9045697a8e22729971f7506c74d99c8f80e7a187c636f79c208bf.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.0046801872074883
+    },
+    {
+      "id": "chapter-032-001",
+      "status": "cached",
+      "cache_key": "f09fe067a862815ccb171f36aa418ececd8eb440ecc51860390ddb45e6e99562",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-032-001.f09fe067a862815ccb171f36aa418ececd8eb440ecc51860390ddb45e6e99562.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.017830609212481426
+    },
+    {
+      "id": "chapter-032-002",
+      "status": "cached",
+      "cache_key": "8e5896a385f209eb18577fa4e103c36c43e26692659c9d482111a62442e0e059",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-032-002.8e5896a385f209eb18577fa4e103c36c43e26692659c9d482111a62442e0e059.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.012326656394453005
+    },
+    {
+      "id": "chapter-032-003",
+      "status": "cached",
+      "cache_key": "7dc89ff6868656545c8982420da526666818643e84a0961a46a2fb4fb24c5966",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-032-003.7dc89ff6868656545c8982420da526666818643e84a0961a46a2fb4fb24c5966.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.011764705882352941
+    },
+    {
+      "id": "chapter-033-001",
+      "status": "cached",
+      "cache_key": "85e2bdfd7b12170de47725d69050ebbe851ef88b0f7c525f5dcff5110d89a018",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-033-001.85e2bdfd7b12170de47725d69050ebbe851ef88b0f7c525f5dcff5110d89a018.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.0064
+    },
+    {
+      "id": "chapter-033-002",
+      "status": "cached",
+      "cache_key": "21a39c759a2075e5aadffdb46f5b9ae82e9bc6b2107de678f6039af037490b77",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-033-002.21a39c759a2075e5aadffdb46f5b9ae82e9bc6b2107de678f6039af037490b77.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.020366598778004074
+    },
+    {
+      "id": "chapter-034-001",
+      "status": "cached",
+      "cache_key": "3270cbbe684d5c2a3109a301a60dea2ba7727276da02c85c4b5f4b42b9a9c183",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-034-001.3270cbbe684d5c2a3109a301a60dea2ba7727276da02c85c4b5f4b42b9a9c183.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.030911901081916538
+    },
+    {
+      "id": "chapter-034-002",
+      "status": "cached",
+      "cache_key": "0f1de3021204d8efb5c1d5b0b4afaba6748c2ab2426237bb177964c873f39ffc",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-034-002.0f1de3021204d8efb5c1d5b0b4afaba6748c2ab2426237bb177964c873f39ffc.json",
+      "needs_review": true,
+      "changed_word_fraction": 0.0339943342776204
+    },
+    {
+      "id": "chapter-035-001",
+      "status": "cached",
+      "cache_key": "49d5bb8c0bf7fbfbcc299b733286e0de36346ab7ac3b0bafc3a42c7dd175ff51",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-035-001.49d5bb8c0bf7fbfbcc299b733286e0de36346ab7ac3b0bafc3a42c7dd175ff51.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.019548872180451128
+    },
+    {
+      "id": "chapter-035-002",
+      "status": "cached",
+      "cache_key": "d97bb88aa8a746c2b80ccfb7b3ab99f39b400176c3a850a26eab193e82657e8d",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-035-002.d97bb88aa8a746c2b80ccfb7b3ab99f39b400176c3a850a26eab193e82657e8d.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.009732360097323601
+    },
+    {
+      "id": "chapter-036-001",
+      "status": "cached",
+      "cache_key": "c0a897b390c79e61c9dad0926e2723114bb4c46064e3e7c25ab9826fbb9dc8c2",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-036-001.c0a897b390c79e61c9dad0926e2723114bb4c46064e3e7c25ab9826fbb9dc8c2.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.010687022900763359
+    },
+    {
+      "id": "chapter-036-002",
+      "status": "cached",
+      "cache_key": "a5e9251f5f48808ca4a2dfabfff2eed9f4a02812559cd51da991ad9353b705f5",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-036-002.a5e9251f5f48808ca4a2dfabfff2eed9f4a02812559cd51da991ad9353b705f5.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.008595988538681949
+    },
+    {
+      "id": "chapter-036-003",
+      "status": "cached",
+      "cache_key": "24826f2c8d94eced4673f33475d905b5b545891d3f43ec430c71489ea6547324",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-036-003.24826f2c8d94eced4673f33475d905b5b545891d3f43ec430c71489ea6547324.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.0
+    },
+    {
+      "id": "chapter-037-001",
+      "status": "cached",
+      "cache_key": "b346a3b27f50f5eb5dee7662e1ff95add2be7c1e6289bd9167f489bb69ee3591",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-037-001.b346a3b27f50f5eb5dee7662e1ff95add2be7c1e6289bd9167f489bb69ee3591.json",
+      "needs_review": true,
+      "changed_word_fraction": 0.02282453637660485
+    },
+    {
+      "id": "chapter-037-002",
+      "status": "cached",
+      "cache_key": "cdc558f64fba054ef5aa4608b20331039ec95b6de78138df4b5aff5c41d99398",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-037-002.cdc558f64fba054ef5aa4608b20331039ec95b6de78138df4b5aff5c41d99398.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.03099510603588907
+    },
+    {
+      "id": "chapter-038-001",
+      "status": "cached",
+      "cache_key": "0c3fd43cfb94d78a05a293e458553b52cfd03bc0aedb0034106e174ce23fb12b",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-038-001.0c3fd43cfb94d78a05a293e458553b52cfd03bc0aedb0034106e174ce23fb12b.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.004784688995215311
+    },
+    {
+      "id": "chapter-038-002",
+      "status": "cached",
+      "cache_key": "a02ca95ad88114159c6583058718124c3b48393dac487dbfd5da6bd1444e6ee2",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-038-002.a02ca95ad88114159c6583058718124c3b48393dac487dbfd5da6bd1444e6ee2.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.01804511278195489
+    },
+    {
+      "id": "chapter-038-003",
+      "status": "cached",
+      "cache_key": "8867ea8f495ce128f18364a21e6ca55ad695a3f32d14f8480bda4d3054709b6c",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-038-003.8867ea8f495ce128f18364a21e6ca55ad695a3f32d14f8480bda4d3054709b6c.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.027833001988071572
+    },
+    {
+      "id": "chapter-039-001",
+      "status": "cached",
+      "cache_key": "9a39c445faea8086bc0d19323ecb996cd495e7ef117350f8892eea41ba182134",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-039-001.9a39c445faea8086bc0d19323ecb996cd495e7ef117350f8892eea41ba182134.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.01300578034682081
+    },
+    {
+      "id": "chapter-039-002",
+      "status": "cached",
+      "cache_key": "a6831d7e15a43fdd05c075263ecfcc166f9bb6876ba9c83a219b365f40befba0",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-039-002.a6831d7e15a43fdd05c075263ecfcc166f9bb6876ba9c83a219b365f40befba0.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.014367816091954023
+    },
+    {
+      "id": "chapter-039-003",
+      "status": "cached",
+      "cache_key": "115532030cc2b13c174b406d950ff4047261502e0f0cbeba6403262b3ea075a5",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-039-003.115532030cc2b13c174b406d950ff4047261502e0f0cbeba6403262b3ea075a5.json",
+      "needs_review": true,
+      "changed_word_fraction": 0.05472636815920398
+    },
+    {
+      "id": "chapter-040-001",
+      "status": "cached",
+      "cache_key": "1abbb0448501abbd7e4bd5411e767bfdd360850322675b5ced593bf428ad7082",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-040-001.1abbb0448501abbd7e4bd5411e767bfdd360850322675b5ced593bf428ad7082.json",
+      "needs_review": true,
+      "changed_word_fraction": 0.020537124802527645
+    },
+    {
+      "id": "chapter-040-002",
+      "status": "cached",
+      "cache_key": "941bc1239f5ed007044af17e8c011862ff8222449b078337324fc532aa25da65",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-040-002.941bc1239f5ed007044af17e8c011862ff8222449b078337324fc532aa25da65.json",
+      "needs_review": true,
+      "changed_word_fraction": 0.013138686131386862
+    },
+    {
+      "id": "chapter-040-003",
+      "status": "cached",
+      "cache_key": "bde925c9093c9391603ad354fe537778fb63c1a0908c35d5310834f592db4fef",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-040-003.bde925c9093c9391603ad354fe537778fb63c1a0908c35d5310834f592db4fef.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.016320474777448073
+    },
+    {
+      "id": "chapter-040-004",
+      "status": "cached",
+      "cache_key": "e6753cb823371006a6cd3479a065bf6c8dc049fe0c9f780481a8be8a2f74ec4a",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-040-004.e6753cb823371006a6cd3479a065bf6c8dc049fe0c9f780481a8be8a2f74ec4a.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.015463917525773196
+    },
+    {
+      "id": "chapter-041-001",
+      "status": "cached",
+      "cache_key": "9905ce112252a74a7b5d820eb51f26c796c46f0258a0ab99b8a7a5fad198cad1",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-041-001.9905ce112252a74a7b5d820eb51f26c796c46f0258a0ab99b8a7a5fad198cad1.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.012411347517730497
+    },
+    {
+      "id": "chapter-042-001",
+      "status": "cached",
+      "cache_key": "70106d8169d2aef9a40176df2e298ba62c6cad191f31d1eb90b2303c42429f60",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-042-001.70106d8169d2aef9a40176df2e298ba62c6cad191f31d1eb90b2303c42429f60.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.027737226277372264
+    },
+    {
+      "id": "chapter-042-002",
+      "status": "cached",
+      "cache_key": "0b188190b0057e18b0b41930edab3e719f5843fbbed2eb053f5d8548192fab41",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-042-002.0b188190b0057e18b0b41930edab3e719f5843fbbed2eb053f5d8548192fab41.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.01447178002894356
+    },
+    {
+      "id": "chapter-042-003",
+      "status": "cached",
+      "cache_key": "18036ac47baf5b56c544b603ee1aebd934c42703b98a0dadbbee06f793287bc5",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-042-003.18036ac47baf5b56c544b603ee1aebd934c42703b98a0dadbbee06f793287bc5.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.01361573373676248
+    },
+    {
+      "id": "chapter-042-004",
+      "status": "cached",
+      "cache_key": "b61141bacb93a8b42557977266003489e4c9606d8eca7a627d4ea085f464200e",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-042-004.b61141bacb93a8b42557977266003489e4c9606d8eca7a627d4ea085f464200e.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.005291005291005291
+    },
+    {
+      "id": "chapter-043-001",
+      "status": "cached",
+      "cache_key": "d5cb5268eda208e21116ccefb3f50ca604f9859f1597478879047b0c220e42ca",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-043-001.d5cb5268eda208e21116ccefb3f50ca604f9859f1597478879047b0c220e42ca.json",
+      "needs_review": true,
+      "changed_word_fraction": 0.03385049365303244
+    },
+    {
+      "id": "chapter-043-002",
+      "status": "cached",
+      "cache_key": "1d64bc79b43efb4eca3124eb515f6c14a1fec9fecbb12d203743d86a7e474dc4",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-043-002.1d64bc79b43efb4eca3124eb515f6c14a1fec9fecbb12d203743d86a7e474dc4.json",
+      "needs_review": true,
+      "changed_word_fraction": 0.041193181818181816
+    },
+    {
+      "id": "chapter-043-003",
+      "status": "cached",
+      "cache_key": "c4bd508ee7a815e3a25b47ed8972b13a0e2ea25bf3351fd1d1fafc6457bb5541",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-043-003.c4bd508ee7a815e3a25b47ed8972b13a0e2ea25bf3351fd1d1fafc6457bb5541.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.0026666666666666666
+    },
+    {
+      "id": "chapter-044-001",
+      "status": "cached",
+      "cache_key": "86641f17233435a1a257f662a98175633efc0d718c64c5024649349919f6598b",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-044-001.86641f17233435a1a257f662a98175633efc0d718c64c5024649349919f6598b.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.009022556390977444
+    },
+    {
+      "id": "chapter-044-002",
+      "status": "cached",
+      "cache_key": "e3bf503038f9ed038c8430cbe731aa6f8b495b426cf8cfccae2ec27658ae366c",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-044-002.e3bf503038f9ed038c8430cbe731aa6f8b495b426cf8cfccae2ec27658ae366c.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.010309278350515464
+    },
+    {
+      "id": "chapter-045-001",
+      "status": "cached",
+      "cache_key": "1b9bb512141040e66b535ec59bc28c5a415d6153ce4e256401a70256bb7bd8b5",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-045-001.1b9bb512141040e66b535ec59bc28c5a415d6153ce4e256401a70256bb7bd8b5.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.008823529411764706
+    },
+    {
+      "id": "chapter-045-002",
+      "status": "cached",
+      "cache_key": "7e81b991110f36fcdd503a6cec2753e5ea255846fe6f368fb5fe101db8b9e6a1",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-045-002.7e81b991110f36fcdd503a6cec2753e5ea255846fe6f368fb5fe101db8b9e6a1.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.007204610951008645
+    },
+    {
+      "id": "chapter-046-001",
+      "status": "cached",
+      "cache_key": "76f89107c481d26c73967af1d97259bc66244eb96574ebdc2e27e1212d87907d",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-046-001.76f89107c481d26c73967af1d97259bc66244eb96574ebdc2e27e1212d87907d.json",
+      "needs_review": true,
+      "changed_word_fraction": 0.013824884792626729
+    },
+    {
+      "id": "chapter-046-002",
+      "status": "cached",
+      "cache_key": "f31e2e9ca3e0c4d89d7782c2fe5d3f53e788b668f6e69eb7837f86b8ee044b42",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-046-002.f31e2e9ca3e0c4d89d7782c2fe5d3f53e788b668f6e69eb7837f86b8ee044b42.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.008915304606240713
+    },
+    {
+      "id": "chapter-046-003",
+      "status": "cached",
+      "cache_key": "17e0d6a5d7d39336113f2d9f4f59ca8ff9140aa4cd5a4d51b50b7a666cc64597",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-046-003.17e0d6a5d7d39336113f2d9f4f59ca8ff9140aa4cd5a4d51b50b7a666cc64597.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.0
+    },
+    {
+      "id": "chapter-047-001",
+      "status": "cached",
+      "cache_key": "070cc76e30d7df9f2c5c8ac48fa9b90f9de8b40ba8e45ceecb492bdbdf1a0fe6",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-047-001.070cc76e30d7df9f2c5c8ac48fa9b90f9de8b40ba8e45ceecb492bdbdf1a0fe6.json",
+      "needs_review": true,
+      "changed_word_fraction": 0.12481644640234948
+    },
+    {
+      "id": "chapter-047-002",
+      "status": "cached",
+      "cache_key": "4da20ecd18dcbddab36093c6de9bf1d79ac98d36ba7ac9e20f2c87fc8453cb2a",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-047-002.4da20ecd18dcbddab36093c6de9bf1d79ac98d36ba7ac9e20f2c87fc8453cb2a.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.015015015015015015
+    },
+    {
+      "id": "chapter-047-003",
+      "status": "cached",
+      "cache_key": "0a645c0a25d5d29e44f600ff57e36774a4bfad3160cbe9adeb149833d2d48c62",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-047-003.0a645c0a25d5d29e44f600ff57e36774a4bfad3160cbe9adeb149833d2d48c62.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.007731958762886598
+    },
+    {
+      "id": "chapter-048-001",
+      "status": "cached",
+      "cache_key": "fe0359aabdb40ea88a254c8bbfc502f9f36dfd6d39301678a7a3133b962b5cce",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-048-001.fe0359aabdb40ea88a254c8bbfc502f9f36dfd6d39301678a7a3133b962b5cce.json",
+      "needs_review": true,
+      "changed_word_fraction": 0.019287833827893175
+    },
+    {
+      "id": "chapter-048-002",
+      "status": "cached",
+      "cache_key": "4e706e4a6f91bb702dbeab61ead167898888a49449ef02d755d7b1d5386eac0b",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-048-002.4e706e4a6f91bb702dbeab61ead167898888a49449ef02d755d7b1d5386eac0b.json",
+      "needs_review": true,
+      "changed_word_fraction": 0.008595988538681949
+    },
+    {
+      "id": "chapter-048-003",
+      "status": "cached",
+      "cache_key": "698419e3e460eccbd8785191c013f059bcc2253e75700737265e36661c32b353",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-048-003.698419e3e460eccbd8785191c013f059bcc2253e75700737265e36661c32b353.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.0
+    },
+    {
+      "id": "chapter-049-001",
+      "status": "cached",
+      "cache_key": "8af1956f16714dfd46ff84016f2d50195ca6e577d7d85d55bbf5d312f191b7ae",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-049-001.8af1956f16714dfd46ff84016f2d50195ca6e577d7d85d55bbf5d312f191b7ae.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.03422619047619048
+    },
+    {
+      "id": "chapter-049-002",
+      "status": "cached",
+      "cache_key": "5da01950c37172566069189c71a113012fb2245945f2b5e7dfc55b00e6ecd8c7",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-049-002.5da01950c37172566069189c71a113012fb2245945f2b5e7dfc55b00e6ecd8c7.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.018998272884283247
+    },
+    {
+      "id": "chapter-050-001",
+      "status": "cached",
+      "cache_key": "e96a68a4bc81262c4d86ca3f179ce18311f3eb4ee2be8c3e55a03b44ac158cb5",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-050-001.e96a68a4bc81262c4d86ca3f179ce18311f3eb4ee2be8c3e55a03b44ac158cb5.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.029484029484029485
+    },
+    {
+      "id": "chapter-051-001",
+      "status": "cached",
+      "cache_key": "5b70428bbd5b2d7747fcee72cda7f48e82f65a34dbd0bc44fbf83437f651c6ea",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-051-001.5b70428bbd5b2d7747fcee72cda7f48e82f65a34dbd0bc44fbf83437f651c6ea.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.01848998459167951
+    },
+    {
+      "id": "chapter-051-002",
+      "status": "cached",
+      "cache_key": "c12f8ec920d067fbb7bec864d6cfb04214667528153694949e773a2d25c2687b",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-051-002.c12f8ec920d067fbb7bec864d6cfb04214667528153694949e773a2d25c2687b.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.006633499170812604
+    },
+    {
+      "id": "chapter-052-001",
+      "status": "cached",
+      "cache_key": "be99689adf86898ea4e83e49e3d36975f7c8af1adfed1ffb98898863e878fad9",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-052-001.be99689adf86898ea4e83e49e3d36975f7c8af1adfed1ffb98898863e878fad9.json",
+      "needs_review": true,
+      "changed_word_fraction": 0.01834862385321101
+    },
+    {
+      "id": "chapter-052-002",
+      "status": "cached",
+      "cache_key": "53e4db389b22e6348132087922ef43c17bdfee2434b19c455a453daaa4b0ebaa",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-052-002.53e4db389b22e6348132087922ef43c17bdfee2434b19c455a453daaa4b0ebaa.json",
+      "needs_review": true,
+      "changed_word_fraction": 0.018867924528301886
+    },
+    {
+      "id": "chapter-053-001",
+      "status": "cached",
+      "cache_key": "c553de10b287eac6a2117c1b7458ea217c03db950dcdf7fbc8a87072922625c2",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-053-001.c553de10b287eac6a2117c1b7458ea217c03db950dcdf7fbc8a87072922625c2.json",
+      "needs_review": true,
+      "changed_word_fraction": 0.01451378809869376
+    },
+    {
+      "id": "chapter-053-002",
+      "status": "cached",
+      "cache_key": "fe7012c0a7e9e736eafb4b3e572893435db7d9920a0bf5da61df35fa57dd80e2",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-053-002.fe7012c0a7e9e736eafb4b3e572893435db7d9920a0bf5da61df35fa57dd80e2.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.00723589001447178
+    },
+    {
+      "id": "chapter-053-003",
+      "status": "cached",
+      "cache_key": "4e5e53bcab953bb22b177aa12b3efafe97271a723b8e30e7f6687155a6e4f3e3",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-053-003.4e5e53bcab953bb22b177aa12b3efafe97271a723b8e30e7f6687155a6e4f3e3.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.005988023952095809
+    },
+    {
+      "id": "chapter-054-001",
+      "status": "cached",
+      "cache_key": "3bbdf401e0fd45ed04709ec503dda17a8a48ee53988ce89d823de3e36c2061e7",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-054-001.3bbdf401e0fd45ed04709ec503dda17a8a48ee53988ce89d823de3e36c2061e7.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.02242152466367713
+    },
+    {
+      "id": "chapter-054-002",
+      "status": "cached",
+      "cache_key": "05271ffa6e0b323205571c915586a50b4ac158ef8fe990dac0edbc46cec5cd13",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-054-002.05271ffa6e0b323205571c915586a50b4ac158ef8fe990dac0edbc46cec5cd13.json",
+      "needs_review": true,
+      "changed_word_fraction": 0.005747126436781609
+    },
+    {
+      "id": "chapter-054-003",
+      "status": "cached",
+      "cache_key": "3e7565b7cc8480461011d1dbade0cfd8712366f374c62f1ba66d951f7b8e3a43",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-054-003.3e7565b7cc8480461011d1dbade0cfd8712366f374c62f1ba66d951f7b8e3a43.json",
+      "needs_review": true,
+      "changed_word_fraction": 0.016417910447761194
+    },
+    {
+      "id": "chapter-055-001-take2",
+      "status": "cached",
+      "cache_key": "7c5b622ba1be44e87020992b7c6f2e79a8a6c5d3fd69135e201e106ba3662115",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-055-001-take2.7c5b622ba1be44e87020992b7c6f2e79a8a6c5d3fd69135e201e106ba3662115.json",
+      "needs_review": true,
+      "changed_word_fraction": 0.01669195751138088
+    },
+    {
+      "id": "chapter-055-002",
+      "status": "cached",
+      "cache_key": "1717d98532d19f3f1d04304d2cddb1d68c5e05105838afbfdcdaa0fd99460592",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-055-002.1717d98532d19f3f1d04304d2cddb1d68c5e05105838afbfdcdaa0fd99460592.json",
+      "needs_review": true,
+      "changed_word_fraction": 0.03914590747330961
+    },
+    {
+      "id": "chapter-056-001",
+      "status": "cached",
+      "cache_key": "929d42702c831f8170f4fbae34b373cb7be4266a537d4fe58877850ddb69b876",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-056-001.929d42702c831f8170f4fbae34b373cb7be4266a537d4fe58877850ddb69b876.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.01906158357771261
+    },
+    {
+      "id": "chapter-056-002",
+      "status": "cached",
+      "cache_key": "5b61346068506fe1b965cd04bc824fc5fe9d75f4288ae28514812ebcd6e1aa58",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-056-002.5b61346068506fe1b965cd04bc824fc5fe9d75f4288ae28514812ebcd6e1aa58.json",
+      "needs_review": true,
+      "changed_word_fraction": 0.018281535648994516
+    },
+    {
+      "id": "chapter-057-001",
+      "status": "cached",
+      "cache_key": "42686b343160e78314ee9284bda6acb69dcdb12bb1de6bbda3d8f5a46ce78abc",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-057-001.42686b343160e78314ee9284bda6acb69dcdb12bb1de6bbda3d8f5a46ce78abc.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.02177293934681182
+    },
+    {
+      "id": "chapter-057-002",
+      "status": "cached",
+      "cache_key": "1dc91fb14f78d368ed56ccb95b056f9baa7ee3c01f4767c336e8d1b138d5c1c3",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-057-002.1dc91fb14f78d368ed56ccb95b056f9baa7ee3c01f4767c336e8d1b138d5c1c3.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.004464285714285714
+    },
+    {
+      "id": "chapter-057-003",
+      "status": "cached",
+      "cache_key": "9c601c302d32ff277cc5673ab8c88c090c332664c3aaf1d761509f1d9bf08f18",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-057-003.9c601c302d32ff277cc5673ab8c88c090c332664c3aaf1d761509f1d9bf08f18.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.006493506493506494
+    },
+    {
+      "id": "chapter-058-001",
+      "status": "cached",
+      "cache_key": "0836c55dd7cd234268068966b5ed47ddabc5760968be83b92c521edf8ca2dbf6",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-058-001.0836c55dd7cd234268068966b5ed47ddabc5760968be83b92c521edf8ca2dbf6.json",
+      "needs_review": true,
+      "changed_word_fraction": 0.1242603550295858
+    },
+    {
+      "id": "chapter-058-002",
+      "status": "cached",
+      "cache_key": "1fd651ff5e946c99af4a45b601653c0cd5846fc1bcbe0b2f404d933dcae335ac",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-058-002.1fd651ff5e946c99af4a45b601653c0cd5846fc1bcbe0b2f404d933dcae335ac.json",
+      "needs_review": true,
+      "changed_word_fraction": 0.04354136429608128
+    },
+    {
+      "id": "chapter-058-003",
+      "status": "cached",
+      "cache_key": "e7bb97d1375bc1abafdb787b3e6446833ebb0a38a321b773058c6c4d7795ed45",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-058-003.e7bb97d1375bc1abafdb787b3e6446833ebb0a38a321b773058c6c4d7795ed45.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.022727272727272728
+    },
+    {
+      "id": "chapter-059-001",
+      "status": "cached",
+      "cache_key": "e248f543bad6eb6a567a105296875f7e8800bbc394bcde186467b187567b9f13",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-059-001.e248f543bad6eb6a567a105296875f7e8800bbc394bcde186467b187567b9f13.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.03008595988538682
+    },
+    {
+      "id": "chapter-059-002",
+      "status": "cached",
+      "cache_key": "9f1ab80878422de64fe5db291e5d8e1b8871222b8bf234e6e776bcd3e322ac99",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-059-002.9f1ab80878422de64fe5db291e5d8e1b8871222b8bf234e6e776bcd3e322ac99.json",
+      "needs_review": true,
+      "changed_word_fraction": 0.018571428571428572
+    },
+    {
+      "id": "chapter-059-003",
+      "status": "cached",
+      "cache_key": "466eef2ff13139a28df4942d8932db106b4bd517b7d934754b0b7f9dd2342126",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-059-003.466eef2ff13139a28df4942d8932db106b4bd517b7d934754b0b7f9dd2342126.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.0041841004184100415
+    },
+    {
+      "id": "chapter-060-001",
+      "status": "cached",
+      "cache_key": "ba36f1b7de657aed112a1c21ec7a574b767223b13c3eb21827c718ff83e02e9b",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-060-001.ba36f1b7de657aed112a1c21ec7a574b767223b13c3eb21827c718ff83e02e9b.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.011695906432748537
+    },
+    {
+      "id": "chapter-061-001",
+      "status": "cached",
+      "cache_key": "5effcac70db9550a3abeb11c6637c543139b4ff3b62788ad55fec01cde1fe362",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-061-001.5effcac70db9550a3abeb11c6637c543139b4ff3b62788ad55fec01cde1fe362.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.016200294550810016
+    },
+    {
+      "id": "chapter-061-002",
+      "status": "cached",
+      "cache_key": "c12a8be3eda0a4002819e1dbb64bb38269de79ade494bce21d6303c7f583e7d7",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-061-002.c12a8be3eda0a4002819e1dbb64bb38269de79ade494bce21d6303c7f583e7d7.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.01818181818181818
+    },
+    {
+      "id": "chapter-061-003",
+      "status": "cached",
+      "cache_key": "c456a08a5559d73e4d720ebd6a9d5631eb8dafc8319e136b43d650592d414ff5",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-061-003.c456a08a5559d73e4d720ebd6a9d5631eb8dafc8319e136b43d650592d414ff5.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.00411522633744856
+    },
+    {
+      "id": "chapter-062-001",
+      "status": "cached",
+      "cache_key": "4ce4d351753e09f36c0eba7e156b885fe2e23cb8a2cd66634bc5708f20533236",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-062-001.4ce4d351753e09f36c0eba7e156b885fe2e23cb8a2cd66634bc5708f20533236.json",
+      "needs_review": true,
+      "changed_word_fraction": 0.046242774566473986
+    },
+    {
+      "id": "chapter-062-002",
+      "status": "cached",
+      "cache_key": "42931b8fd9ef0a55f997abb21b3ebc8980bb13692abb121132c1fe07464aa185",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-062-002.42931b8fd9ef0a55f997abb21b3ebc8980bb13692abb121132c1fe07464aa185.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.01694915254237288
+    },
+    {
+      "id": "chapter-063-001",
+      "status": "cached",
+      "cache_key": "a292fd9eb3615a6b21fd1f889d5063b0fbfc0a539ad41f60ef3776be4fb86211",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-063-001.a292fd9eb3615a6b21fd1f889d5063b0fbfc0a539ad41f60ef3776be4fb86211.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.021398002853067047
+    },
+    {
+      "id": "chapter-063-002",
+      "status": "cached",
+      "cache_key": "2ee573dbbc5ba5efe09a4021d19225a8055d44e63f8969f4c2cf14ef20f5bf66",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-063-002.2ee573dbbc5ba5efe09a4021d19225a8055d44e63f8969f4c2cf14ef20f5bf66.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.021367521367521368
+    },
+    {
+      "id": "chapter-063-003",
+      "status": "cached",
+      "cache_key": "1ba1e598c5d70b58c19f2a4e6675642e9e313b57941d4c2c00d7266e6b4d0a35",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-063-003.1ba1e598c5d70b58c19f2a4e6675642e9e313b57941d4c2c00d7266e6b4d0a35.json",
+      "needs_review": true,
+      "changed_word_fraction": 0.03502626970227671
+    },
+    {
+      "id": "chapter-064-001",
+      "status": "cached",
+      "cache_key": "87cebceb1538dcdf95a0d2b1f22a3a651240beb69e3d4c5edbe214c8df3a0a3b",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-064-001.87cebceb1538dcdf95a0d2b1f22a3a651240beb69e3d4c5edbe214c8df3a0a3b.json",
+      "needs_review": true,
+      "changed_word_fraction": 0.05110732538330494
+    },
+    {
+      "id": "chapter-065-001",
+      "status": "cached",
+      "cache_key": "9d4315040b1f02d730112e19ff278c6032ab57e116d9102871b36ca24b066c2b",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-065-001.9d4315040b1f02d730112e19ff278c6032ab57e116d9102871b36ca24b066c2b.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.014641288433382138
+    },
+    {
+      "id": "chapter-065-002",
+      "status": "cached",
+      "cache_key": "402a08f794cbc47c6f5024aa7a74f104a2c89abd7823d51d7f728dcd3dba48fd",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-065-002.402a08f794cbc47c6f5024aa7a74f104a2c89abd7823d51d7f728dcd3dba48fd.json",
+      "needs_review": true,
+      "changed_word_fraction": 0.010526315789473684
+    },
+    {
+      "id": "chapter-066-001-section1-take3",
+      "status": "checked",
+      "cache_key": "046d594954091ec37b2b52c15bf7b54f8d41ff0f4672bbe5e41514108ff14f59",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-066-001-section1-take3.046d594954091ec37b2b52c15bf7b54f8d41ff0f4672bbe5e41514108ff14f59.json",
+      "needs_review": true,
+      "changed_word_fraction": 0.03636363636363636
+    },
+    {
+      "id": "chapter-066-001-section2-take3",
+      "status": "checked",
+      "cache_key": "81a6f3513489b4b430b57afbca062642c78426264231cbba5dcb2cc4dd155cc1",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-066-001-section2-take3.81a6f3513489b4b430b57afbca062642c78426264231cbba5dcb2cc4dd155cc1.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.0
+    },
+    {
+      "id": "chapter-066-001-section3-take3",
+      "status": "checked",
+      "cache_key": "992e9bbbeceed54af865c3a3786ebc99cd1e09c39f5020babcadaf6819ddabcc",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-066-001-section3-take3.992e9bbbeceed54af865c3a3786ebc99cd1e09c39f5020babcadaf6819ddabcc.json",
+      "needs_review": true,
+      "changed_word_fraction": 0.02564102564102564
+    },
+    {
+      "id": "chapter-066-002",
+      "status": "cached",
+      "cache_key": "190933b39999dc358522129dfcd028946ac09e1ce78a30e86606fe22e16b81b1",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-066-002.190933b39999dc358522129dfcd028946ac09e1ce78a30e86606fe22e16b81b1.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.027417027417027416
+    },
+    {
+      "id": "chapter-067-001",
+      "status": "cached",
+      "cache_key": "74d57f67c39cde419011c6fef51b958d53c83559f2dfa2bac2996f8ce367b641",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-067-001.74d57f67c39cde419011c6fef51b958d53c83559f2dfa2bac2996f8ce367b641.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.01870503597122302
+    },
+    {
+      "id": "chapter-067-002-take2",
+      "status": "cached",
+      "cache_key": "e346939df9b88f3b25f5b739bf0db73c910fc0a156af89d95a09d7c70bec9552",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-067-002-take2.e346939df9b88f3b25f5b739bf0db73c910fc0a156af89d95a09d7c70bec9552.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.027777777777777776
+    },
+    {
+      "id": "chapter-067-003",
+      "status": "cached",
+      "cache_key": "3c167c138dd888dc7c3686f0faadea36e934f70bb8ff59f51420cec61546ab42",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-067-003.3c167c138dd888dc7c3686f0faadea36e934f70bb8ff59f51420cec61546ab42.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.0
+    },
+    {
+      "id": "chapter-068-001",
+      "status": "cached",
+      "cache_key": "1c4327ce560766eb134e6fdce793fcf7cdea2675e80a57946f12968656103d98",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-068-001.1c4327ce560766eb134e6fdce793fcf7cdea2675e80a57946f12968656103d98.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.01744186046511628
+    },
+    {
+      "id": "chapter-068-002",
+      "status": "cached",
+      "cache_key": "44524050b7c4a0e541d66863c0d7e228a9a61b1acab60ba23d15cea35ca9e1e6",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-068-002.44524050b7c4a0e541d66863c0d7e228a9a61b1acab60ba23d15cea35ca9e1e6.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.01291248206599713
+    },
+    {
+      "id": "chapter-068-003",
+      "status": "cached",
+      "cache_key": "4f56f8e004af0cc7eac15a762265ecce5676468b75ca8c76867dfffc279e4e26",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-068-003.4f56f8e004af0cc7eac15a762265ecce5676468b75ca8c76867dfffc279e4e26.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.0
+    },
+    {
+      "id": "chapter-069-001-take2",
+      "status": "cached",
+      "cache_key": "f23546225fc361503630e3174e6077f77c8b3b6fde36f0faa0385d622b1bfd88",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-069-001-take2.f23546225fc361503630e3174e6077f77c8b3b6fde36f0faa0385d622b1bfd88.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.024427480916030534
+    },
+    {
+      "id": "chapter-069-002",
+      "status": "cached",
+      "cache_key": "5dec7e4aa79255779ad0b6fba60cee4a9d566007f85d94240f92f9bd571f7f84",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-069-002.5dec7e4aa79255779ad0b6fba60cee4a9d566007f85d94240f92f9bd571f7f84.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.028528528528528527
+    },
+    {
+      "id": "chapter-070-001",
+      "status": "cached",
+      "cache_key": "90351931950af7556642a3adcd13450cf6e76d1302c10a26d67206a623d64bec",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-070-001.90351931950af7556642a3adcd13450cf6e76d1302c10a26d67206a623d64bec.json",
+      "needs_review": true,
+      "changed_word_fraction": 0.042042042042042045
+    },
+    {
+      "id": "chapter-070-002",
+      "status": "cached",
+      "cache_key": "e725ec59cc4d732b93a34aee9347d597ed6af51b9fa96d4e33ce0db86a13529c",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-070-002.e725ec59cc4d732b93a34aee9347d597ed6af51b9fa96d4e33ce0db86a13529c.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.0
+    },
+    {
+      "id": "chapter-071-001",
+      "status": "cached",
+      "cache_key": "259a1f18d9f499ea7941504e9173bcfe7e3b71d2a465799920f0264138f87db2",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-071-001.259a1f18d9f499ea7941504e9173bcfe7e3b71d2a465799920f0264138f87db2.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.027417027417027416
+    },
+    {
+      "id": "chapter-071-002",
+      "status": "cached",
+      "cache_key": "debfea3fc00601d384f5fb1047011341e9c501229a7843d792bdfa26c8540656",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-071-002.debfea3fc00601d384f5fb1047011341e9c501229a7843d792bdfa26c8540656.json",
+      "needs_review": true,
+      "changed_word_fraction": 0.01884057971014493
+    },
+    {
+      "id": "chapter-071-003-take2",
+      "status": "cached",
+      "cache_key": "24b7b3b0c93a0ace39548a19d4959d3d76fe11367df001d4009004adc4d9e8c5",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-071-003-take2.24b7b3b0c93a0ace39548a19d4959d3d76fe11367df001d4009004adc4d9e8c5.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.011013215859030838
+    },
+    {
+      "id": "chapter-072-001",
+      "status": "cached",
+      "cache_key": "d671316d9448fb9d58989edaf209ee8f4096093344c4322fe8851dde4a25d004",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-072-001.d671316d9448fb9d58989edaf209ee8f4096093344c4322fe8851dde4a25d004.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.01447178002894356
+    },
+    {
+      "id": "chapter-072-002",
+      "status": "cached",
+      "cache_key": "6410851f4af6246b9e7e44da0cf7f9112c714d03737488cff18e71bed6f960a8",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-072-002.6410851f4af6246b9e7e44da0cf7f9112c714d03737488cff18e71bed6f960a8.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.008620689655172414
+    },
+    {
+      "id": "chapter-072-003-take2",
+      "status": "cached",
+      "cache_key": "61e53398dd21d9cfacc15710ce0a6d6c24d1b09d571838040ee0a2eef58f3ee4",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-072-003-take2.61e53398dd21d9cfacc15710ce0a6d6c24d1b09d571838040ee0a2eef58f3ee4.json",
+      "needs_review": true,
+      "changed_word_fraction": 0.03361344537815126
+    },
+    {
+      "id": "chapter-073-001",
+      "status": "cached",
+      "cache_key": "6eb51d7c4e2b199d5a0df638ac896d201f280bc86a853e644fd2b32e72bccb48",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-073-001.6eb51d7c4e2b199d5a0df638ac896d201f280bc86a853e644fd2b32e72bccb48.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.015625
+    },
+    {
+      "id": "chapter-073-002",
+      "status": "cached",
+      "cache_key": "c0a5ed5587c474b9b01547bb14093b2634d964156f2b4c8122ac6e4d8846724e",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-073-002.c0a5ed5587c474b9b01547bb14093b2634d964156f2b4c8122ac6e4d8846724e.json",
+      "needs_review": true,
+      "changed_word_fraction": 0.03812316715542522
+    },
+    {
+      "id": "chapter-073-003",
+      "status": "cached",
+      "cache_key": "0ea7558b656a560c601da82a018ba091ed396ad6ccaf91210840562dd999f548",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-073-003.0ea7558b656a560c601da82a018ba091ed396ad6ccaf91210840562dd999f548.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.0
+    },
+    {
+      "id": "chapter-074-001",
+      "status": "cached",
+      "cache_key": "4e67fbe8d4c829e00525f2decc7ecc9e74f5c2b4f506d24b19e15771f61084d0",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-074-001.4e67fbe8d4c829e00525f2decc7ecc9e74f5c2b4f506d24b19e15771f61084d0.json",
+      "needs_review": true,
+      "changed_word_fraction": 0.0456490727532097
+    },
+    {
+      "id": "chapter-074-002-take2",
+      "status": "cached",
+      "cache_key": "955e009e7b45f19d11cc96a052561c836ada4b52e4bbb3f2156c2c1ae575c787",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-074-002-take2.955e009e7b45f19d11cc96a052561c836ada4b52e4bbb3f2156c2c1ae575c787.json",
+      "needs_review": true,
+      "changed_word_fraction": 0.008620689655172414
+    },
+    {
+      "id": "chapter-074-003",
+      "status": "cached",
+      "cache_key": "2aabb4e8f5c99d14bb3d7d8414aea2cae60ea8002c7ab6084ebc880b8f3766f4",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-074-003.2aabb4e8f5c99d14bb3d7d8414aea2cae60ea8002c7ab6084ebc880b8f3766f4.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.01911764705882353
+    },
+    {
+      "id": "chapter-074-004",
+      "status": "cached",
+      "cache_key": "8ada12ac8cce339671d2c2b789e611b1c1351e2b2e3beae17db01aa07898f0d1",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-074-004.8ada12ac8cce339671d2c2b789e611b1c1351e2b2e3beae17db01aa07898f0d1.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.005917159763313609
+    },
+    {
+      "id": "chapter-075-001",
+      "status": "cached",
+      "cache_key": "6de1cb097f8ed64fbdbc22f5a5f8971c573a63098c453e1c3b11d6cc21e78d97",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-075-001.6de1cb097f8ed64fbdbc22f5a5f8971c573a63098c453e1c3b11d6cc21e78d97.json",
+      "needs_review": true,
+      "changed_word_fraction": 0.011444921316165951
+    },
+    {
+      "id": "chapter-075-002",
+      "status": "cached",
+      "cache_key": "47b249d866a9db0bf8d72c779755b117009cfa5b0374e2238421f92898417bbf",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-075-002.47b249d866a9db0bf8d72c779755b117009cfa5b0374e2238421f92898417bbf.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.022922636103151862
+    },
+    {
+      "id": "chapter-075-003",
+      "status": "cached",
+      "cache_key": "946b67bae246b8b0e33bdb84276554a52491cb203adfe9725490e1534870274a",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-075-003.946b67bae246b8b0e33bdb84276554a52491cb203adfe9725490e1534870274a.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.0
+    },
+    {
+      "id": "chapter-076-001",
+      "status": "cached",
+      "cache_key": "36ac9b03be79a2921780016dca55cd678780a8a77af96cc2d4b680e9fbb2fb2b",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-076-001.36ac9b03be79a2921780016dca55cd678780a8a77af96cc2d4b680e9fbb2fb2b.json",
+      "needs_review": true,
+      "changed_word_fraction": 0.02902757619738752
+    },
+    {
+      "id": "chapter-076-002",
+      "status": "cached",
+      "cache_key": "bc4a398ec2fb3ea0a7afcb72786c10fb91692ff58d9ec951a55f197285e1ddac",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-076-002.bc4a398ec2fb3ea0a7afcb72786c10fb91692ff58d9ec951a55f197285e1ddac.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.021164021164021163
+    },
+    {
+      "id": "chapter-077-001",
+      "status": "cached",
+      "cache_key": "dd702d75078692c0c45927dbce0aac893e7792154485466d95db28d87a09dd89",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-077-001.dd702d75078692c0c45927dbce0aac893e7792154485466d95db28d87a09dd89.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.014245014245014245
+    },
+    {
+      "id": "chapter-077-002-take2",
+      "status": "cached",
+      "cache_key": "b30ebc92bf9ca5d349a86590e8afb29b51c738fadbc5f859640790c721940b01",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-077-002-take2.b30ebc92bf9ca5d349a86590e8afb29b51c738fadbc5f859640790c721940b01.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.025974025974025976
+    },
+    {
+      "id": "chapter-077-003",
+      "status": "cached",
+      "cache_key": "bc527800a71d3e18e81f5af7079a6334139b2cc9549b7dc33827d3da6b242d99",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-077-003.bc527800a71d3e18e81f5af7079a6334139b2cc9549b7dc33827d3da6b242d99.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.025677603423680456
+    },
+    {
+      "id": "chapter-077-004",
+      "status": "cached",
+      "cache_key": "e3497e57860eacdfec8b702d75d917fa69075fa395a3399757edaf87d80995fe",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-077-004.e3497e57860eacdfec8b702d75d917fa69075fa395a3399757edaf87d80995fe.json",
+      "needs_review": true,
+      "changed_word_fraction": 0.019097222222222224
+    },
+    {
+      "id": "chapter-078-001",
+      "status": "cached",
+      "cache_key": "c1129d6e12f455c81ee5d4793860b34d3c702948e4cbfaac86f53a54c9d77784",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-078-001.c1129d6e12f455c81ee5d4793860b34d3c702948e4cbfaac86f53a54c9d77784.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.018922852983988356
+    },
+    {
+      "id": "chapter-078-002",
+      "status": "cached",
+      "cache_key": "9b2c403e80198eb4bd3a269f01474ee7a90dec7f950882f3128d08a6814acf2f",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-078-002.9b2c403e80198eb4bd3a269f01474ee7a90dec7f950882f3128d08a6814acf2f.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.01881331403762663
+    },
+    {
+      "id": "chapter-078-003-take2",
+      "status": "cached",
+      "cache_key": "392297aac66793eec1eb3c4e18cc64baf3fab214a338a46dcd3bce775ea9e7dd",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-078-003-take2.392297aac66793eec1eb3c4e18cc64baf3fab214a338a46dcd3bce775ea9e7dd.json",
+      "needs_review": true,
+      "changed_word_fraction": 0.011627906976744186
+    },
+    {
+      "id": "chapter-079-001",
+      "status": "cached",
+      "cache_key": "b538e8eb1b67889c81fe00ae6aed8b84be9c8b1637a502b8123a64d2f61640a2",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-079-001.b538e8eb1b67889c81fe00ae6aed8b84be9c8b1637a502b8123a64d2f61640a2.json",
+      "needs_review": true,
+      "changed_word_fraction": 0.018544935805991442
+    },
+    {
+      "id": "chapter-079-002",
+      "status": "cached",
+      "cache_key": "2f53cf0787cb5e9ab99d0c457cc624d770783c5e2ece8be48ecae2abd0e1adec",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-079-002.2f53cf0787cb5e9ab99d0c457cc624d770783c5e2ece8be48ecae2abd0e1adec.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.02127659574468085
+    },
+    {
+      "id": "chapter-079-003",
+      "status": "cached",
+      "cache_key": "c21078ebc6c99f24c3ecece371749bf2babb0e586c3b832c273edd180afe6ab9",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-079-003.c21078ebc6c99f24c3ecece371749bf2babb0e586c3b832c273edd180afe6ab9.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.0
+    },
+    {
+      "id": "chapter-080-001",
+      "status": "cached",
+      "cache_key": "5fb3ec74f8ef1a0b79424e8de5c96a9ec98cc2ba9ecf702d9f0688591dce226d",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-080-001.5fb3ec74f8ef1a0b79424e8de5c96a9ec98cc2ba9ecf702d9f0688591dce226d.json",
+      "needs_review": true,
+      "changed_word_fraction": 0.027777777777777776
+    },
+    {
+      "id": "chapter-080-002",
+      "status": "cached",
+      "cache_key": "79936ac02cbc4233a3cf70503d13ac12bfd89caa4b8e48a5bb3a2493fb842c19",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-080-002.79936ac02cbc4233a3cf70503d13ac12bfd89caa4b8e48a5bb3a2493fb842c19.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.010126582278481013
+    },
+    {
+      "id": "chapter-081-001",
+      "status": "cached",
+      "cache_key": "a588c24d7a037ffdb5da47e9e5789375355baab4db3ad86e0ec9382aafa82bcb",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-081-001.a588c24d7a037ffdb5da47e9e5789375355baab4db3ad86e0ec9382aafa82bcb.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.02245508982035928
+    },
+    {
+      "id": "chapter-081-002",
+      "status": "cached",
+      "cache_key": "83d36eb59916703d11f774b20ec76cf1c6c186dc965eb4715a82283a72025cd7",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-081-002.83d36eb59916703d11f774b20ec76cf1c6c186dc965eb4715a82283a72025cd7.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.00583941605839416
+    },
+    {
+      "id": "chapter-081-003",
+      "status": "cached",
+      "cache_key": "564762a79478d75312eeb546f858c5b6c7614a9a6677626aa6bc8a1d1163269b",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-081-003.564762a79478d75312eeb546f858c5b6c7614a9a6677626aa6bc8a1d1163269b.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.002898550724637681
+    },
+    {
+      "id": "chapter-082-001",
+      "status": "cached",
+      "cache_key": "192bcfecf737cceb252a90ed9a5961bfb908f1308260d1c261f4d9ac2d779228",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-082-001.192bcfecf737cceb252a90ed9a5961bfb908f1308260d1c261f4d9ac2d779228.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.001594896331738437
+    },
+    {
+      "id": "chapter-082-002",
+      "status": "cached",
+      "cache_key": "35849f71884a6b5c6363782f00b86fd49334abca1452957115d9737e48ba81a4",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-082-002.35849f71884a6b5c6363782f00b86fd49334abca1452957115d9737e48ba81a4.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.004702194357366771
+    },
+    {
+      "id": "chapter-082-003",
+      "status": "cached",
+      "cache_key": "43d7065118a71bd83574364522a9dbeb00884e4bb4543a95af69b67bdcd7c370",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-082-003.43d7065118a71bd83574364522a9dbeb00884e4bb4543a95af69b67bdcd7c370.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.016587677725118485
+    },
+    {
+      "id": "chapter-083-001",
+      "status": "cached",
+      "cache_key": "995387569321bf5e5c8f7d3166e4c8e793bd1ff3243b2458c6cc5e2b31366e38",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-083-001.995387569321bf5e5c8f7d3166e4c8e793bd1ff3243b2458c6cc5e2b31366e38.json",
+      "needs_review": true,
+      "changed_word_fraction": 0.03644314868804665
+    },
+    {
+      "id": "chapter-083-002-scene1-take3",
+      "status": "cached",
+      "cache_key": "bc2e7629c200ee21ef1e67c49d8a2263d25f92e91a0bdbdc9a3f8407d17727ec",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-083-002-scene1-take3.bc2e7629c200ee21ef1e67c49d8a2263d25f92e91a0bdbdc9a3f8407d17727ec.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.02666666666666667
+    },
+    {
+      "id": "chapter-083-002-scene2-take3",
+      "status": "cached",
+      "cache_key": "858bbb29a4a34053ab821af521adf4ce54799305528cd1c944cd6b606d4e741e",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-083-002-scene2-take3.858bbb29a4a34053ab821af521adf4ce54799305528cd1c944cd6b606d4e741e.json",
+      "needs_review": true,
+      "changed_word_fraction": 0.056338028169014086
+    },
+    {
+      "id": "chapter-083-002-scene3-take3",
+      "status": "cached",
+      "cache_key": "c0f46cbebe19013262d275aca166af5a726a246a91b57421771db9cfb0e9eebb",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-083-002-scene3-take3.c0f46cbebe19013262d275aca166af5a726a246a91b57421771db9cfb0e9eebb.json",
+      "needs_review": true,
+      "changed_word_fraction": 0.0547945205479452
+    },
+    {
+      "id": "chapter-083-003-take2",
+      "status": "cached",
+      "cache_key": "00fcd744081dc871291a7eb5311d144119964a4bea461c029bfda64a86acfcf5",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-083-003-take2.00fcd744081dc871291a7eb5311d144119964a4bea461c029bfda64a86acfcf5.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.013119533527696793
+    },
+    {
+      "id": "chapter-083-004",
+      "status": "cached",
+      "cache_key": "d5a58aa0c5db3cedc417fd06d387d36cae1761ff89cca40a6cdc4506861de304",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-083-004.d5a58aa0c5db3cedc417fd06d387d36cae1761ff89cca40a6cdc4506861de304.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.006802721088435374
+    },
+    {
+      "id": "chapter-084-001",
+      "status": "cached",
+      "cache_key": "832a4898d3f1769474bf90728867dfc7b3fd86d2c04f58688cc8b0160d4b8572",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-084-001.832a4898d3f1769474bf90728867dfc7b3fd86d2c04f58688cc8b0160d4b8572.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.020989505247376312
+    },
+    {
+      "id": "chapter-084-002-take2",
+      "status": "cached",
+      "cache_key": "3e514b7ed5fab0887628467b9f62acbecb50afa448039061bbbdd879eb783c50",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-084-002-take2.3e514b7ed5fab0887628467b9f62acbecb50afa448039061bbbdd879eb783c50.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.01601164483260553
+    },
+    {
+      "id": "chapter-084-003",
+      "status": "cached",
+      "cache_key": "9cbdea153175e6b6209b21fbc741c2fa177bc93e23ac123fc7bcd1ae5e9dd87c",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-084-003.9cbdea153175e6b6209b21fbc741c2fa177bc93e23ac123fc7bcd1ae5e9dd87c.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.01195219123505976
+    },
+    {
+      "id": "chapter-085-001",
+      "status": "cached",
+      "cache_key": "232f745538350cbf609a651a9130deabf0de859b84bcc87f5be9b4fe3733fdfb",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-085-001.232f745538350cbf609a651a9130deabf0de859b84bcc87f5be9b4fe3733fdfb.json",
+      "needs_review": true,
+      "changed_word_fraction": 0.01772525849335303
+    },
+    {
+      "id": "chapter-086-001-segment1-take3",
+      "status": "cached",
+      "cache_key": "6edc1cb450559ffa21383cbf019b962c2d12d9311cf31a88ae2d4c9e5bc8bdcc",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-086-001-segment1-take3.6edc1cb450559ffa21383cbf019b962c2d12d9311cf31a88ae2d4c9e5bc8bdcc.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.015432098765432098
+    },
+    {
+      "id": "chapter-086-001-segment2-take3",
+      "status": "cached",
+      "cache_key": "5715df3a7bf19619e60aeb026eaa3164795484f4b80b5bfc7476dfaead002e78",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-086-001-segment2-take3.5715df3a7bf19619e60aeb026eaa3164795484f4b80b5bfc7476dfaead002e78.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.019021739130434784
+    },
+    {
+      "id": "chapter-086-002",
+      "status": "cached",
+      "cache_key": "95ee990666a88e4ca87870e64912685df3ba5a89b0eb94b92634f901a460b101",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-086-002.95ee990666a88e4ca87870e64912685df3ba5a89b0eb94b92634f901a460b101.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.0057306590257879654
+    },
+    {
+      "id": "chapter-086-003-take2",
+      "status": "cached",
+      "cache_key": "7744678a0599e1590a7377d7370fe276ffac03bc60198e51c727f94be7c0c2fc",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-086-003-take2.7744678a0599e1590a7377d7370fe276ffac03bc60198e51c727f94be7c0c2fc.json",
+      "needs_review": true,
+      "changed_word_fraction": 0.007462686567164179
+    },
+    {
+      "id": "chapter-086-004",
+      "status": "cached",
+      "cache_key": "e61f46b70824210bcb96e48e3385feb26b7330c8c2be76017e8df846865c401b",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-086-004.e61f46b70824210bcb96e48e3385feb26b7330c8c2be76017e8df846865c401b.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.009630818619582664
+    },
+    {
+      "id": "chapter-086-005",
+      "status": "cached",
+      "cache_key": "e51e9874c4574a567967c8a53a053fa77e2a00313657cea59264871428aec424",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-086-005.e51e9874c4574a567967c8a53a053fa77e2a00313657cea59264871428aec424.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.012345679012345678
+    },
+    {
+      "id": "chapter-086-006",
+      "status": "cached",
+      "cache_key": "c9fb0fa5e284dae911f8cbc95d0cc6058b312e7296370abac51bc0fc9a29e375",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-086-006.c9fb0fa5e284dae911f8cbc95d0cc6058b312e7296370abac51bc0fc9a29e375.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.010869565217391304
+    },
+    {
+      "id": "chapter-087-001",
+      "status": "cached",
+      "cache_key": "223facfe768c23cdaf172d1a730212d4b59744dacc26eb575aa3568f0195799d",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-087-001.223facfe768c23cdaf172d1a730212d4b59744dacc26eb575aa3568f0195799d.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.0044444444444444444
+    },
+    {
+      "id": "chapter-087-002",
+      "status": "cached",
+      "cache_key": "a604aba330f2ce6ffd51a99e62695259cd95e16a07eec766062982e94f493399",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-087-002.a604aba330f2ce6ffd51a99e62695259cd95e16a07eec766062982e94f493399.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.007058823529411765
+    },
+    {
+      "id": "chapter-088-001",
+      "status": "cached",
+      "cache_key": "79518a376df9e1ab85ffeb6540e96477064f7a84e98d72b63425e2efb2700a15",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-088-001.79518a376df9e1ab85ffeb6540e96477064f7a84e98d72b63425e2efb2700a15.json",
+      "needs_review": true,
+      "changed_word_fraction": 0.01327433628318584
+    },
+    {
+      "id": "chapter-088-002",
+      "status": "cached",
+      "cache_key": "19cbf0d22fcf5ec0be677ff03461ec9afaf056b51f0822a4a73fe4afac1ce951",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-088-002.19cbf0d22fcf5ec0be677ff03461ec9afaf056b51f0822a4a73fe4afac1ce951.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.006289308176100629
+    },
+    {
+      "id": "chapter-088-003",
+      "status": "cached",
+      "cache_key": "18f717b2fa47031d31dbb5aef7e483f3b828567f5b85b9aedce748c0ce9d0aa7",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-088-003.18f717b2fa47031d31dbb5aef7e483f3b828567f5b85b9aedce748c0ce9d0aa7.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.01046337817638266
+    },
+    {
+      "id": "chapter-088-004",
+      "status": "cached",
+      "cache_key": "fce206c35fd5b023a97e1cbd155ceeb1ac060f05c77e8f15e908c28276d5b898",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-088-004.fce206c35fd5b023a97e1cbd155ceeb1ac060f05c77e8f15e908c28276d5b898.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.0
+    },
+    {
+      "id": "chapter-089-001",
+      "status": "cached",
+      "cache_key": "1153c905ce4b187493333e1a19047e6e0e3083106859eca4cca295acf305e122",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-089-001.1153c905ce4b187493333e1a19047e6e0e3083106859eca4cca295acf305e122.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.01775147928994083
+    },
+    {
+      "id": "chapter-089-002",
+      "status": "cached",
+      "cache_key": "1be3678208cd46130a46b8b46dc62bc6eccc9c1233b02d99640b7cf5ce67859f",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-089-002.1be3678208cd46130a46b8b46dc62bc6eccc9c1233b02d99640b7cf5ce67859f.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.0058309037900874635
+    },
+    {
+      "id": "chapter-089-003",
+      "status": "cached",
+      "cache_key": "8d75c2dfefff8621692466dc0927789ae34ba63cf1c67355d7871f7c8115e131",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/chapter-089-003.8d75c2dfefff8621692466dc0927789ae34ba63cf1c67355d7871f7c8115e131.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.012853470437017995
+    },
+    {
+      "id": "closing-credits",
+      "status": "cached",
+      "cache_key": "ae4c541132bd53fa825ae9eae3b88bc41addd7b4461211558705d932ee7a5c62",
+      "output": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/local-checks/cache/closing-credits.ae4c541132bd53fa825ae9eae3b88bc41addd7b4461211558705d932ee7a5c62.json",
+      "needs_review": false,
+      "changed_word_fraction": 0.0
+    }
+  ],
+  "confirmed_narration_errors": 0,
+  "interpretation": "ASR differences require local listening; flags are not confirmed narration errors"
+}

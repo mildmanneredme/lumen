@@ -1,0 +1,31 @@
+# Credentials and machine-specific settings
+.env
+.env.*
+!.env.example
+.claude/settings.local.json
+.DS_Store
+
+# Python environments and bytecode
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+/Audiobook/v6/local-asr-env/
+
+# Downloaded speech-recognition models
+/Audiobook/v6/asr-model*/
+/Audiobook/v6/public-model-cache/
+
+# Generated audio and API responses containing audio payloads
+/Audiobook/**/*.wav
+/Audiobook/**/*.mp3
+/Audiobook/**/*.m4b
+/Audiobook/**/*.flac
+/Audiobook/**/*.pcm
+/Audiobook/**/receipts/
+
+# Local transcription caches and runtime files
+/Audiobook/v6/local-checks/cache/
+/Audiobook/v6/local-checks/rechecks/cache/
+/Audiobook/**/*.lock
+/Audiobook/**/*.log

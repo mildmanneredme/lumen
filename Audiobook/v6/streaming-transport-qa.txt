@@ -1,0 +1,55 @@
+LUMEN streaming transport: independent offline QA
+Date: 9 October 2026
+
+Production runner conclusion
+All 9 isolated mocked tests passed against generate_streamed_audio.py. No
+confirmed blocker was found in the tested normal streaming path. The runner
+was reviewed but not edited by this reviewer; root owns its implementation.
+
+Passed runner cases
+1. Completed SSE assembles the entire PCM payload, returns immediately at the
+   completed event without reading toward EOF, writes a completed receipt,
+   decodes the WAV, and reuses its cache without a second POST.
+2. A saved in-progress receipt prevents another paid POST.
+3. An uncertain prior attempt prevents another paid POST.
+4. A prepared request-hash mismatch blocks before dispatch or journal creation.
+5. Partial stream loss retains the remote ID and journal; the next invocation
+   refuses another POST.
+6. Gross disagreement between audio duration and reported audio tokens is
+   rejected, while the remote ID remains available for read-only recovery.
+7. HTTP 400 diagnostics redact the provided placeholder key, record a known
+   pre-generation rejection with zero reservation, and permit a later retry.
+8. Unknown network failure remains conservatively reserved and duplicate-safe.
+9. An existing unbound stream journal blocks POST before dispatch.
+
+Optional transport helper conclusion
+The unused gemini_stream_transport.py helper passed 24 independently written
+mocked tests. It journals ordered, hash-bound events; captures the interaction
+ID before audio; assembles native mono 24 kHz audio/l16; preserves terminal
+usage; and validates duration against audio tokens and transcript length.
+Completed no-ID journals reconstruct locally without network access. Partial
+no-ID streams refuse ambiguous GET/POST recovery. Meaningful cursor recovery
+uses read-only GET and deduplicates by event identity, preserving identical
+PCM bytes under distinct event IDs. Conflicting IDs, journal tampering,
+invalid PCM formats, multiple outputs, incomplete status, and explicit zero
+audio-token usage are rejected. Local journal/ledger write errors do not
+trigger network recovery. Known pre-creation rejections remain resumable;
+unknown requests never trigger a replacement POST.
+
+Combined offline result: 33 tests passed (9 production runner + 24 helper).
+All fake job files lived in isolated temporary directories. No Gemini API
+requests, credential/.env access, cloud ASR, or production cache/attempt/
+receipt mutation occurred. Only the separate helper and this report were
+created; active generation code was left unchanged.
+
+Test harnesses
+/private/tmp/lumen-lean-runner-mocks.py
+/private/tmp/gemini-stream-qa.AVc12q/test_stream.py
+
+Official schema references inspected
+https://ai.google.dev/api/interactions-api
+https://ai.google.dev/gemini-api/docs/speech-generation
+
+Audited source SHA-256 values
+generate_streamed_audio.py: e2de287a6191b96dba9a89e8f9d8a610d589e3d5b5b63b0f3630ad4f6ab97d6e
+gemini_stream_transport.py: d122db46973d516e419dde2ea9e5e820e518d61d82c67bfdb61545f0f577af5c

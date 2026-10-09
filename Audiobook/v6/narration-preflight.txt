@@ -1,0 +1,56 @@
+LUMEN v6 narration preparation preflight
+Date: 9 October 2026
+Scope: local read-only narration/export audit. No manuscript changes, export
+regeneration, API calls, credential access, or audio generation were performed.
+
+Files reviewed
+- Draft/v6/narration-guide.txt: complete.
+- Draft/v6/export_audiobook.py: complete.
+- Draft/v6/audiobook/manifest.json: complete.
+- Draft/v6/audiobook/tts-chunks.jsonl: all records validated for ordering,
+  reconstruction, word counts, empty/duplicate content, and residual markup;
+  representative records and boundary spans inspected as text.
+- All 89 chapter files compared with the normalized current source chapter
+  bodies; representative narration passages and spoken forms inspected.
+- Draft/v6/audiobook/front-matter.txt and LUMEN-v6-narration.txt.
+- Audiobook/v6/production-plan.json: complete.
+
+Confirmed preparation corrections
+1. Add Rob Xie's spoken author credit to the opening preparation. The current
+   front-matter.txt starts "Lumen. A novel." and export_audiobook.py:97 constructs
+   the same text without an author. The user has now supplied Rob Xie. Keep the
+   export source and generated opening transcript consistent when root updates
+   the preparation; do not change the novel's prose.
+2. Update production-plan.json to reflect the latest authorization and scope.
+   author_credit remains null, third_party_ai_authorization says clarification
+   is pending, and distribution_intent says Audible. The current instruction
+   supplies Rob Xie, authorizes Gemini audiobook generation, and defers Audible.
+
+Coverage and integrity results
+- Chapters 1 through 89 occur once each and in sequence.
+- All 241 chunk identifiers are unique and in chapter/chunk order, including
+  the separate chapter-000-001 opening item.
+- All 4,315 source prose paragraphs and four interior subheadings match their
+  normalized chapter narration bodies; no omitted or duplicated source body
+  content was found.
+- Joining each chapter's chunks reproduces its chapter transcript exactly.
+  Joining the opening and chapters reproduces the full narration transcript.
+- All five source SHA-256 values match manifest.json at the audit snapshot.
+- All chunk word counts match their text; the largest chunk is 700 words.
+  Total narration is 137,760 words before the added author credit.
+- No empty chunks, duplicate whole chunks, residual Markdown emphasis/heading
+  marks, URLs, raw filename underscores, or raw T-xx:xx countdown notation.
+- Part transitions occur at Chapters 1, 19, 37, 55, and 72. The epilogue label
+  precedes Chapter 85. Part Two/Three's repeated Descent title is intentional.
+- Inspected countdown, filename, key-command, and dot-onion spoken forms
+  preserve their intended text. Thought/dialogue words remain intact.
+
+Pipeline handoff observation, not a confirmed unsupported-markup defect
+The chunk text includes 22 literal <short pause> markers, all corresponding to
+interior scene dividers and none at chunk edges. Root's speech preparation must
+handle these as pauses without adding spoken stage directions. No API-format
+claim or audio-performance approval is made by this local text audit.
+
+No further confirmed narration preparation defect was found. Pronunciation,
+voice consistency, pause realization, and generated-word fidelity require the
+planned audition and subsequent audio review.

@@ -1,0 +1,480 @@
+{
+  "passed": true,
+  "checks": [
+    "M4B retains all three chapters in order with escaped Unicode titles",
+    "M4B duration follows exact lossless WAV samples rather than distinct MP3 durations",
+    "Every bookmark length equals its verified decoded WAV frame count",
+    "M4B manifest records each lossless path codec and hash",
+    "All chapter boundaries are contiguous exact samples",
+    "ZIP preserves every original MP3 byte",
+    "Source MP3s remain unchanged",
+    "Source lossless WAVs remain unchanged",
+    "Decoded AAC contains the WAV tones in chapter order rather than MP3 tones",
+    "Sample is encoded once from the verified lossless Chapter1 master",
+    "M4B is mono 44.1 kHz AAC",
+    "Sample does not exceed five minutes",
+    "Verified matching delivery is reused without encoding",
+    "Tampered cached delivery is rebuilt and verified",
+    "Changed chapter title cannot reuse a stale mastering checkpoint",
+    "Retake request cannot package old mastered audio",
+    "Changed generation manifest invalidates old complete mastering report",
+    "Changed raw audio invalidates checkpoint binding despite unchanged request",
+    "Changed lossless master invalidates final-package reuse before encoding",
+    "Incomplete mastering report is rejected even with old package present",
+    "Missing production chapter cannot become a final package",
+    "Out-of-order chapter mapping is rejected",
+    "Duplicate chapter keys are rejected"
+  ],
+  "fixture_result": {
+    "complete": true,
+    "version": 2,
+    "build_sha256": "c42ed740ed4eaa8837e746e2f6f3aac64299f8ab09ac5a7d87dc166af9968c5c",
+    "created_unix_seconds": 1791531075.574784,
+    "title": "Test LUMEN",
+    "author": "Rob Xie",
+    "narrator": "Gemini (Charon AI voice)",
+    "model": "gemini-3.8-flash-lite-tts",
+    "input_list": "/private/var/folders/r2/12r9tjr5389703s5xrfpbnnr0000gn/T/lumen-package-test-hii446n_/chapters.json",
+    "assembly_source": "verified_lossless_mastered_wav",
+    "aac_encode_passes": 1,
+    "mastering_report": "/private/var/folders/r2/12r9tjr5389703s5xrfpbnnr0000gn/T/lumen-package-test-hii446n_/mastered/mastering-report.json",
+    "mastering_report_sha256": "18e07fd143adf0f96391bf308ef41825955ec032ef39d0f65f15e2ff7fce8d6f",
+    "input_list_sha256": "eb8fb01a63bc91b5c85325e7d364424a4ffaa36515c2d2e7ef5b8add73732694",
+    "generation_manifest_sha256": "f1a087a723157458b70b00e1efa76a6fca6b1a5073418bf0142e62d6c02992c9",
+    "m4b_file": "Test-LUMEN-Rob-Xie.m4b",
+    "zip_file": "Test-LUMEN-chapter-MP3s.zip",
+    "chapter_count": 3,
+    "duration_seconds": 3.32,
+    "duration_hours": 0.0009222222222222222,
+    "chapters": [
+      {
+        "key": "000",
+        "title": "Opening",
+        "file": "/private/var/folders/r2/12r9tjr5389703s5xrfpbnnr0000gn/T/lumen-package-test-hii446n_/mastered/chapter-000.mp3",
+        "sha256": "c6a3735e7a321da8118b6e00804e297e13960a746d7b031ef1fd3fb766bc7a0f",
+        "source_binding": {
+          "checkpoint_sha256": "25dd7f65ce233ed0f8c8639a3e90abff0fb4224fed70b9aed55d27c88c43907d",
+          "identity_sha256": "f4c82da590b5a935bbf11f55ca1b4f876b33a846d87cb940ba289229f824f65a",
+          "master_audio_sha256": "369141dcf541fe9920bde4e5ed59ec52bd3731be512f52189f74019d6773dce5",
+          "raw_inputs": [
+            {
+              "path": "/private/var/folders/r2/12r9tjr5389703s5xrfpbnnr0000gn/T/lumen-package-test-hii446n_/raw/chapter-000-001.wav",
+              "request_sha256": "c41298c75cbb1a9dcd5c748e2ec728097fc08fba34b70df57b0b4d8cb96f2b29",
+              "audio_sha256": "2af12d00bbe3c63ce43dc6180691f84c15cceedec99236f71744a855a8e62283"
+            }
+          ],
+          "output_sha256": {
+            "mp3": "c6a3735e7a321da8118b6e00804e297e13960a746d7b031ef1fd3fb766bc7a0f",
+            "lossless_wav": "387d80a3ebabe1f0d8481784493bc49edda859ae6228b940a54f738097fcb203",
+            "qa": "33cf842961dfddb35c7f12be0725998532c369701ffc4ffb4ac6449c89938581"
+          }
+        },
+        "m4b_source": {
+          "file": "/private/var/folders/r2/12r9tjr5389703s5xrfpbnnr0000gn/T/lumen-package-test-hii446n_/mastered/chapter-000.wav",
+          "sha256": "387d80a3ebabe1f0d8481784493bc49edda859ae6228b940a54f738097fcb203",
+          "declared_pcm_samples": 45423,
+          "duration_seconds": 1.03,
+          "codec": {
+            "codec_name": "pcm_s24le",
+            "sample_rate": "44100",
+            "channels": 1,
+            "bits_per_sample": 24
+          }
+        },
+        "bytes": 22612,
+        "mp3_container_duration_seconds": 0.87,
+        "source_codec": {
+          "codec_name": "mp3",
+          "sample_rate": "44100",
+          "channels": 1,
+          "bit_rate": "192000"
+        },
+        "decoded_samples": 45423,
+        "duration_seconds": 1.03,
+        "start_sample": 0,
+        "end_sample": 45423,
+        "start_seconds": 0.0,
+        "end_seconds": 1.03
+      },
+      {
+        "key": "001",
+        "title": "Chapter 1 = rêve; #one \\ middle",
+        "file": "/private/var/folders/r2/12r9tjr5389703s5xrfpbnnr0000gn/T/lumen-package-test-hii446n_/mastered/chapter-001.mp3",
+        "sha256": "1ead86c94690900e60249599f4eef29c0a3dbd414ff7b4e35526b46f61348268",
+        "source_binding": {
+          "checkpoint_sha256": "e7492553c30923707f1498a153bba7e17ea8c0253fc31a13e559ac3e36d323d0",
+          "identity_sha256": "938740345428a566cd6f5bf4658115adb6b7c1175a49c657c5619d50a88c0b34",
+          "master_audio_sha256": "369141dcf541fe9920bde4e5ed59ec52bd3731be512f52189f74019d6773dce5",
+          "raw_inputs": [
+            {
+              "path": "/private/var/folders/r2/12r9tjr5389703s5xrfpbnnr0000gn/T/lumen-package-test-hii446n_/raw/chapter-001-001.wav",
+              "request_sha256": "43f5bfb5683539ebaaee6a06036aff44bffda6d572a8614614a7b1961cb746da",
+              "audio_sha256": "733231582e7bbf3abe975be2e6f3cf1f8320f3c9c7405b16ba4b09d3f1d92050"
+            }
+          ],
+          "output_sha256": {
+            "mp3": "1ead86c94690900e60249599f4eef29c0a3dbd414ff7b4e35526b46f61348268",
+            "lossless_wav": "823f378ef73b40a8682b4b5d561a173342abe751f49e985f361431345a02cc84",
+            "qa": "370f33e6e419157d44424f558bd3106802745e68cea8637625344b1851ff624b"
+          }
+        },
+        "m4b_source": {
+          "file": "/private/var/folders/r2/12r9tjr5389703s5xrfpbnnr0000gn/T/lumen-package-test-hii446n_/mastered/chapter-001.wav",
+          "sha256": "823f378ef73b40a8682b4b5d561a173342abe751f49e985f361431345a02cc84",
+          "declared_pcm_samples": 40572,
+          "duration_seconds": 0.92,
+          "codec": {
+            "codec_name": "pcm_s24le",
+            "sample_rate": "44100",
+            "channels": 1,
+            "bits_per_sample": 24
+          }
+        },
+        "bytes": 30136,
+        "mp3_container_duration_seconds": 1.19,
+        "source_codec": {
+          "codec_name": "mp3",
+          "sample_rate": "44100",
+          "channels": 1,
+          "bit_rate": "192000"
+        },
+        "decoded_samples": 40572,
+        "duration_seconds": 0.92,
+        "start_sample": 45423,
+        "end_sample": 85995,
+        "start_seconds": 1.03,
+        "end_seconds": 1.95
+      },
+      {
+        "key": "002",
+        "title": "Closing",
+        "file": "/private/var/folders/r2/12r9tjr5389703s5xrfpbnnr0000gn/T/lumen-package-test-hii446n_/mastered/chapter-002.mp3",
+        "sha256": "9cb55779f58616da1ea4e903170a41520d4495959511a3dcf9866174297ce127",
+        "source_binding": {
+          "checkpoint_sha256": "0d0cb8d3407597fe1617a5472b3dd7ba27ea8efa3a65763ce101d8230e848cbc",
+          "identity_sha256": "988eb7fb59243333cb917f1529b7250f0bbe0c238d3d9e90030aead5614ae216",
+          "master_audio_sha256": "369141dcf541fe9920bde4e5ed59ec52bd3731be512f52189f74019d6773dce5",
+          "raw_inputs": [
+            {
+              "path": "/private/var/folders/r2/12r9tjr5389703s5xrfpbnnr0000gn/T/lumen-package-test-hii446n_/raw/chapter-002-001.wav",
+              "request_sha256": "721fc03bf49583444e86de000429b2527b5d7aa3f4a5cfc3cfb3cbc7c10951ce",
+              "audio_sha256": "4d2fdbadcd867f05d1a30ca6569f2d136bd664f2643bc8fb5faacea0b93657ad"
+            }
+          ],
+          "output_sha256": {
+            "mp3": "9cb55779f58616da1ea4e903170a41520d4495959511a3dcf9866174297ce127",
+            "lossless_wav": "4c40dbce012d0a0bcf5e0ef2cc59fcd03b6b3117b1c020242f28d43253edb5d6",
+            "qa": "6327db02e5522e995714db162507ca417cabda097f6925cb2e36af6f1c5da6be"
+          }
+        },
+        "m4b_source": {
+          "file": "/private/var/folders/r2/12r9tjr5389703s5xrfpbnnr0000gn/T/lumen-package-test-hii446n_/mastered/chapter-002.wav",
+          "sha256": "4c40dbce012d0a0bcf5e0ef2cc59fcd03b6b3117b1c020242f28d43253edb5d6",
+          "declared_pcm_samples": 60417,
+          "duration_seconds": 1.37,
+          "codec": {
+            "codec_name": "pcm_s24le",
+            "sample_rate": "44100",
+            "channels": 1,
+            "bits_per_sample": 24
+          }
+        },
+        "bytes": 18851,
+        "mp3_container_duration_seconds": 0.73,
+        "source_codec": {
+          "codec_name": "mp3",
+          "sample_rate": "44100",
+          "channels": 1,
+          "bit_rate": "192000"
+        },
+        "decoded_samples": 60417,
+        "duration_seconds": 1.37,
+        "start_sample": 85995,
+        "end_sample": 146412,
+        "start_seconds": 1.95,
+        "end_seconds": 3.32
+      }
+    ],
+    "m4b_verification": {
+      "passed": true,
+      "chapter_count": 3,
+      "expected_duration_seconds": 3.32,
+      "container_duration_seconds": 3.32,
+      "duration_difference_seconds": 0.0,
+      "chapter_timing_tolerance_seconds": 0.002,
+      "ffprobe": {
+        "streams": [
+          {
+            "index": 0,
+            "codec_name": "aac",
+            "codec_long_name": "AAC (Advanced Audio Coding)",
+            "profile": "LC",
+            "codec_type": "audio",
+            "codec_tag_string": "mp4a",
+            "codec_tag": "0x6134706d",
+            "sample_fmt": "fltp",
+            "sample_rate": "44100",
+            "channels": 1,
+            "channel_layout": "mono",
+            "bits_per_sample": 0,
+            "initial_padding": 0,
+            "id": "0x1",
+            "r_frame_rate": "0/0",
+            "avg_frame_rate": "0/0",
+            "time_base": "1/44100",
+            "start_pts": 0,
+            "start_time": "0.000000",
+            "duration_ts": 146412,
+            "duration": "3.320000",
+            "bit_rate": "125419",
+            "nb_frames": "144",
+            "extradata_size": 5,
+            "disposition": {
+              "default": 1,
+              "dub": 0,
+              "original": 0,
+              "comment": 0,
+              "lyrics": 0,
+              "karaoke": 0,
+              "forced": 0,
+              "hearing_impaired": 0,
+              "visual_impaired": 0,
+              "clean_effects": 0,
+              "attached_pic": 0,
+              "timed_thumbnails": 0,
+              "non_diegetic": 0,
+              "captions": 0,
+              "descriptions": 0,
+              "metadata": 0,
+              "dependent": 0,
+              "still_image": 0,
+              "multilayer": 0
+            },
+            "tags": {
+              "language": "und",
+              "handler_name": "SoundHandler",
+              "vendor_id": "[0][0][0][0]"
+            }
+          },
+          {
+            "index": 1,
+            "codec_name": "bin_data",
+            "codec_long_name": "binary data",
+            "codec_type": "data",
+            "codec_tag_string": "text",
+            "codec_tag": "0x74786574",
+            "id": "0x2",
+            "r_frame_rate": "0/0",
+            "avg_frame_rate": "0/0",
+            "time_base": "1/1000",
+            "start_pts": 0,
+            "start_time": "0.000000",
+            "duration_ts": 3320,
+            "duration": "3.320000",
+            "bit_rate": "212",
+            "nb_frames": "3",
+            "extradata_size": 43,
+            "disposition": {
+              "default": 0,
+              "dub": 0,
+              "original": 0,
+              "comment": 0,
+              "lyrics": 0,
+              "karaoke": 0,
+              "forced": 0,
+              "hearing_impaired": 0,
+              "visual_impaired": 0,
+              "clean_effects": 0,
+              "attached_pic": 0,
+              "timed_thumbnails": 0,
+              "non_diegetic": 0,
+              "captions": 0,
+              "descriptions": 0,
+              "metadata": 0,
+              "dependent": 0,
+              "still_image": 0,
+              "multilayer": 0
+            },
+            "tags": {
+              "language": "eng",
+              "handler_name": "SubtitleHandler"
+            }
+          }
+        ],
+        "chapters": [
+          {
+            "id": 0,
+            "time_base": "1/1000",
+            "start": 0,
+            "start_time": "0.000000",
+            "end": 1030,
+            "end_time": "1.030000",
+            "tags": {
+              "title": "Opening"
+            }
+          },
+          {
+            "id": 1,
+            "time_base": "1/1000",
+            "start": 1030,
+            "start_time": "1.030000",
+            "end": 1950,
+            "end_time": "1.950000",
+            "tags": {
+              "title": "Chapter 1 = rêve; #one \\ middle"
+            }
+          },
+          {
+            "id": 2,
+            "time_base": "1/1000",
+            "start": 1950,
+            "start_time": "1.950000",
+            "end": 3320,
+            "end_time": "3.320000",
+            "tags": {
+              "title": "Closing"
+            }
+          }
+        ],
+        "format": {
+          "filename": "/var/folders/r2/12r9tjr5389703s5xrfpbnnr0000gn/T/lumen-package-test-hii446n_/delivery/.package-stage-pcxrcs8y/Test-LUMEN-Rob-Xie.m4b",
+          "nb_streams": 2,
+          "nb_programs": 0,
+          "nb_stream_groups": 0,
+          "format_name": "mov,mp4,m4a,3gp,3g2,mj2",
+          "format_long_name": "QuickTime / MOV",
+          "start_time": "0.000000",
+          "duration": "3.320000",
+          "size": "54857",
+          "bit_rate": "132185",
+          "probe_score": 100,
+          "tags": {
+            "major_brand": "M4A ",
+            "minor_version": "512",
+            "compatible_brands": "M4A isomiso2",
+            "title": "Test LUMEN",
+            "artist": "Rob Xie",
+            "album_artist": "Rob Xie",
+            "composer": "Rob Xie",
+            "album": "Test LUMEN",
+            "encoder": "Lavf62.3.100",
+            "comment": "Written by Rob Xie. Narration: Gemini (Charon AI voice). Generated using Gemini 3.8 Flash-Lite TTS.",
+            "genre": "Audiobook"
+          }
+        }
+      }
+    },
+    "sample_ffprobe": {
+      "streams": [
+        {
+          "index": 0,
+          "codec_name": "mp3",
+          "codec_long_name": "MP3 (MPEG audio layer 3)",
+          "codec_type": "audio",
+          "codec_tag_string": "[0][0][0][0]",
+          "codec_tag": "0x0000",
+          "sample_fmt": "fltp",
+          "sample_rate": "44100",
+          "channels": 1,
+          "channel_layout": "mono",
+          "bits_per_sample": 0,
+          "initial_padding": 0,
+          "r_frame_rate": "0/0",
+          "avg_frame_rate": "0/0",
+          "time_base": "1/14112000",
+          "start_pts": 353600,
+          "start_time": "0.025057",
+          "duration_ts": 12983040,
+          "duration": "0.920000",
+          "bit_rate": "192000",
+          "disposition": {
+            "default": 0,
+            "dub": 0,
+            "original": 0,
+            "comment": 0,
+            "lyrics": 0,
+            "karaoke": 0,
+            "forced": 0,
+            "hearing_impaired": 0,
+            "visual_impaired": 0,
+            "clean_effects": 0,
+            "attached_pic": 0,
+            "timed_thumbnails": 0,
+            "non_diegetic": 0,
+            "captions": 0,
+            "descriptions": 0,
+            "metadata": 0,
+            "dependent": 0,
+            "still_image": 0,
+            "multilayer": 0
+          }
+        }
+      ],
+      "chapters": [],
+      "format": {
+        "filename": "/var/folders/r2/12r9tjr5389703s5xrfpbnnr0000gn/T/lumen-package-test-hii446n_/delivery/.package-stage-pcxrcs8y/Test-LUMEN-sample.mp3",
+        "nb_streams": 1,
+        "nb_programs": 0,
+        "nb_stream_groups": 0,
+        "format_name": "mp3",
+        "format_long_name": "MP2/3 (MPEG audio layer 2/3)",
+        "start_time": "0.025057",
+        "duration": "0.920000",
+        "size": "24057",
+        "bit_rate": "209191",
+        "probe_score": 51,
+        "tags": {
+          "title": "Test LUMEN — Chapter 1 sample",
+          "artist": "Rob Xie",
+          "comment": "Narration: Gemini (Charon AI voice). Generated using Gemini 3.8 Flash-Lite TTS.",
+          "encoder": "Lavf62.3.100"
+        }
+      }
+    },
+    "sample_source": {
+      "file": "/private/var/folders/r2/12r9tjr5389703s5xrfpbnnr0000gn/T/lumen-package-test-hii446n_/mastered/chapter-001.wav",
+      "sha256": "823f378ef73b40a8682b4b5d561a173342abe751f49e985f361431345a02cc84",
+      "declared_pcm_samples": 40572,
+      "duration_seconds": 0.92,
+      "codec": {
+        "codec_name": "pcm_s24le",
+        "sample_rate": "44100",
+        "channels": 1,
+        "bits_per_sample": 24
+      }
+    },
+    "zip_verification": {
+      "passed": true,
+      "entry_order": [
+        "chapter-000.mp3",
+        "chapter-001.mp3",
+        "chapter-002.mp3",
+        "README.txt"
+      ],
+      "source_hashes_verified": true
+    },
+    "outputs": [
+      {
+        "file": "Test-LUMEN-Rob-Xie.m4b",
+        "bytes": 54857,
+        "sha256": "1c01fd2126aac7af03decdfdba5095f9be6bea3b60dd02febe2da9e5a699ed84"
+      },
+      {
+        "file": "Test-LUMEN-chapter-MP3s.zip",
+        "bytes": 72780,
+        "sha256": "6f5b2bb8947abe688a8fbca7acfc5380bb5dfb563a05b1c2c16bd3b0aa5d1975"
+      },
+      {
+        "file": "README.txt",
+        "bytes": 745,
+        "sha256": "582cf61a43a7e465e76d28c6710c5787b27f1882994c11fd76b01adc3d803d42"
+      },
+      {
+        "file": "Test-LUMEN-sample.mp3",
+        "bytes": 24057,
+        "sha256": "ae2f8d5f9701f993d06d4f5f9bb580522a572eba03622c31c6dfa348f6280fbb"
+      }
+    ]
+  },
+  "scope": "Synthetic local fixtures only. No production audio modified; no network calls."
+}

@@ -1,0 +1,111 @@
+Chapter Thirty Nine.
+
+The quantum error correction protocols were, Adrian had to admit, beautiful.
+
+Not beautiful in the way that a sunset is beautiful, or a piece of music, or the golden-hour light that San Francisco occasionally produced when the fog cooperated. Beautiful in the way that a proof is beautiful, the way a sequence of logical steps can produce an outcome so elegant that it feels less like construction and more like discovery. As though the solution had always existed, waiting in the mathematics for someone clever enough to find it.
+
+Ólafur had found it.
+
+"The core problem," Ólafur explained, pacing in front of a whiteboard that had clearly been erased and rewritten dozens of times, "is that you can't trust the network. Any network. At any time. Packets get dropped. Latencies spike. Nodes go offline. If you build a synchronization system that assumes reliable communication, you've built a system that will fail the moment it matters most."
+
+He drew a diagram: six nodes, interconnected, with variable-width lines representing communication channels. "So instead of assuming reliability, I built in expectation of failure. Every signal is sent through multiple independent paths. Each path has different latency characteristics. The trigger mechanism doesn't care which path arrives first. It uses a consensus algorithm derived from Byzantine fault tolerance to confirm that a sufficient number of paths have delivered the signal within the timing window."
+
+"Byzantine fault tolerance," Adrian said. "Named after the Byzantine Generals' Problem."
+
+Ólafur lit up. "You know it?"
+
+"I know it. How do you coordinate an attack when your messengers might be unreliable or compromised?"
+
+"Exactly! That's the exact problem. Except my generals are server nodes, my messengers are encrypted network packets, and the attack is —" He waved vaguely. "The thing."
+
+"The largest coordinated data breach in human history."
+
+"Yes. That." Ólafur turned back to his whiteboard with the ease of someone who had mentally filed "largest coordinated data breach in human history" under "not my department" and moved on. "The beauty of the Byzantine approach is that it works even if some nodes are actively trying to sabotage the consensus. Which, in our case, they might be. If any node is compromised, captured, hacked, turned, the system routes around it. You'd need to compromise more than a third of the relay network simultaneously to prevent the trigger from firing."
+
+"And how many nodes are in the relay network?"
+
+"Two hundred and fourteen. Distributed across forty-one countries. Each one is a dormant process running on a legitimate server: academic computing clusters, commercial hosting, IoT devices. They don't know they're part of the network. They just have a small piece of software waiting for a very specific signal."
+
+Adrian's AI ethics training was screaming. Using other people's computing resources without their knowledge was, at minimum, a violation of every acceptable use policy ever written. At maximum, it was a federal crime in most jurisdictions.
+
+"Before you say it," Ólafur added, reading Adrian's expression with surprising accuracy, "yes, I know. Unauthorized resource utilization. It's in a gray area."
+
+"It's not in a gray area. It's in a very clearly delineated illegal area."
+
+"Okay, but compared to the rest of what we're doing, it's like, it's like complaining about jaywalking during a bank robbery."
+
+Adrian opened his mouth. Closed it. The kid had a point.
+
+Ólafur moved to his central console and pulled up a visualization that made Adrian's breath catch. A world map, dotted with two hundred and fourteen points of light, each connected to every other by gossamer threads of data. The threads pulsed, some fast, some slow, representing real-time latency measurements. The overall effect was of a living organism, a neural network spanning the globe, breathing quietly in its sleep.
+
+"When I send the trigger signal," Ólafur said, "it propagates through this network like a heartbeat. Each node receives, verifies, and relays. The timing logic compensates for the different paths so that every target receives its activation command within the same four-hundred-millisecond window. The breaches fire. The Locksmith's exploits activate. The Cartographer's, sorry, your network maps guide the data extraction. The Auditor's financial tools parse the money flows. And the Scaffold's platform publishes everything."
+
+"The commands arrive within four hundred milliseconds of one another."
+
+"Yes. The extraction takes longer, obviously. Hours. Each implant establishes its foothold before an inter-company warning can stop the other activations. After that we still have to keep the extraction hidden. The trigger buys a beginning, not a guarantee."
+
+Ólafur sat down in his chair, spinning slowly, the glow of two hundred and fourteen nodes reflected in his eyes. He looked, in that moment, like exactly what he was: a twenty-two-year-old who had built something extraordinary and was waiting for the world to catch up.
+
+Adrian pulled a chair over and sat facing him. "Ólafur. I need to ask you something, and I need you to actually think about the answer."
+
+"I always think about the answer. That's sort of my thing."
+
+"Do you understand what this will do?"
+
+Ólafur tilted his head. The spinning chair slowed. "What do you mean?"
+
+"I mean, when you press that button. When the trigger fires and the breaches activate and the data starts flowing. Do you understand what happens next? Not technically. Not the cascade architecture or the Byzantine fault tolerance. What happens to the world."
+
+Ólafur was quiet for a moment. It was the first time Adrian had seen him be quiet for more than three seconds.
+
+"The proprietary intellectual property of some of the largest companies in the world becomes public," Ólafur said, carefully. "Internal communications. Financial records. Lobbying connections. Everything that was private becomes transparent."
+
+"And then?"
+
+"Markets react. Legal systems react. Governments react. Public opinion reacts. The power asymmetry that allows a small number of individuals to control democratic processes is... disrupted."
+
+He said it the way someone might describe the chemical process of combustion while watching a building burn. Technically accurate. Emotionally absent.
+
+"People will lose their jobs," Adrian said. "Thousands of people who work at these companies and have nothing to do with the corruption. Markets will crash. Retirement funds tied to these stocks will lose value. Governments that depend on these companies' infrastructure, hospitals, schools, military systems, will be thrown into chaos. There will be lawsuits that last decades. There might be violence. People might die."
+
+That was the cost. A world made transparent would be wreckage first. The suffering of thousands of innocents weighed against millions living under systems they could not see and did not choose. Someone had to stand at those scales. The question was not whether to stand there but whether anyone had earned the right.
+
+Ólafur absorbed this. His face did something complicated, not dismissive, not indifferent, but processing. Running the inputs through whatever architecture lived between his ears.
+
+Then he smiled. Not a callous smile. A genuine one, the smile of someone who had considered a complex problem and reached the conclusion that it was, in fact, someone else's.
+
+"That's your department, professor."
+
+Adrian stared at him.
+
+"I built the trigger," Ólafur said, simply. "The most reliable, most resilient, most technically beautiful synchronization mechanism I could build. Whether to pull it, when to pull it, what happens after, that's not an engineering problem. That's an ethics problem. That's what people like you are for."
+
+It was, Adrian realized, the most honest thing anyone in the movement had said to him. Not the most comforting. Not the most reassuring. But the most honest.
+
+Andrei built his exploits with the grim determination of a man atoning for past sins. Ines built her platform with the righteous fury of someone who'd seen censorship firsthand. Sophie built her tools with the cold precision of someone who'd watched corruption go unpunished for decades. Tomás built his devices with the quiet rage of a man whose sister was killed for asking questions.
+
+Each of them had a reason. A moral framework, however tortured, that justified what they were building.
+
+Ólafur had no such framework. He had a problem. He had a solution. The rest was someone else's department.
+
+And in that clarity, that terrifying, innocent, amoral clarity, Adrian saw a reflection of something he'd spent his entire academic career studying. The gap between can and should. The space where technology outran ethics and kept going, leaving the philosophers to catch up on foot.
+
+Ólafur wasn't wrong. Ethics was Adrian's department. That was precisely why he was here.
+
+But looking at this brilliant, puffin-sock-wearing twenty-two-year-old, he felt something cold settle in his chest. Not doubt about the mission. Not hesitation about the plan.
+
+Fear. For the kid.
+
+Because when the trigger fired and the world changed and the consequences arrived, the lawsuits and the manhunts and the rage of the most powerful people on the planet, Ólafur would discover that the engineering problem and the ethics problem were never separate. They were the same problem, wearing different clothes.
+
+And by then, it would be too late to put the solution back in its box.
+
+"Show me the failover protocols," Adrian said, because there was nothing else to say.
+
+Ólafur sprang from his chair, already talking at twice the speed of normal human discourse, and led Adrian deeper into the west wing.
+
+Outside, the Icelandic wind carried the smell of sulfur across the lava fields. The earth vented steam. The glaciers caught the last of the Arctic light and threw it back as cold white fire.
+
+And two hundred and fourteen nodes, scattered across forty-one countries, continued their quiet, patient breathing.
+
+Waiting for a heartbeat.

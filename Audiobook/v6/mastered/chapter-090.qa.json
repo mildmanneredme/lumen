@@ -1,0 +1,267 @@
+{
+  "title": "Closing Credits",
+  "sources": [
+    {
+      "path": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/raw/closing-credits.wav",
+      "probe": {
+        "programs": [],
+        "stream_groups": [],
+        "streams": [
+          {
+            "codec_name": "pcm_s16le",
+            "sample_rate": "24000",
+            "channels": 1,
+            "bits_per_sample": 16,
+            "bit_rate": "384000"
+          }
+        ],
+        "format": {
+          "duration": "7.720000",
+          "bit_rate": "384045"
+        }
+      },
+      "native_pcm_qa": {
+        "status": "measured",
+        "samples": 185280,
+        "sample_peak_dbfs": -1.4776094464678926,
+        "minimum_integer_sample": -26754,
+        "maximum_integer_sample": 27642,
+        "samples_at_integer_rails": 0,
+        "scope": "Native samples before resampling; rail hits are review candidates, not proof of audible clipping"
+      },
+      "decoded_samples": 340452
+    }
+  ],
+  "source_pcm": {
+    "samples": 340452,
+    "rms_dbfs": -18.534092171410897,
+    "sample_peak_dbfs": -1.4776990510005883,
+    "sample_peak_linear": 0.8435581922531128,
+    "samples_at_or_above_full_scale": 0,
+    "oversampled_peak_4x_dbfs": -1.4776990510005883
+  },
+  "assembly": {
+    "chunk_order_preserved": true,
+    "internal_silence_removed": false,
+    "source_samples": 340452,
+    "body_samples": 328986,
+    "leading_source_samples_trimmed": 2205,
+    "trailing_source_samples_trimmed": 9261,
+    "added_head_samples": 44100,
+    "added_tail_samples": 88200,
+    "edge_guard_seconds": 0.02
+  },
+  "normalization": {
+    "method": "Chapter-wide gain with gentle oversampled peak limiting",
+    "target_full_file_rms_dbfs": -20.0,
+    "sample_peak_ceiling_dbfs": -3.2,
+    "provisional_codec_headroom_db": 0.6,
+    "applied_gain_db": 0.2926351841840926,
+    "static_peak_constrained": true,
+    "peak_constrained": false,
+    "gain_cap_constrained": false,
+    "decoded_rms_deficit_db": 0.48113016374140116,
+    "attempts": [
+      {
+        "attempt": 1,
+        "gain_db": -0.19676123306588167,
+        "limiter_ceiling_dbfs": -3.8000000000000003,
+        "master_rms_dbfs": -20.539396417249975,
+        "rms_dbfs": -20.804223443833617,
+        "sample_peak_dbfs": -4.048135489860597,
+        "oversampled_peak_4x_dbfs": -4.048135489860597
+      },
+      {
+        "attempt": 2,
+        "gain_db": 0.2926351841840926,
+        "limiter_ceiling_dbfs": -3.8000000000000003,
+        "master_rms_dbfs": -20.216627839763788,
+        "rms_dbfs": -20.4811301637414,
+        "sample_peak_dbfs": -4.052306494703058,
+        "oversampled_peak_4x_dbfs": -4.046129103367568
+      }
+    ]
+  },
+  "limiter": {
+    "mode": "auto",
+    "used": true,
+    "filter": "volume=0.774408309456:precision=double,aresample=176400,alimiter=limit=0.5:attack=5:release=50:level=false:latency=true,volume=1.29130845807:precision=double,aresample=44100",
+    "ceiling_dbfs": -3.8000000000000003,
+    "maximum_permitted_pre_limiter_peak_overdrive_db": 6.0,
+    "measured_source_4x_peak_overdrive_db": 2.6149361331835044,
+    "scope": "Peak overdrive is measured from source peak and pre-gain; it is not an exact gain-reduction statistic"
+  },
+  "master_pcm_qa": {
+    "samples": 461286,
+    "rms_dbfs": -20.216627839763788,
+    "sample_peak_dbfs": -3.799452722398514,
+    "sample_peak_linear": 0.64569491147995,
+    "samples_at_or_above_full_scale": 0,
+    "duration_seconds": 10.46,
+    "analysis_sample_rate": 44100,
+    "analysis_channels": 1,
+    "peak_scope": "Decoded sample peak, not oversampled true peak",
+    "clipping_scope": "Float PCM samples at or above full scale; zero hits cannot prove that source audio was never clipped",
+    "silence_measurement": {
+      "frame_seconds": 0.01,
+      "rms_threshold_dbfs": -60.0,
+      "leading_seconds": 1.01,
+      "trailing_seconds": 2.0200000000000014,
+      "internal_minimum_seconds": 2.0,
+      "long_internal_regions": []
+    },
+    "unpadded_body": {
+      "samples": 328986,
+      "rms_dbfs": -18.748699269177923,
+      "sample_peak_dbfs": -3.799452722398514,
+      "sample_peak_linear": 0.64569491147995,
+      "samples_at_or_above_full_scale": 0
+    },
+    "quiet_window_measurements": {
+      "scope": "Non-overlapping windows within the unpadded body; these may contain pauses or quiet speech. Not noise-floor certification.",
+      "window_seconds": 0.5,
+      "selection_rms_at_or_below_dbfs": -50.0,
+      "body_start_seconds": 1.0,
+      "body_end_seconds": 8.46,
+      "status": "measured_quiet_windows",
+      "count": 1,
+      "digital_zero_windows": 0,
+      "finite_rms_min_dbfs": -64.987211046524,
+      "finite_rms_median_dbfs": -64.987211046524,
+      "finite_rms_max_dbfs": -64.987211046524,
+      "windows": [
+        {
+          "start_seconds": 7.5,
+          "end_seconds": 8.0,
+          "rms_dbfs": -64.987211046524,
+          "sample_peak_dbfs": -51.59501836858263,
+          "exact_zero_fraction": 0.0
+        }
+      ]
+    },
+    "oversampled_peak_4x_dbfs": -3.7989267563181865
+  },
+  "decoded_mp3_qa": {
+    "samples": 461286,
+    "rms_dbfs": -20.4811301637414,
+    "sample_peak_dbfs": -4.052306494703058,
+    "sample_peak_linear": 0.627169132232666,
+    "samples_at_or_above_full_scale": 0,
+    "duration_seconds": 10.46,
+    "analysis_sample_rate": 44100,
+    "analysis_channels": 1,
+    "peak_scope": "Decoded sample peak, not oversampled true peak",
+    "clipping_scope": "Float PCM samples at or above full scale; zero hits cannot prove that source audio was never clipped",
+    "silence_measurement": {
+      "frame_seconds": 0.01,
+      "rms_threshold_dbfs": -60.0,
+      "leading_seconds": 1.01,
+      "trailing_seconds": 2.0200000000000014,
+      "internal_minimum_seconds": 2.0,
+      "long_internal_regions": []
+    },
+    "unpadded_body": {
+      "samples": 328986,
+      "rms_dbfs": -19.013201593181563,
+      "sample_peak_dbfs": -4.052306494703058,
+      "sample_peak_linear": 0.627169132232666,
+      "samples_at_or_above_full_scale": 0
+    },
+    "quiet_window_measurements": {
+      "scope": "Non-overlapping windows within the unpadded body; these may contain pauses or quiet speech. Not noise-floor certification.",
+      "window_seconds": 0.5,
+      "selection_rms_at_or_below_dbfs": -50.0,
+      "body_start_seconds": 1.0,
+      "body_end_seconds": 8.46,
+      "status": "measured_quiet_windows",
+      "count": 1,
+      "digital_zero_windows": 0,
+      "finite_rms_min_dbfs": -65.25157957436845,
+      "finite_rms_median_dbfs": -65.25157957436845,
+      "finite_rms_max_dbfs": -65.25157957436845,
+      "windows": [
+        {
+          "start_seconds": 7.5,
+          "end_seconds": 8.0,
+          "rms_dbfs": -65.25157957436845,
+          "sample_peak_dbfs": -51.85534101107497,
+          "exact_zero_fraction": 0.0
+        }
+      ]
+    },
+    "oversampled_peak_4x_dbfs": -4.046129103367568,
+    "oversampled_peak_scope": "4x ffmpeg resampling peak estimate; not a standardized true-peak meter certification",
+    "probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "mp3",
+          "sample_rate": "44100",
+          "channels": 1,
+          "bits_per_sample": 0,
+          "bit_rate": "192000"
+        }
+      ],
+      "format": {
+        "duration": "10.460000",
+        "bit_rate": "193289"
+      }
+    },
+    "analysis_conversion": "First audio stream decoded to mono 44.1 kHz float PCM; exported MP3 must already match this format.",
+    "mp3_frame_check": {
+      "frame_count": 403,
+      "frame_bitrates_kbps": [
+        192
+      ],
+      "frame_sample_rates": [
+        44100
+      ],
+      "channel_modes": [
+        3
+      ],
+      "cbr_192kbps_verified": true,
+      "mono_44100_verified": true
+    }
+  },
+  "warnings": [],
+  "technical_ceilings_and_format_checks_passed": true,
+  "rms_target_met_within_0_5_db": true,
+  "scope": "Technical measurements only; not listening approval, noise-floor certification, or publishing acceptance",
+  "coordinator_checks": {
+    "duration_and_boundary_checks_passed": true,
+    "sample_rate": 44100,
+    "expected_master_samples": 461286,
+    "source_seconds": 7.72,
+    "master_seconds": 10.46,
+    "trimmed_outer_seconds": 0.26,
+    "decoded_mp3_samples": 461286,
+    "decoded_mp3_duration_seconds": 10.46,
+    "decoded_mp3_padding_delta_samples": 0,
+    "decoded_mp3_padding_tolerance_samples": 88,
+    "added_padding_seconds": 3.0,
+    "chunk_timeline": [
+      {
+        "id": "closing-credits",
+        "chunk": 1,
+        "source_start_seconds": 0.0,
+        "source_end_seconds": 7.72,
+        "master_start_seconds": 1.0,
+        "master_end_seconds": 8.46,
+        "retained_samples": 328986
+      }
+    ],
+    "body_pause_conservation": "Only outer edges are trimmed; internal chunk samples and cadence are preserved. Gain and optional peak limiting do not change timing.",
+    "content_qa": "Separate local transcription and listening review; no content approval is inferred here."
+  },
+  "book_metadata": {
+    "title": "LUMEN",
+    "author": "Rob Xie",
+    "narration": "AI-generated Gemini voice, Charon"
+  },
+  "outputs": {
+    "lossless_wav": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/mastered/chapter-090.wav",
+    "mp3": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/mastered/chapter-090.mp3"
+  },
+  "master_identity_sha256": "2282cb318c04c6f346a5ed8d9dd14e9ff82022d19d56f8b4093003054bedd656"
+}

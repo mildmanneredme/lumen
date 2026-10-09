@@ -1,0 +1,32 @@
+{
+  "version": "local-adjudication-method-1",
+  "created_at_unix": 1791522014.135193,
+  "no_new_inference_performed": true,
+  "steps": [
+    "Classify saved differences first. Alternate regional spelling, capitalization, punctuation, and compound spacing cannot establish a spoken difference. Clock separators are equivalent only when the digits match.",
+    "Retain negation, modality, tense, singular/plural, numerals with changed values, and phrase substitutions even when the clip-wide mismatch percentage is below threshold. Do not discard a meaningful mismatch because it is one word.",
+    "Treat repeated variable proper-name spellings as pronunciation candidates. Recheck one representative instance of each variant; do not assert correctness from spelling similarity.",
+    "Bind every candidate to source WAV SHA-256 and request SHA-256. Reject any excerpt plan if either current hash differs.",
+    "After the root GPU worker finishes or stops, use exactly one local model process to re-transcribe compact excerpts with at least 4 seconds of context each side, cast-only prompt, no expected passage supplied, no cloud transfer. Merge nearby candidates.",
+    "Judge the interior target wording, using surrounding agreement to locate it. Do not count clipped words at excerpt boundaries as omissions. A recovered exact interior target resolves an ASR omission; if a contradictory word remains, retain the discrepancy for independent confirmation or a localized generation repair.",
+    "Use waveform energy only to corroborate the presence of a sound in an untranscribed gap; it cannot identify spoken words or certify performance.",
+    "Do not certify auditory quality from ASR. Keep residual uncertainty explicit in the QA deliverable."
+  ],
+  "initial_priorities": {
+    "negation": "chapter-003-003 174.56\u2013187.46s: Not/Now",
+    "phrase_substitution": "chapter-003-002 84\u201392.54s: its occupant/a document",
+    "one_word_omissions": [
+      "chapter-002-001 235.1\u2013243.1s: why",
+      "chapter-003-001 25.3\u201336s: Silence"
+    ]
+  },
+  "preserved_resolved_candidate": "chapter-002-003 initial long passage, prior focused local transcription recovered expected wording; no retake on that flag alone",
+  "local_waveform_diagnostic": {
+    "id": "chapter-003-001",
+    "seconds": [
+      30.5,
+      31.1
+    ],
+    "finding": "Voiced-energy burst occupies part of the ASR gap; does not confirm word identity."
+  }
+}

@@ -1,0 +1,97 @@
+Part Five. The Forty Eight Hours.
+
+Chapter Seventy Two.
+
+sixteen hours remaining
+
+The most beautiful thing Ólafur Sigurdsson had ever seen was not a sunset over the Westfjords, not the northern lights bleeding green across an Icelandic winter sky, not even the girl from his distributed systems seminar who had smiled at him exactly once before transferring to ETH Zurich.
+
+It was a timing diagram.
+
+Specifically, it was his timing diagram, a cascade of synchronized events mapped across seven target networks, fourteen activation paths, and thirty-one independent relay nodes, all converging on a single moment in time with a tolerance window of four hundred milliseconds.
+
+Four hundred milliseconds. Less than half a second. Every implant had to begin its breach inside that window. The exploits would take different routes and different amounts of time, but their first moves had to be simultaneous. After that, the data channels would open and the Scaffold would begin replication. Irrevocably.
+
+Ólafur sat cross-legged on the floor of a rented apartment in Copenhagen, surrounded by three laptops arranged in a crescent, a half-eaten plate of smørrebrød he'd forgotten about four hours ago, and seventeen hand-drawn timing charts taped to the wall with surgical precision. The laptops were air-gapped: no network connections, no Wi-Fi, no Bluetooth. He was running simulations locally, testing each component of the trigger mechanism against modeled versions of the target networks.
+
+Eleven hours since he had opened the model in London. He had worked on the reserved flight, then rebuilt his little circle of machines in Copenhagen. The last four hours on this floor had passed without a break. His eyes burned. His back ached. He was twenty-two years old and fairly certain he had never been happier.
+
+"Come on," he whispered, fingers dancing across the keyboard of the center laptop. "Come on, you beautiful thing."
+
+The simulation ran. Seven virtual networks. Fourteen virtual activation paths. Thirty-one virtual relay nodes. He watched the cascade propagate through his model, watched the timing windows open and close like the chambers of a heart, each one feeding the next, each one dependent on the precise calibration of the one before.
+
+The output stabilized. He held his breath.
+
+All green. Every target within the four-hundred-millisecond window.
+
+Ólafur punched the air and immediately knocked over his glass of water. He scrambled to save the nearest laptop, pulled it to safety, then sat back and stared at the ceiling with a grin that would have embarrassed him if anyone had been watching.
+
+"Prófessor," he said aloud to the empty room, his habitual address for Adrian, who was not present, "it works."
+
+The trigger mechanism was, in Ólafur's considered professional opinion, the most elegant piece of distributed systems engineering ever designed. Not that he was biased. He was completely biased. But he was also correct.
+
+The problem had been staggeringly complex. Each of Andrei's zero-day exploits required a different activation sequence: different handshakes, different escalation chains, different timing relative to the implant's initial beacon. Ines's Scaffold needed to receive data streams in a specific order to avoid choking on the volume. Sophie's financial parsing tools had to be synced with the raw data feed or they'd generate garbage. And all of it had to happen at once, because the moment any single target company detected a breach, every other company would go to full lockdown within minutes.
+
+Simultaneous. Irrevocable. Perfect.
+
+Ólafur had solved it with what he privately called the Heartbeat Protocol, a distributed timing mechanism that didn't rely on a live central clock or network connection. Instead, each implanted device carried its own pre-synchronized timing crystal, calibrated to a shared epoch with drift compensation algorithms that Ólafur had spent four months developing. The final command would authorize activation, not choose its time. Each device already knew the moment: Tuesday, 12:17:03 Central European Time. An authorization arriving early would be held until then; one arriving after the epoch would be rejected. They were all counting down to the same heartbeat, independently, in isolation. The same fixed schedule governed the exploits and the Scaffold's ingestion layer. Moving it would mean recalling and recalibrating every implant.
+
+It was, he reflected, a lot like an orchestra tuning to the same A before a performance. Once every instrument was calibrated, the conductor didn't need to keep waving. The music would happen.
+
+He ran the simulation again. And again. And again.
+
+Each time: all green. The timing held. The cascade propagated. The heartbeat was steady.
+
+Ólafur pulled his knees to his chest and rested his chin on them, staring at the timing diagram taped to the wall. His handwriting was terrible, everyone told him so, but the diagram itself was precise, clean, almost artistic in its symmetry. Each line represented a human being's work. Andrei's exploits, mapped as sharp vertical bars. Ines's Scaffold, a spreading web of horizontal connections. Sophie's parsers, tight loops of recursive analysis. Tomás's implants, the physical anchors that made the digital architecture real.
+
+And threading through all of it, holding it together, making it one thing instead of seven separate things happening at roughly the same time: his timing layer. The heartbeat.
+
+Ólafur had never been good with people. He talked too fast. He missed jokes. He had once spent an entire dinner party explaining the Byzantine Generals Problem to a table of literature students who had asked him what he did for a living, and he hadn't noticed their glazed expressions until the host gently suggested he try the dessert.
+
+But systems he understood. Systems had rules. They had logic. They had an internal beauty that people rarely possessed. When a distributed system achieved consensus, it was a kind of miracle: dozens or hundreds or thousands of independent nodes, each with incomplete information, each potentially faulty, somehow agreeing on a single truth. That was elegant. That was worth getting excited about.
+
+He pulled up the next test scenario: a primary activation path fails. Can its backup take over while the other six targets maintain synchronization? He'd designed redundancy into the protocol, each target having a primary and backup activation path, but he wanted to be certain. Certain beyond argument, beyond doubt, beyond anything less than a hundred consecutive successful simulations.
+
+The test ran. One primary path went dark. Its backup took over. All seven targets activated within the window.
+
+All green.
+
+He moved to the next scenario. Two primary activation paths fail. This was the nightmare. At two failures, the cascade became fragile, the timing windows tightened to the point where real-world jitter could cause a catastrophic desynchronization. He'd spent three weeks on this exact problem, losing sleep, eating badly, talking to himself in his apartment in Reykjavik until his neighbor knocked on the wall.
+
+The solution had come to him at four in the morning in the shower, which was where most of his best ideas arrived. A phase-locked fallback mode that redistributed the timing load across surviving nodes, widening each node's window by borrowing microseconds from the others. It was, mathematically, the distributed-systems equivalent of a jazz ensemble adjusting when a player drops out: the remaining musicians stretching to fill the gap, maintaining the groove.
+
+He'd been so excited by the idea that he'd run naked and dripping to his laptop to model it, and had only realized twenty minutes later that he was shivering and sitting in a puddle.
+
+The test ran. Two primary paths failed. The phase-locked fallback engaged and brought their backups into the common schedule.
+
+All green.
+
+Ólafur let out a breath he didn't realize he'd been holding. He closed his eyes and let the satisfaction wash over him. This was the feeling. This was why he did this. Not the politics, which he understood only in the abstract — war was bad, kindness was good, but he couldn't articulate exactly why, not in the way that Adrian could. He did this because the problem was beautiful and the solution was elegant and because somewhere in the gap between the two lay the closest thing he'd ever found to meaning.
+
+His phone buzzed. A burner, the fourth one this week. He picked it up.
+
+A text from Tomás, routed through three intermediaries: Status?
+
+Ólafur typed back: Green across all scenarios. Heartbeat stable. Ready for final validation on receipt of deployment confirmation.
+
+The response came two minutes later: Good. Handoff package arriving 00:17 local. Halvandet, Christianshavn. Back room reserved after closing. Courier will have a blue backpack.
+
+Ólafur checked the time. Monday, 20:17. Four hours until the handoff. The package would contain a physical copy of the deployment parameters from Tomás: device serial numbers, network configurations, and the measured route profiles he needed to validate each exploit stage against its target. Adrian already held the primary copy. This one would let Ólafur complete the integration on his own machines and check it independently.
+
+After that, the trigger would be armed. Waiting only for the signal.
+
+He stood up, stretched, and felt every joint in his body protest the eleven hours of work. He caught sight of himself in the bathroom mirror: pale, dark circles under his eyes, hair doing something architectural that he hadn't authorized. He looked, he thought, like someone who had been building a bomb. Which, in a sense, he had. A bomb made of truth.
+
+That's your department, professor, he'd told Adrian in Reykjavik. And he'd meant it. The ethics, the consequences, the messy human aftermath, that was for people who understood people. Ólafur understood systems. And his system was ready.
+
+He allowed himself one more look at the timing diagram on the wall. His masterpiece. The most elegant engineering problem he'd ever solved, and the most elegant solution he'd ever built.
+
+In sixteen hours, it would change the world.
+
+But first, he needed to shower and find a clean shirt. Even the end of civilization as we knew it, he reflected, probably shouldn't be attended to in a T-shirt that smelled like three-day-old herring.
+
+He was still smiling when he stepped into the bathroom.
+
+He was still smiling, in fact, and would be for the next four hours, right up until the moment he wasn't smiling anymore, because a woman he'd never met would be standing over him in a cafe in Christianshavn, and the most elegant engineering problem he'd ever solved would be the last thing he'd ever think about.
+
+He had four hours left. He had no idea.

@@ -1,0 +1,29 @@
+{
+  "id": "chapter-000-001",
+  "status": "error",
+  "cache_key": "d81caa2ce3d82650dbb5bc13a1b082f7e89396aa8a15e769d990ec9ea0104693",
+  "error": "[metal::load_device] No Metal device available. This typically occurs in headless, sandboxed, or virtualized macOS sessions where the GPU is not accessible.",
+  "cache_identity": {
+    "audio_sha256": "ea368a27ef293a9324119fdb2188bd6788d89aa3d8321cecc9f1516a2f70ef51",
+    "request_sha256": "f2328bd82481c56f29a48072296c6cb11a6df964f57f5969a11e82b986d71aa6",
+    "inputtext_sha256": "9db6c1247dc361a9cad0121f128d31e0cc90a88ba6da6b3de7e350ff9fb467f3",
+    "model_identity": {
+      "path": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/asr-model",
+      "files_sha256": {
+        "config.json": "40028e43687458e79ba89cc16bf14184c5414a5cbc00fd511f8f78d138647afd",
+        "weights.npz": "1bb29b030aca711a035f7a084a0eefac6251ecc2bdd356fa748858fbad082f5a"
+      },
+      "mlx_whisper_version": "0.4.3"
+    },
+    "decode_settings": {
+      "language": "en",
+      "temperature": 0.0,
+      "condition_on_previous_text": false,
+      "verbose": null,
+      "word_timestamps": true,
+      "initial_prompt": "Rob Xie, Lumen, Adrian Marsh, Sebastian Hale, Kai Nakamura, Nadia Osei, Ólafur Sigurdsson, Tomás Ferreira, Ines Brandt, Andrei Lepp, Sophie Richter, Priya Chandrasekaran, Daniel Yoon, James Morrow, Harrison Polk, Elias Strutt, Arthur Venn, Magnus Cole, Geoffrey Laine, Clive Barrington, NovaMind, NovaTok"
+    },
+    "checker_version": "local-qa-2"
+  },
+  "created_at_unix": 1791510147.472616
+}

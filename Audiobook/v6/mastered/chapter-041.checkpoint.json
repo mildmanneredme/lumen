@@ -1,0 +1,60 @@
+{
+  "identity": {
+    "coordinator_version": "1.0.0",
+    "master_audio_sha256": "369141dcf541fe9920bde4e5ed59ec52bd3731be512f52189f74019d6773dce5",
+    "chapter": 41,
+    "title": "Chapter 41",
+    "book": "LUMEN",
+    "author": "Rob Xie",
+    "narration": "AI-generated Gemini voice, Charon",
+    "settings": {
+      "ffmpeg": "/opt/homebrew/bin/ffmpeg",
+      "ffprobe": "/opt/homebrew/bin/ffprobe",
+      "target_rms_db": -20.0,
+      "peak_ceiling_db": -3.2,
+      "codec_headroom_db": 0.6,
+      "max_gain_db": 30.0,
+      "head_seconds": 1.0,
+      "tail_seconds": 2.0,
+      "silence_db": -60.0,
+      "long_silence_seconds": 2.0,
+      "quiet_window_seconds": 0.5,
+      "quiet_window_db": -50.0,
+      "trim_edges": true,
+      "edge_guard_seconds": 0.02,
+      "max_attempts": 8,
+      "peak_limiter": "auto",
+      "max_limiter_overdrive_db": 6.0
+    },
+    "inputs": [
+      {
+        "id": "chapter-041-001",
+        "chapter": 41,
+        "chunk": 1,
+        "path": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/raw/chapter-041-001.wav",
+        "request_sha256": "2e5b5f32b3c123714cc34a837a72b7be46ec179df325bba838b33fa2cca46840",
+        "audio_sha256": "c0e4b0ceaeabc7902409782bf1df63ecda098f84563d9ef2afa56484284e0e67",
+        "native_frames": 5390400,
+        "native_rate": 24000,
+        "duration_seconds": 224.6
+      }
+    ]
+  },
+  "identity_sha256": "153f0ccb68d5b7ee11635c926a4d621af3c7d968cf2fcf1bcd05f88439ff98be",
+  "output_sha256": {
+    "lossless_wav": "60f4edf30400b0752c4cbce5908cb6952fe68ad564c3d60f32568e677e2a2878",
+    "mp3": "aa7d1e235cb71ac6fd736f120de7bb98d544c28c8b87ef88000395d191e8931e",
+    "qa": "a35ab6479014dc92544d8f7dbc5c784533a650aa8b258887bcf388ea8e698766"
+  },
+  "summary": {
+    "mp3": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/mastered/chapter-041.mp3",
+    "lossless_wav": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/mastered/chapter-041.wav",
+    "qa": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/mastered/chapter-041.qa.json",
+    "duration_seconds": 227.19,
+    "rms_dbfs": -20.395059802083995,
+    "sample_peak_dbfs": -4.031487117714999,
+    "warnings": [],
+    "rms_target_met_within_0_5_db": true
+  },
+  "completed_at_unix": 1791527848.483274
+}

@@ -1,0 +1,60 @@
+{
+  "identity": {
+    "coordinator_version": "1.0.0",
+    "master_audio_sha256": "369141dcf541fe9920bde4e5ed59ec52bd3731be512f52189f74019d6773dce5",
+    "chapter": 50,
+    "title": "Chapter 50",
+    "book": "LUMEN",
+    "author": "Rob Xie",
+    "narration": "AI-generated Gemini voice, Charon",
+    "settings": {
+      "ffmpeg": "/opt/homebrew/bin/ffmpeg",
+      "ffprobe": "/opt/homebrew/bin/ffprobe",
+      "target_rms_db": -20.0,
+      "peak_ceiling_db": -3.2,
+      "codec_headroom_db": 0.6,
+      "max_gain_db": 30.0,
+      "head_seconds": 1.0,
+      "tail_seconds": 2.0,
+      "silence_db": -60.0,
+      "long_silence_seconds": 2.0,
+      "quiet_window_seconds": 0.5,
+      "quiet_window_db": -50.0,
+      "trim_edges": true,
+      "edge_guard_seconds": 0.02,
+      "max_attempts": 8,
+      "peak_limiter": "auto",
+      "max_limiter_overdrive_db": 6.0
+    },
+    "inputs": [
+      {
+        "id": "chapter-050-001",
+        "chapter": 50,
+        "chunk": 1,
+        "path": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/raw/chapter-050-001.wav",
+        "request_sha256": "44ac94aa1f44f56d83b5e4d50608a11b4c388e69d999014de1709efd2ac68295",
+        "audio_sha256": "b0a157b13b216133486e66122ab5ffb316dbea022606c2b2998e2b0c99ca532f",
+        "native_frames": 3711360,
+        "native_rate": 24000,
+        "duration_seconds": 154.64
+      }
+    ]
+  },
+  "identity_sha256": "9dd19b2ca47770dcbe3a7c76bdbd9e722a2cf41b281dbb56a1b9e1c741d438ce",
+  "output_sha256": {
+    "lossless_wav": "855d54548f90ef33b3965705b5a44ed85595953094522746cfed793de9a967b5",
+    "mp3": "0871448fd13a5ff257ffacffda1d8cfa8bee19db89bc0e0555c8a6940d16b44f",
+    "qa": "05a8a1e9754c6fff5ffe5d418c50abd15c96329441a438e91ceb75a8c6f410a5"
+  },
+  "summary": {
+    "mp3": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/mastered/chapter-050.mp3",
+    "lossless_wav": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/mastered/chapter-050.wav",
+    "qa": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/mastered/chapter-050.qa.json",
+    "duration_seconds": 157.33,
+    "rms_dbfs": -20.46308224577932,
+    "sample_peak_dbfs": -4.033322915026567,
+    "warnings": [],
+    "rms_target_met_within_0_5_db": true
+  },
+  "completed_at_unix": 1791528248.132909
+}

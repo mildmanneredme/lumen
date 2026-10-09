@@ -1,0 +1,73 @@
+{
+  "id": "stream-D-story-Gacrux",
+  "chapter": 1,
+  "chunk": 2,
+  "request_sha256": "7a93adcadefb2168ba7120018c6c23d89eaa12216bbeb9b2b8b8c98eeef2b6e8",
+  "model": "gemini-3.8-flash-lite-tts",
+  "voice": "Gacrux",
+  "interaction_status": "completed",
+  "interaction_id": "v1_ChdmYmJJYXF5RE9maTZnOFVQLWZhSTRRTRIXZmJiSWFxeURPZmk2ZzhVUC1mYUk0UU0",
+  "duration_seconds": 38.4,
+  "channels": 1,
+  "sample_rate": 24000,
+  "sample_width": 2,
+  "words": 90,
+  "pace_words_per_minute": 140.625,
+  "usage": {
+    "total_tokens": 1074,
+    "total_input_tokens": 114,
+    "input_tokens_by_modality": [
+      {
+        "modality": "text",
+        "tokens": 114
+      }
+    ],
+    "total_cached_tokens": 0,
+    "total_output_tokens": 960,
+    "output_tokens_by_modality": [
+      {
+        "modality": "audio",
+        "tokens": 960
+      }
+    ],
+    "total_tool_use_tokens": 0,
+    "total_thought_tokens": 0,
+    "raw_prompt_token": 579,
+    "model_invocation_token_counts": [
+      {
+        "prompt_tokens_details": [
+          {
+            "modality": "text",
+            "tokens": 378
+          }
+        ],
+        "candidates_tokens_details": [
+          {
+            "modality": "text",
+            "tokens": 962
+          }
+        ]
+      }
+    ],
+    "non_grounding_model_invocation_token_counts": [
+      {
+        "prompt_tokens_details": [
+          {
+            "modality": "text",
+            "tokens": 378
+          }
+        ],
+        "candidates_tokens_details": [
+          {
+            "modality": "text",
+            "tokens": 962
+          }
+        ]
+      }
+    ]
+  },
+  "cost_usd_duration_based_estimate": 0.005867125,
+  "audio_sha256": "03b50f458db55d84b033d8ba258e5024957ff3d53e32aab8569c4d92e99d9d1a",
+  "cost_usd_from_reported_tokens": 0.005817,
+  "elapsed_seconds": 0.0
+}

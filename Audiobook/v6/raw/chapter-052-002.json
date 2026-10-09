@@ -1,0 +1,109 @@
+{
+  "id": "chapter-052-002",
+  "chapter": 52,
+  "chunk": 2,
+  "request_sha256": "7804ccf8e4d2c6d576742e0865c0b3ee04beffa6f626b4ce26c3ada37522116f",
+  "model": "gemini-3.8-flash-lite-tts",
+  "voice": "Charon",
+  "interaction_status": "completed",
+  "interaction_id": "v1_Chc0NGJJYXVMY0NPdmI0LUVQdnRPTTZRdxIXNDRiSWF1TGNDT3ZiNC1FUHZ0T002UXc",
+  "duration_seconds": 143.12,
+  "channels": 1,
+  "sample_rate": 24000,
+  "sample_width": 2,
+  "words": 369,
+  "pace_words_per_minute": 154.69536053661264,
+  "usage": {
+    "total_tokens": 4092,
+    "total_input_tokens": 514,
+    "input_tokens_by_modality": [
+      {
+        "modality": "text",
+        "tokens": 514
+      }
+    ],
+    "total_cached_tokens": 0,
+    "total_output_tokens": 3578,
+    "output_tokens_by_modality": [
+      {
+        "modality": "audio",
+        "tokens": 3578
+      }
+    ],
+    "total_tool_use_tokens": 0,
+    "total_thought_tokens": 0,
+    "raw_prompt_token": 1397,
+    "model_invocation_token_counts": [
+      {
+        "prompt_tokens_details": [
+          {
+            "modality": "text",
+            "tokens": 1138
+          }
+        ],
+        "candidates_tokens_details": [
+          {
+            "modality": "text",
+            "tokens": 2996
+          }
+        ]
+      },
+      {
+        "prompt_tokens_details": [
+          {
+            "modality": "text",
+            "tokens": 406
+          },
+          {
+            "modality": "audio",
+            "tokens": 259
+          }
+        ],
+        "candidates_tokens_details": [
+          {
+            "modality": "text",
+            "tokens": 586
+          }
+        ]
+      }
+    ],
+    "non_grounding_model_invocation_token_counts": [
+      {
+        "prompt_tokens_details": [
+          {
+            "modality": "text",
+            "tokens": 1138
+          }
+        ],
+        "candidates_tokens_details": [
+          {
+            "modality": "text",
+            "tokens": 2996
+          }
+        ]
+      },
+      {
+        "prompt_tokens_details": [
+          {
+            "modality": "text",
+            "tokens": 406
+          },
+          {
+            "modality": "audio",
+            "tokens": 259
+          }
+        ],
+        "candidates_tokens_details": [
+          {
+            "modality": "text",
+            "tokens": 586
+          }
+        ]
+      }
+    ]
+  },
+  "cost_usd_duration_based_estimate": 0.02182875,
+  "audio_sha256": "164e5f32266ceaefcc799464393141c7d0776bef6ddb8de8a43bd3d659bfe003",
+  "cost_usd_from_reported_tokens": 0.021725,
+  "elapsed_seconds": 0.05
+}

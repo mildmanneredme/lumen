@@ -1,0 +1,97 @@
+Chapter Thirty Two.
+
+Berlin-Kreuzberg smelled like doner kebab, diesel exhaust, and defiance. A mural on Oranienstrasse depicted a fist smashing through a smartphone screen; someone had tagged AWAKE beneath it. The neighborhood wore its history of resistance like scar tissue: with pride and a certain combative nostalgia.
+
+The address led to a hidden Hinterhof courtyard, a nineteenth-century factory complex converted into studios and live-work spaces. Bicycle repair collective on the ground floor. No signage on the upper floors. The buzzer had been disconnected. A laminated note on the door read: IF YOU DON'T KNOW WHICH BELL TO RING, YOU'RE AT THE WRONG BUILDING.
+
+Adrian had been told to knock three times, wait five seconds, then knock twice more. He did so. The door opened.
+
+A woman stood in the doorway. She was thirty-four, though she could have passed for younger, a lean, alert face that came from chronic intensity rather than skincare routines. Her hair was dark, cut in a practical bob, and her eyes, brown, sharp, simultaneously assessing and unimpressed, moved over Adrian with the systematic thoroughness of a border guard.
+
+"You're the professor," she said. Her accent was German with something else underneath, Portuguese, Adrian would later learn. German-Brazilian, raised in Sao Paulo until the age of twelve, Berlin since then.
+
+"Adrian Marsh."
+
+"I know who you are. I've read your work." She didn't move from the doorway. "Your paper on decentralized governance models was adequate. Your paper on AI ethics was derivative. And your opinion piece in The Atlantic about the moral obligations of tech workers was the most spectacularly patronizing thing I've read since a management consultant tried to explain systems thinking to me using a PowerPoint deck."
+
+"It's wonderful to meet you too."
+
+"It won't be wonderful. It'll be uncomfortable, because I'm going to ask you questions that will determine whether you're worth the risk of letting you into my workspace, and the questions are going to make you defensive, and when you get defensive you'll resort to academic jargon, and I will find that annoying." She stepped aside. "Come in."
+
+Ines Brandt's workspace occupied the entire fourth floor of the former factory. The ceiling was fifteen feet high, supported by cast-iron columns that retained their original nineteenth-century patina. The floor was poured concrete, polished but unfinished, scattered with rugs that looked like they'd been collected from several continents. And arranged along every wall, in rows so neat they might have been planted, were server racks.
+
+Dozens of them. Floor-to-ceiling, humming quietly, their status LEDs blinking in patterns that gave the room the quality of a forest floor dappled with fireflies. Ethernet cables ran between racks in carefully bundled conduits, color-coded by function in a system that Adrian recognized as methodical even before he understood the methodology. Cooling fans and an industrial chiller kept the room cold despite the heat of the machines. Adrian left his coat on.
+
+"Welcome to my garden," Ines said.
+
+"You call it a garden?"
+
+"I planted these machines. I cultivate them. I prune them when they overgrow. And if someone threatens them, I respond with the protective instincts of a very territorial gardener." She walked between the racks, trailing her hand along the cases with proprietary ease. "Each rack is a seed. Together, they're the root system of a network that spans forty-seven countries. When the Scaffold activates, these machines become the primary distribution nodes for the most important data release in human history."
+
+"How many nodes total?"
+
+"Four thousand, two hundred and sixteen confirmed so far. The reserve is still growing; I expect eleven thousand before deployment. Distributed across universities, libraries, small businesses, and private residences. Each running a custom daemon that looks like standard distributed computing software, the distributed computing model SETI@home made popular. Benign. Invisible. Waiting."
+
+She led him to a workstation at the center of the room, a desk surrounded by six monitors displaying what appeared to be a live network topology map. Green dots scattered across a world map, each representing a dormant node.
+
+"The Scaffold is a peer-to-peer publishing system," Ines said, settling into her chair with the proprietary ease of someone sitting on a throne. "When triggered, it distributes data to every node simultaneously. Each node independently verifies the data against a cryptographic hash chain, essentially a blockchain that ensures data integrity. Once verified, each node begins serving the data to anyone who requests it. The system is designed so that the more people try to access the data, the faster it propagates. Demand doesn't overwhelm the network. Demand is the network."
+
+"BitTorrent's architecture."
+
+"BitTorrent's architecture, adapted. A central tracker would give them something to seize, so this system uses a distributed hash table. Every node helps locate the others. There's no single coordinator to remove."
+
+"And if governments start seizing individual nodes?"
+
+"They'd need to seize all four thousand simultaneously. Even if they got ninety percent, the remaining ten percent would continue serving the data. And by the time they'd organized a coordinated international seizure, requiring cooperation between forty-seven national jurisdictions, most of which have no legal framework for this kind of action, the data would have been downloaded by millions of individuals and redistributed through conventional channels. Email. USB drives. Printed documents. The internet treats censorship as damage and routes around it. I've built a system that formalizes that principle at an architectural level."
+
+She turned to face Adrian directly. Her expression had shifted from hostility to something more like examination, the look of someone testing a material for structural integrity.
+
+"Now. You're here because Priya is dead and you're supposed to fill her shoes. Let me be direct: I don't think you can. Priya was an engineer. You're a theorist. She understood these companies at the circuit-board level. You understand them at the op-ed level. The gap between those two things is the gap between a structural engineer and someone who once read an article about bridges."
+
+Adrian felt the sting but held steady. "I'm not claiming to be Priya. I'm claiming that my structural understanding of these companies, how they're built, how they organize their data, how their architectures reflect their business models, can fill enough of the gaps in her maps to make the breach work."
+
+"Prove it."
+
+"I'm sorry?"
+
+"Prove it. Right now." Ines pulled up a blank network diagram on one of her monitors. "Draw me the architecture of the Machine's cloud infrastructure. Not the public documentation. I can read that myself. The actual architecture. Where the customer data lives versus the internal data. How the logging systems connect to the analytics pipeline. Where the seams are between their acquired companies' legacy systems and the unified platform."
+
+Adrian stared at the blank screen. He realized he'd crossed his arms and uncrossed them. He pulled a chair next to hers, took the mouse she grudgingly offered, and began to draw.
+
+He started with what he knew from his investor days: the architectural reviews he'd conducted during due diligence, the board-level presentations he'd attended, the technical deep-dives that early-stage investors were given as a matter of course. He layered in public information: AWS architecture white papers, conference presentations by Venn's engineering teams, the structural implications of the company's acquisition history. And he added inference, the logical deductions that followed from understanding how companies at this scale were forced to organize their systems, because certain architectural patterns were not choices but necessities when you operated at the scale of a quarter of the internet.
+
+Twenty minutes later, the screen showed a network topology. Adrian marked the inherited details in black and his inferences in blue. There was more blue than he liked.
+
+Ines studied it in silence for a full minute.
+
+"You put the logging pipeline in the wrong region."
+
+"East Coast. Virginia data center cluster."
+
+"Oregon. They moved it eighteen months ago for latency reasons."
+
+"How do you know that?"
+
+"Because I pay attention to things that matter. But—" She paused, and the pause cost her visibly, as if conceding anything to a theorist caused her physical discomfort. "The rest is... closer than I expected. The seam between the legacy acquisition systems and the unified platform, you identified it. But every blue line needs corroboration before it goes into a deployment map."
+
+"It's a structural inevitability. When a company grows through acquisition rather than organic development, the integration of legacy systems creates permanent architectural compromises. Those compromises are exploitable because they represent interfaces between systems that were never designed to work together."
+
+"You sound like Priya."
+
+The words landed differently than Ines had probably intended. Her expression flickered, a microexpression of loss that she smoothed over with professional speed.
+
+"Tell me something, Professor. Why are you here? Not the operational reason. I know you're here to complete the maps. The real reason. Why did a tenured academic with a comfortable life decide to join a conspiracy to commit the largest data breach in history?"
+
+Adrian considered several answers. The honest one was complicated. And in this room, surrounded by the humming infrastructure of a system designed to do what his entire career had not, the answer felt less like a confession and more like a course correction.
+
+"Because someone needs to finish Priya's maps, and I can do it. Show me the interface points."
+
+The directness surprised them both. Ines studied him for a long moment. Then she nodded, once, as if some internal structure had been tested and found adequate, if not ideal.
+
+"The logging pipeline is in Oregon," she said. "Fix it. And then let me show you how the Scaffold interfaces with the Cartographer's maps, because if you're going to do this, you're going to do it right."
+
+She turned back to her monitors. Adrian fixed the logging pipeline.
+
+It was, he reflected, the warmest reception he'd received yet. Which said something about the people he'd been meeting.
+
+Or possibly about the people he'd been meeting before.

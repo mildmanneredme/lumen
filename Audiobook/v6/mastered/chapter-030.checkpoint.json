@@ -1,0 +1,71 @@
+{
+  "identity": {
+    "coordinator_version": "1.0.0",
+    "master_audio_sha256": "369141dcf541fe9920bde4e5ed59ec52bd3731be512f52189f74019d6773dce5",
+    "chapter": 30,
+    "title": "Chapter 30",
+    "book": "LUMEN",
+    "author": "Rob Xie",
+    "narration": "AI-generated Gemini voice, Charon",
+    "settings": {
+      "ffmpeg": "/opt/homebrew/bin/ffmpeg",
+      "ffprobe": "/opt/homebrew/bin/ffprobe",
+      "target_rms_db": -20.0,
+      "peak_ceiling_db": -3.2,
+      "codec_headroom_db": 0.6,
+      "max_gain_db": 30.0,
+      "head_seconds": 1.0,
+      "tail_seconds": 2.0,
+      "silence_db": -60.0,
+      "long_silence_seconds": 2.0,
+      "quiet_window_seconds": 0.5,
+      "quiet_window_db": -50.0,
+      "trim_edges": true,
+      "edge_guard_seconds": 0.02,
+      "max_attempts": 8,
+      "peak_limiter": "auto",
+      "max_limiter_overdrive_db": 6.0
+    },
+    "inputs": [
+      {
+        "id": "chapter-030-001",
+        "chapter": 30,
+        "chunk": 1,
+        "path": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/raw/chapter-030-001.wav",
+        "request_sha256": "b0ea91ecb9cb2483042e66cfbfecd0b16d74cc1d0309fe593071211919147010",
+        "audio_sha256": "e3204f762f539e9d49521bd6e5fca7e5c4e609cabb1ada7af8310467f1477079",
+        "native_frames": 5954880,
+        "native_rate": 24000,
+        "duration_seconds": 248.12
+      },
+      {
+        "id": "chapter-030-002",
+        "chapter": 30,
+        "chunk": 2,
+        "path": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/raw/chapter-030-002.wav",
+        "request_sha256": "a8bf28e1c90ff42e42e7074e6cf92461d23be5dcab381ae4ea328a9acd1ba237",
+        "audio_sha256": "aba02d3409a057c38d9b519f6e932920c7c188c22e31cbdf036db9f0b2155a81",
+        "native_frames": 5785920,
+        "native_rate": 24000,
+        "duration_seconds": 241.08
+      }
+    ]
+  },
+  "identity_sha256": "9adf418db14587a26101da75c19a564ac2c917a16af7bb98fcee55cca82ded32",
+  "output_sha256": {
+    "lossless_wav": "4159ee63fee02f4aecf3af31ff889d1280a8ab583a961a429cc40feba1f841fd",
+    "mp3": "e65e769300d89c1fb39a02a2fb6241ef6a5cd86204e7ed1fda48e788c67364f9",
+    "qa": "a5c91f2d4d18145ab6de52cfea08f6503e45ea921d0575b306617d81695c9367"
+  },
+  "summary": {
+    "mp3": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/mastered/chapter-030.mp3",
+    "lossless_wav": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/mastered/chapter-030.wav",
+    "qa": "/Users/robxie/Desktop/Novel-proj/Audiobook/v6/mastered/chapter-030.qa.json",
+    "duration_seconds": 491.79,
+    "rms_dbfs": -20.438239017061676,
+    "sample_peak_dbfs": -4.011303303686894,
+    "warnings": [],
+    "rms_target_met_within_0_5_db": true
+  },
+  "completed_at_unix": 1791527313.556828
+}
