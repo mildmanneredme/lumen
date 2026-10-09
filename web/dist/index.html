@@ -7,10 +7,11 @@
   <meta name="description" content="Listen to the opening of Lumen by Rob Xie, with synchronized prose and original painted illustrations.">
   <title>Lumen — Read & listen</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23181816'/%3E%3Cpath d='M10 7v18h13v-3H13V7z' fill='%23dfbd7d'/%3E%3C/svg%3E">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=20261009-resume">
   <link rel="preload" as="image" href="assets/opening-room.png">
-  <script src="data/chapter-001.js" defer></script>
-  <script src="app.js" defer></script>
+  <script src="data/chapter-001.js?v=20261009-resume" defer></script>
+  <script src="progress.js?v=20261009-resume" defer></script>
+  <script src="app.js?v=20261009-resume" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#prose">Skip to the book</a>
@@ -22,11 +23,18 @@
       <button id="settings-open" class="type-button" type="button" aria-label="Reading settings" aria-haspopup="dialog">Aa</button>
     </nav>
   </header>
+  <aside id="resume-panel" class="resume-panel" aria-label="Your listening position" hidden>
+    <p id="resume-message">Your place is saved on this browser.</p>
+    <div class="resume-actions">
+      <button id="resume-continue" class="continue-button" type="button">Continue listening</button>
+      <button id="start-over" class="text-button" type="button">Start over</button>
+    </div>
+  </aside>
   <main class="experience">
     <figure class="scene-stage" id="scene-stage" data-scene="opening-room">
       <img id="scene-image" class="scene-image" src="assets/opening-room.png" alt="Adrian sits in his Berkeley living room, watching a glass office tower on television; a cold coffee rests nearby.">
       <img id="scene-incoming" class="scene-image incoming" alt="" aria-hidden="true">
-      <figcaption class="scene-caption"><span id="scene-title">Berkeley · Monday evening</span><span class="scene-number" id="scene-number">01 / 03</span></figcaption>
+      <figcaption class="scene-caption"><span id="scene-title">Berkeley · Monday evening</span><span class="scene-number" id="scene-number">01 / 08</span></figcaption>
     </figure>
     <section class="reading-pane" id="reading-pane" aria-label="Book text">
       <div class="reading-content">
@@ -43,6 +51,7 @@
     </section>
   </main>
   <footer class="player" aria-label="Audiobook player">
+    <p id="seek-feedback" class="seek-feedback" role="status" hidden></p>
     <div class="transport">
       <button id="back" class="skip-button" type="button" aria-label="Rewind 15 seconds"><span aria-hidden="true">↶</span><span>15</span></button>
       <button id="play" class="play-button" type="button" aria-label="Play audiobook"><span id="play-icon" aria-hidden="true">▶</span></button>
@@ -60,7 +69,7 @@
     <input id="text-size" type="range" min="18" max="28" step="1" value="20">
     <p>Click a sentence to hear it. Scroll freely to read ahead, then select Follow text to return to the narration.</p>
   </dialog>
-  <audio id="narration" preload="auto" src="assets/chapter-001-pilot.mp3"></audio>
+  <audio id="narration" preload="auto" src="assets/chapter-001-pilot.mp3?v=e6b49db1dac5"></audio>
   <noscript><p class="no-script">Enable JavaScript for synchronized text and paintings.</p><audio controls src="assets/chapter-001-pilot.mp3"></audio></noscript>
 </body>
 </html>

@@ -3,7 +3,7 @@ const path = require('node:path');
 let playwrightModule = process.env.PLAYWRIGHT_MODULE;
 if (!playwrightModule) {
   try { playwrightModule = require.resolve('playwright'); }
-  catch (_) { playwrightModule = '/Users/robxie/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright'; }
+  catch (_) { playwrightModule = path.join(require('node:os').homedir(), '.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright'); }
 }
 const { chromium } = require(playwrightModule);
 

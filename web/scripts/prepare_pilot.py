@@ -315,7 +315,8 @@ def build(encode=True):
     assert sha256(master_wav) == checkpoint["output_sha256"]["lossless_wav"]
     assert sha256(master_mp3) == checkpoint["output_sha256"]["mp3"]
     audio_source = "assets/chapter-001-pilot.mp3"
-    payload = {"schemaVersion": 1, "id": "chapter-001-pilot", "book": "LUMEN", "title": "Chapter 1",
+    payload = {"schemaVersion": 1, "id": "chapter-001-pilot", "bookId": "lumen", "manuscriptVersion": "v6",
+               "chapterId": "chapter-001", "book": "LUMEN", "title": "Chapter 1",
                "part": "Part One · The Surface", "author": "Rob Xie", "edition": "v6", "chapter": 1,
                "narration": "AI-generated Gemini voice, Charon", "duration": duration,
                "fullChapterDuration": qa["master_pcm_qa"]["duration_seconds"], "audioSrc": audio_source,
@@ -409,7 +410,10 @@ def build(encode=True):
                               "Recognition spelling/name differences use local interpolation; canonical display text is not rewritten.",
                               "Existing content QA and these timing checks do not constitute human listening approval."],
               "listeningApproved": False}
+    payload["audio"]["narratorId"] = "charon"
     write_json(DATA, payload)
+    browser_data = WEB / "dist/data/chapter-001.js"
+    browser_data.write_text("window.LUMEN_CHAPTER = " + json.dumps(payload, ensure_ascii=False) + ";\n", encoding="utf-8")
     write_json(REPORT, report)
     return payload, report
 
@@ -426,6 +430,9 @@ def main():
         checks = verify(payload, chapter.split("\n\n")[:len(payload["paragraphs"])])
         assert sha256(AUDIO) == payload["audio"]["sha256"]
         checks["audioHashMatches"] = True
+        browser_source = (WEB / "dist/data/chapter-001.js").read_text(encoding="utf-8")
+        assert browser_source == "window.LUMEN_CHAPTER = " + json.dumps(payload, ensure_ascii=False) + ";\n"
+        checks["browserDataMatchesPreparedData"] = True
         print(json.dumps(checks, indent=2))
     else:
         payload, report = build(encode=not args.refresh_data)

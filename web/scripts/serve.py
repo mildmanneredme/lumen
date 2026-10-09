@@ -43,6 +43,8 @@ class RangeHandler(SimpleHTTPRequestHandler):
 
     def end_headers(self):
         self.send_header('Accept-Ranges', 'bytes')
+        # A local preview must reload changed controls and range-capable audio.
+        self.send_header('Cache-Control', 'no-store')
         super().end_headers()
 
     def send_range_error(self, size):

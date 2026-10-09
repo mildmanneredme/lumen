@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "bookId": "lumen",
+  "manuscriptVersion": "v6",
+  "currentPilotNarratorId": "charon",
+  "editions": [
+    {
+      "id": "charon",
+      "label": "Male narrator",
+      "voice": "Charon",
+      "productionDirectory": "Audiobook/v8",
+      "readerReleaseStatus": "pending-final-audio-and-alignment"
+    },
+    {
+      "id": "autonoe",
+      "label": "Female narrator",
+      "voice": "Autonoe",
+      "productionDirectory": "Audiobook/v7",
+      "readerReleaseStatus": "pending-final-audio-and-alignment"
+    }
+  ],
+  "exportContract": {
+    "shared": ["bookId", "manuscriptVersion", "chapterId", "canonicalSentenceIds", "characterReferences", "paintingAssets"],
+    "perRecording": ["audioSrc", "audioSha256", "duration", "sentenceTimings", "sceneTimings"],
+    "bookmarkMapping": "Restore exact seconds for the same SHA-256; otherwise resolve the canonical sentence and fraction against the selected narrator's timings.",
+    "sceneTiming": "Resolve each painting's canonical sentence trigger against that narrator's timing map.",
+    "nextStep": "Wait for the final recordings, prepare and verify both reader exports, then enable the narrator picker and expand the illustrations."
+  }
+}
