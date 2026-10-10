@@ -479,14 +479,17 @@
         extent: value.readingExtent || (local ? 'excerpt' : 'full'),
       };
     }
+    function legacySource(bookmark) {
+      return [active?.chapter, pilot].find(chapter => object(chapter) &&
+        chapter.audio?.sha256 === bookmark.audioSha256 && chapter.bookId === bookmark.bookId &&
+        chapter.manuscriptVersion === bookmark.manuscriptVersion && chapter.chapterId === bookmark.chapterId &&
+        (!bookmark.readingExtentId || bookmark.readingExtentId === (chapter.readingExtentId || chapter.id)));
+    }
     function legacyAnchorMeasured(bookmark) {
       // V1 did not record whether its clamped first-sentence fraction came
       // from that sentence or from the introduction. Inspect the exact source
       // clock before migrating local sentence IDs; another hash cannot supply it.
-      const source = [active?.chapter, pilot].find(chapter => object(chapter) &&
-        chapter.audio?.sha256 === bookmark.audioSha256 && chapter.bookId === bookmark.bookId &&
-        chapter.manuscriptVersion === bookmark.manuscriptVersion && chapter.chapterId === bookmark.chapterId &&
-        (!bookmark.readingExtentId || bookmark.readingExtentId === (chapter.readingExtentId || chapter.id)));
+      const source = legacySource(bookmark);
       if (!source || !Array.isArray(source.paragraphs) || !finite(source.duration)) return false;
       const sentences = source.paragraphs.flatMap(p => Array.isArray(p?.sentences) ? p.sentences : []);
       const measured = sentence => object(sentence) && finite(sentence.start) && finite(sentence.end) &&
@@ -518,27 +521,30 @@
       if (bookmark.completed && loaded.extent === 'full' && bookmark.readingExtentId === extent) {
         return { time: chapter.duration, completed: true, mapped: true };
       }
-      const alias =
-        manifest.legacyAliases?.[
-          bookmark.readingExtentId || (!bookmark.sentenceId.includes(':') ? pilot?.id : '')
-        ];
+      const aliasExtent = bookmark.readingExtentId || (!bookmark.sentenceId.includes(':') ? pilot?.id : ''),
+        alias = manifest.legacyAliases?.[aliasExtent],
+        completedAlias = bookmark.completed && alias?.trackId === track.id && alias.completedExcerpt,
+        completedSource = completedAlias && legacySource(bookmark),
+        knownCompletion = completedSource &&
+          (completedSource.readingExtentId || completedSource.id) === aliasExtent;
       const anchor =
-        bookmark.completed && alias?.trackId === track.id && alias.completedExcerpt
-          ? alias.completedExcerpt.sentenceId
+        completedAlias
+          ? completedAlias.sentenceId
           : (alias?.trackId === track.id && alias.sentenceIds[bookmark.sentenceId]) ||
             bookmark.sentenceId;
       const sentence = loaded.byId.get(anchor);
       const anchorMeasured = bookmark.anchorMeasured === true || (bookmark.anchorMeasured === undefined &&
-        ((bookmark.completed && alias?.trackId === track.id && alias.completedExcerpt) || legacyAnchorMeasured(bookmark)));
+        (knownCompletion || legacyAnchorMeasured(bookmark)));
       ensure(
-        sentence && (bookmark.audioTime === 0 || (anchorMeasured && finite(sentence.start) && finite(sentence.end))),
+        (!completedAlias || knownCompletion) && sentence &&
+          (bookmark.audioTime === 0 || (anchorMeasured && finite(sentence.start) && finite(sentence.end))),
         'MISSING_ANCHOR',
         'Your saved passage could not be mapped to this recording. Your old bookmark is kept; you can start this chapter from the beginning.',
       );
       if (bookmark.audioTime === 0) return { time: 0, completed: false, mapped: true };
       const fraction =
-        bookmark.completed && alias?.completedExcerpt
-          ? alias.completedExcerpt.sentenceFraction
+        completedAlias
+          ? completedAlias.sentenceFraction
           : bookmark.sentenceFraction;
       return {
         time: clamp(

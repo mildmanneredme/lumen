@@ -556,13 +556,17 @@ let browser;
   const sourcePilot={id:'chapter-001-pilot',bookId:'lumen',manuscriptVersion:'v6',chapterId:'chapter-001',duration:8,
     audio:{sha256:'d'.repeat(64),narratorId:'charon'},paragraphs:[{id:'p001',sentences:[
       {id:'p001-s01',start:4,end:6},{id:'p001-s02',start:6,end:8}]}]};
-  const legacyPilotContext=async(time,{sameRecording=false,unknownSource=false}={})=>{
-    const legacy=createLegacyProgress(sourcePilot,sourcePilot.paragraphs.flatMap(p=>p.sentences),{getItem:()=>null,setItem:()=>{}}).save(time);
+  const legacyPilotContext=async(time,{sameRecording=false,unknownSource=false,completed=false,voice=null,chapterId=null}={})=>{
+    const legacy=createLegacyProgress(sourcePilot,sourcePilot.paragraphs.flatMap(p=>p.sentences),{getItem:()=>null,setItem:()=>{}}).save(time,{completed});
     assert.ok(!Object.hasOwn(legacy,'anchorMeasured'),'original legacy producer has no measured-anchor flag');
     if(unknownSource) legacy.audioSha256='e'.repeat(64);
     const index=JSON.parse(JSON.stringify(manifest)),overrides=new Map(introPayloads);
     index.legacyAliases['chapter-001-pilot']={trackId:'chapter-001',sentenceIds:{'p001-s01':'v6:chapter-001:p001-s01','p001-s02':'v6:chapter-001:p001-s02'},
       completedExcerpt:{sentenceId:'v6:chapter-001:p001-s02',sentenceFraction:1,trackCompleted:false}};
+    if(completed)for(const [key,value] of overrides) {
+      const payload=JSON.parse(JSON.stringify(value)),paragraph=payload.paragraphs[0];
+      paragraph.end=paragraph.sentences[1].end=payload.duration-2;overrides.set(key,payload);
+    }
     if(sameRecording) {
       const key='/fixture/chapter-001-charon.json',payload=JSON.parse(JSON.stringify(payloads.get(key)));
       payload.audio.sha256=sourcePilot.audio.sha256;
@@ -573,7 +577,8 @@ let browser;
     const fixture=await fixtureContext({legacy,index,overrides});
     await fixture.page.route('**/legacy-pilot.js*',route=>route.fulfill({contentType:'text/javascript',
       body:'window.LUMEN_PILOT_REFERENCE='+JSON.stringify(sourcePilot)+';'}));
-    await fixture.page.goto(origin,{waitUntil:'domcontentloaded'});
+    const params=new URLSearchParams();if(voice)params.set('voice',voice);if(chapterId)params.set('chapter',chapterId);
+    await fixture.page.goto(origin+(params.size?'/?'+params:''),{waitUntil:'domcontentloaded'});
     await fixture.page.waitForFunction(()=>window.LUMEN_BOOK && (window.LUMEN_BOOK.getActive() || !document.querySelector('#transition-retry').hidden));
     return {...fixture,legacy};
   };
@@ -623,6 +628,60 @@ let browser;
     !window.LUMEN_BOOK.getActive() && localStorage.getItem('lumen-book-v2')===null && !document.querySelector('#transition-start').hidden &&
     JSON.stringify(JSON.parse(localStorage.getItem('lumen-reader-v1')))===JSON.stringify(original),unknownLegacy.legacy));
   await unknownLegacy.context.close();
+  const unknownCompleted=await legacyPilotContext(sourcePilot.duration,{completed:true,unknownSource:true});
+  const completedPreserved=(page,original)=>page.evaluate(original=>
+    !window.LUMEN_BOOK.getActive() && localStorage.getItem('lumen-book-v2')===null &&
+    JSON.stringify(JSON.parse(localStorage.getItem('lumen-reader-v1')))===JSON.stringify(original) &&
+    JSON.parse(localStorage.getItem('lumen-reader-v1')).completed===true,original);
+  regression('an unknown completed legacy recording cannot use the excerpt alias or rewrite either bookmark key',await completedPreserved(unknownCompleted.page,unknownCompleted.legacy));
+  const completedRetry=await unknownCompleted.page.locator('#transition-retry').isVisible();
+  if(completedRetry) {
+    await unknownCompleted.page.locator('#transition-retry').click();
+    await unknownCompleted.page.waitForFunction(()=>!document.querySelector('#transition-retry').hidden && document.querySelector('#transition-status').textContent.includes('could not be mapped'));
+  }
+  regression('retry preserves the original unknown-source legacy completion flag',completedRetry && await completedPreserved(unknownCompleted.page,unknownCompleted.legacy));
+  await unknownCompleted.page.reload({waitUntil:'domcontentloaded'});
+  await unknownCompleted.page.waitForFunction(()=>window.LUMEN_BOOK && (window.LUMEN_BOOK.getActive() || !document.querySelector('#transition-retry').hidden));
+  regression('reload preserves both keys and refuses the unknown completed legacy source again',await completedPreserved(unknownCompleted.page,unknownCompleted.legacy));
+  const completedStart=unknownCompleted.page.locator('#transition-start'),completedCanStart=await completedStart.isVisible();
+  if(completedCanStart) {await completedStart.click();await reached(unknownCompleted.page,'chapter-001');}
+  regression('unknown legacy completion changes only after deliberate recovery at the chapter beginning',completedCanStart && await unknownCompleted.page.evaluate(()=>{
+    const state=JSON.parse(localStorage.getItem('lumen-book-v2')),audio=document.querySelector('#narration');
+    return audio.paused && audio.currentTime===0 && state.lastPosition.audioTime===0 && state.lastPosition.completed===false &&
+      state.history['chapter-001'].completed===false && state.lastPosition.audioSha256===window.LUMEN_CHAPTER.audio.sha256;
+  }));
+  await unknownCompleted.context.close();
+  const knownCompleted=await legacyPilotContext(sourcePilot.duration,{completed:true,voice:'autonoe'});await ready(knownCompleted.page);
+  await knownCompleted.page.waitForTimeout(100);
+  regression('a known-source legacy completion maps to the verified excerpt endpoint without finishing the full chapter',await knownCompleted.page.evaluate(()=>{
+    const state=JSON.parse(localStorage.getItem('lumen-book-v2')),audio=document.querySelector('#narration');
+    return window.LUMEN_CHAPTER.audio.narratorId==='autonoe' && audio.paused && Math.abs(audio.currentTime-10)<.04 &&
+      state.lastPosition.completed===false && state.history['chapter-001'].completed===false && document.querySelector('#transition-start').hidden;
+  }));
+  await knownCompleted.context.close();
+  const sessionCompleted=await legacyPilotContext(sourcePilot.duration,{completed:true,unknownSource:true,chapterId:'chapter-002',voice:'autonoe'});await ready(sessionCompleted.page);
+  await sessionCompleted.page.evaluate(({bookmark,other})=>{
+    const state=JSON.parse(localStorage.getItem('lumen-book-v2'));
+    state.history['chapter-001']={bookmark,completed:false};state.history['chapter-003']=other;
+    localStorage.setItem('lumen-book-v2',JSON.stringify(state));
+  },{bookmark:sessionCompleted.legacy,other:otherHistory});
+  await choose(sessionCompleted.page,'chapter-001');
+  await sessionCompleted.page.waitForFunction(()=>window.LUMEN_CHAPTER.chapterId==='chapter-001' || !document.querySelector('#transition-retry').hidden);
+  regression('in-session history retains an unknown completed legacy bookmark without changing the active chapter',await sessionCompleted.page.evaluate(({bookmark,other})=>{
+    const state=JSON.parse(localStorage.getItem('lumen-book-v2')),legacy=JSON.parse(localStorage.getItem('lumen-reader-v1'));
+    return window.LUMEN_CHAPTER.chapterId==='chapter-002' && JSON.stringify(state.history['chapter-001'].bookmark)===JSON.stringify(bookmark) &&
+      state.history['chapter-001'].bookmark.completed===true && state.history['chapter-001'].completed===false &&
+      legacy.chapterId==='chapter-002' && legacy.completed===false && JSON.stringify(state.history['chapter-003'])===JSON.stringify(other);
+  },{bookmark:sessionCompleted.legacy,other:otherHistory}));
+  const sessionStart=sessionCompleted.page.locator('#transition-start'),sessionCanStart=await sessionStart.isVisible();
+  if(sessionCanStart) {await sessionStart.click();await reached(sessionCompleted.page,'chapter-001');}
+  regression('deliberate in-session recovery retains other chapters while replacing the unknown legacy completion',sessionCanStart && await sessionCompleted.page.evaluate(other=>{
+    const state=JSON.parse(localStorage.getItem('lumen-book-v2'));
+    return document.querySelector('#narration').currentTime===0 && state.lastPosition.completed===false &&
+      state.history['chapter-001'].bookmark.completed===false && state.history['chapter-002'].bookmark.audioTime===0 &&
+      JSON.stringify(state.history['chapter-003'])===JSON.stringify(other);
+  },otherHistory));
+  await sessionCompleted.context.close();
   const legacyReader=await fixtureContext({legacy:storedPosition('chapter-002','charon',3.2)});
   await legacyReader.page.goto(origin,{waitUntil:'domcontentloaded'});await ready(legacyReader.page);
   await legacyReader.page.waitForFunction(()=>Math.abs(document.querySelector('#narration').currentTime-3.2)<.25);
