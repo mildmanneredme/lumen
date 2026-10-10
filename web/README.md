@@ -40,7 +40,7 @@ The release pipeline and deployment steps are documented in `../docs/backlog/`: 
 
 ## Release operation
 
-Deploy from `web` to the existing `lumen` project in `robert-xies-projects`. The Vercel configuration builds the static shell from `dist/` and deploys the authenticated Node APIs. `.vercelignore` excludes local audits, casting references, production data, secrets, scripts/tests and legacy pilot prose/audio. Preserve local originals for historical tabs and production work.
+Deploy from `web` to the existing `lumen` project in `robert-xies-projects`. Both repository-root and web `vercel.json` files set `git.deploymentEnabled: false`, preserving the live pilot when PRs merge. Private-release promotion uses the CLI after media verification; see [Vercel’s Git configuration](https://vercel.com/docs/project-configuration/git-configuration). The Vercel configuration builds the static shell from `dist/` and deploys the authenticated Node APIs. `.vercelignore` excludes local audits, casting references, production data, secrets, scripts/tests and legacy pilot prose/audio. Preserve local originals for historical tabs and production work.
 
 Use the machine's ignored, owner-only `.env`, encrypted `.env.shared`, and separate `.env.keys` convention. Configure Vercel secrets on the server; never include them in static assets or Git. Upload and verify immutable private media before promoting the corresponding server index. Keep the production origin stable so bookmarks survive releases. Roll back the app and immutable index together.
 
