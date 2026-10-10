@@ -11,5 +11,7 @@ assets/
 node_modules/
 server/README.md
 
-# The next private-reader change removes legacy prose/audio from deployment.
-# Retain the existing pilot until that shell migration lands.
+# Preserve the local pilot for historical tabs and tests; the private shell
+# loads authenticated API data, so legacy public prose/audio are not deployed.
+dist/data/
+dist/assets/*.mp3
