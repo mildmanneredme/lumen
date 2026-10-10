@@ -786,7 +786,34 @@ def collect_release_fileset(root, backup_id):
     """
     import book_content as content
     root = Path(root).resolve()
+    selection_inputs = {}
+    def bind_selection_input(name):
+        if name in selection_inputs or not (root / name).exists():
+            return
+        path = owned_file(root, name)
+        require(path.suffix in {".json", ".md"}, "Selection inputs must be metadata or manuscript files")
+        binding = file_binding(path)
+        source_hash = file_digest(path)
+        require_file_binding(path, binding, "Backup selection input")
+        selection_inputs[name] = binding, source_hash
+    def check_selection_inputs():
+        for name, (binding, source_hash) in selection_inputs.items():
+            path = root / name
+            require_file_binding(path, binding, "Backup selection input")
+            require(file_digest(path) == source_hash, f"Backup selection input digest changed: {name}")
+            require_file_binding(path, binding, "Backup selection input")
+    for edition in ["v7", "v8"]:
+        bind_selection_input(f"Audiobook/{edition}/generation-manifest.json")
+    bind_selection_input("web/data/chapter-001.json")
+    for path in (root / "Draft/v6").glob("part*.md"):
+        bind_selection_input(path.relative_to(root).as_posix())
     registry = content.load_project_registry(root)
+    for edition in ["v7", "v8"]:
+        for name in ["chapters.json", "delivery/delivery-manifest.json", "mastered/mastering-report.json"]:
+            bind_selection_input(f"Audiobook/{edition}/{name}")
+        for track in registry.get("tracks", []):
+            for suffix in [".checkpoint.json", ".qa.json"]:
+                bind_selection_input(f"Audiobook/{edition}/mastered/{track['id']}{suffix}")
     inventory = content.load_recording_inventory(root, registry)
     names, hashes = set(), {}
 
@@ -803,6 +830,7 @@ def collect_release_fileset(root, backup_id):
         add(name, recording["sha256"])
         checkpoint_name = str(Path(name).with_suffix(".checkpoint.json"))
         qa_name = str(Path(name).with_suffix(".qa.json"))
+        bind_selection_input(checkpoint_name)
         checkpoint = read_json(owned_file(root, checkpoint_name))
         add(checkpoint_name); add(qa_name)
         output_hashes = checkpoint.get("output_sha256")
@@ -853,7 +881,20 @@ def collect_release_fileset(root, backup_id):
             except BackupError:
                 continue
             add(path.name)
-    return prepare_fileset(root, sorted(names), backup_id, expected_hashes=hashes)
+    for name, (_, source_hash) in selection_inputs.items():
+        add(name, source_hash)
+    check_selection_inputs()
+    plan = prepare_fileset(root, sorted(names), backup_id, expected_hashes=hashes)
+    # Stat collection and signing must not cross a change to the inputs that
+    # selected the raw takes, master bytes, or canonical manuscript.
+    check_selection_inputs()
+    planned_rows = {row["path"]: row for row in plan["files"]}
+    for name, (binding, source_hash) in selection_inputs.items():
+        row = planned_rows[name]
+        require({key: row[key] for key in ("bytes", "mtimeNs", "sourceIdentity")} == binding[1]
+                and row.get("expectedSha256") == source_hash,
+                f"Backup selection input plan identity changed: {name}")
+    return plan
 
 
 def main(argv=None):
