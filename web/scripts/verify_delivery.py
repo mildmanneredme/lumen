@@ -69,7 +69,7 @@ def redacted_url(url):
 
 
 def is_loopback(origin):
-    host = urlsplit(origin).hostname
+    host = urlsplit(origin).hostname.removesuffix(".")
     if host == "localhost":
         return True
     try:
@@ -83,6 +83,11 @@ def validate_inventory(inventory, allow_origins, allow_loopback, full_sha256, by
             inventory["schemaVersion"] != 1):
         raise InventoryError("Expected upload inventory schemaVersion 1")
     app_origin = origin_of(inventory.get("appOrigin"), origin_only=True)
+    if is_loopback(app_origin):
+        if not allow_loopback:
+            raise InventoryError("Loopback reader origins require explicit --allow-loopback")
+    elif urlsplit(app_origin).scheme != "https":
+        raise InventoryError("Remote reader origins must use HTTPS")
     media = inventory.get("mediaOrigins")
     assets = inventory.get("assets")
     if not isinstance(media, list) or not media or not isinstance(assets, list) or not assets:

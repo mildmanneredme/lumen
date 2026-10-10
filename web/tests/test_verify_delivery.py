@@ -7,6 +7,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 import threading
 import unittest
+from unittest.mock import patch
 
 
 SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "verify_delivery.py"
@@ -161,6 +162,46 @@ class DeliveryHTTPTests(unittest.TestCase):
             with self.subTest(allowed=allowed, loopback=loopback):
                 with self.assertRaises(delivery.InventoryError):
                     delivery.verify_inventory(self.inventory, allow_origins=allowed, allow_loopback=loopback)
+                self.assertEqual(self.requests, [])
+
+    def https_media_inventory(self, app_origin):
+        return dict(self.inventory, appOrigin=app_origin, mediaOrigins=["https://media.example"],
+                    assets=[dict(self.inventory["assets"][0], url="https://media.example/audio.mp3")])
+
+    def test_remote_http_reader_is_rejected_before_any_network_even_with_https_media(self):
+        inventory = self.https_media_inventory("http://reader.example.com")
+        for allow_local in (False, True):
+            with self.subTest(allow_loopback=allow_local), patch.object(delivery, "build_opener") as opened:
+                with self.assertRaisesRegex(delivery.InventoryError, "HTTPS"):
+                    delivery.verify_inventory(inventory, allow_origins=["https://media.example"],
+                                              allow_loopback=allow_local)
+                opened.assert_not_called()
+                self.assertEqual(self.requests, [])
+
+    def test_loopback_reader_requires_explicit_local_policy_with_https_media(self):
+        for host in ("localhost", "localhost.", "127.0.0.1", "127.0.0.1.", "[::1]"):
+            for scheme in ("http", "https"):
+                inventory = self.https_media_inventory(scheme + "://" + host + ":8123")
+                with self.subTest(host=host, scheme=scheme), patch.object(delivery, "build_opener") as opened:
+                    with self.assertRaisesRegex(delivery.InventoryError, "allow-loopback|Loopback"):
+                        delivery.verify_inventory(inventory, allow_origins=["https://media.example"])
+                    opened.assert_not_called()
+                    origin, _, _ = delivery.validate_inventory(inventory, ["https://media.example"], True, False, None)
+                    self.assertEqual(origin, inventory["appOrigin"])
+                    self.assertEqual(self.requests, [])
+
+    def test_root_dot_loopback_media_preserves_explicit_allowlist_policy(self):
+        for host in ("localhost.", "127.0.0.1."):
+            origin = "http://" + host + ":8123"
+            inventory = dict(self.inventory, mediaOrigins=[origin],
+                             assets=[dict(self.inventory["assets"][0], url=origin + "/audio.mp3")])
+            with self.subTest(host=host):
+                with self.assertRaisesRegex(delivery.InventoryError, "allow-loopback"):
+                    delivery.validate_inventory(inventory, [origin], False, False, None)
+                self.assertEqual(delivery.validate_inventory(inventory, [origin], True, False, None)[0],
+                                 inventory["appOrigin"])
+                with self.assertRaisesRegex(delivery.InventoryError, "allowlist"):
+                    delivery.validate_inventory(inventory, [], True, False, None)
                 self.assertEqual(self.requests, [])
 
     def test_manifest_rejects_untrusted_fields_before_io(self):

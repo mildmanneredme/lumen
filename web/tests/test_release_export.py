@@ -230,6 +230,24 @@ class ReleaseExportTests(unittest.TestCase):
         self.assertEqual(release.url_base("https://reader.example:8443/assets/", "fixture"),
                          ("https://reader.example:8443/assets/", "https://reader.example:8443"))
 
+    def test_full_dns_hostname_length_is_bounded_before_staging(self):
+        for final_size in (62, 63):
+            host = ".".join(["a" * 63, "b" * 63, "c" * 63, "d" * final_size])
+            for root_dot in ("", "."):
+                with self.subTest(length=len(host), root_dot=root_dot):
+                    base = "https://" + host + root_dot + "/api/assets/fixture/"
+                    with self.assertRaisesRegex(release.content.ContentError, "host|DNS"):
+                        self.build(plan=dict(self.plan, appDataURLbase=base, mediaURLbase=base))
+                    self.assertFalse(self.staging.exists())
+
+    def test_maximum_dns_hostname_supports_optional_trailing_root_dot(self):
+        host = ".".join(["a" * 63, "b" * 63, "c" * 63, "d" * 61])
+        self.assertEqual(len(host), 253)
+        for root_dot in ("", "."):
+            origin = "https://" + host + root_dot
+            self.assertEqual(release.url_base(origin + "/api/assets/", "fixture"),
+                             (origin + "/api/assets/", origin))
+
     def test_authenticated_api_and_public_cross_origin_plans_remain_supported(self):
         private = self.build(plan=dict(self.plan, accessModel="authenticated"))
         self.assertEqual(private["uploadInventory"]["mediaOrigins"], ["https://reader.example"])

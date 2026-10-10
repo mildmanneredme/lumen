@@ -13,7 +13,7 @@
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
   let duration = chapter.duration, scenes = [];
   let book, manifest, transitionToken = 0, retryTransition = null, continuationToken = 0, committing = false;
-  let pendingTransition = null, accessToken = 0, inviteRequest = 0, retainedInvite = '';
+  let pendingTransition = null, accessToken = 0, inviteRequest = 0, retainedInvite = '', sessionExchange = null;
   let automaticEndHandled = false;
   const descriptions = {
     'opening-room': 'Adrian sits in his Berkeley living room, watching a glass office tower on television; a cold coffee rests nearby.',
@@ -561,7 +561,12 @@
   $('chapter-continue').addEventListener('click',() => moveTrack(1,true));
   $('chapters-open').addEventListener('click',() => $('chapters').showModal());
   $('chapters-close').addEventListener('click',() => $('chapters').close());
-  $('transition-retry').addEventListener('click',() => { if (retryTransition) transitionTo(retryTransition.trackId,retryTransition.narratorId,retryTransition.options); });
+  $('transition-retry').addEventListener('click',() => {
+    if (!retryTransition) return;
+    const {trackId,narratorId,options} = retryTransition;
+    const bookmark = options.reason === 'voice' && book?.getActive()?.trackId === trackId ? undefined : options.bookmark;
+    transitionTo(trackId,narratorId,{...options,bookmark});
+  });
   $('narrator').addEventListener('change',() => {
     const target = retryTransition?.trackId || chapter.chapterId;
     transitionTo(target,$('narrator').value,{reason:'voice'});
@@ -624,6 +629,7 @@
   }
   function closeAccess() {
     ++accessToken; ++inviteRequest; ++transitionToken; ++sceneToken; ++continuationToken;
+    cancelSessionExchange();
     retainedInvite = ''; pendingTransition = null; $('invite-code').required = true; $('invite-submit').disabled = false;
     resumeAfterSeek = false; savePosition(true); committing = true;
     audio.pause(); audio.removeAttribute('src'); audio.load();
@@ -646,19 +652,41 @@
     if (/^[A-Za-z0-9_-]{43}$/.test(text)) return text;
     try { return new URLSearchParams(new URL(text).hash.slice(1)).get('invite') || ''; } catch (_) { return ''; }
   }
+  function cancelSessionExchange() {
+    const exchange = sessionExchange;
+    exchange?.controller.abort();
+    return exchange ? exchange.settled.catch(() => {}) : Promise.resolve();
+  }
+  function exchangeSession(options) {
+    const exchange = {method:options.method,controller:new AbortController(),settled:null};
+    sessionExchange = exchange;
+    exchange.settled = (async () => {
+      try {
+        const response = await fetch('/api/session',{...options,signal:exchange.controller.signal});
+        const state = response.ok ? await response.json() : null;
+        return {response,state};
+      } finally { if (sessionExchange === exchange) sessionExchange = null; }
+    })();
+    return exchange.settled;
+  }
   async function activateInvite(value) {
     if (value.trim()) retainedInvite = inviteToken(value);
-    const token = retainedInvite, attempt = ++accessToken, request = ++inviteRequest;
-    $('invite-code').required = !/^[A-Za-z0-9_-]{43}$/.test(token);
+    const token = retainedInvite, valid = /^[A-Za-z0-9_-]{43}$/.test(token);
+    $('invite-code').required = !valid;
     $('invite-submit').disabled = false;
-    if (!/^[A-Za-z0-9_-]{43}$/.test(token)) { $('access-status').textContent = 'Open or paste the invitation link you received.'; return; }
+    if (!valid) {
+      if (sessionExchange?.method === 'POST') { ++accessToken; ++inviteRequest; cancelSessionExchange(); }
+      $('access-status').textContent = 'Open or paste the invitation link you received.';
+      return;
+    }
+    const attempt = ++accessToken, request = ++inviteRequest, canceled = cancelSessionExchange();
     $('invite-submit').disabled = true; $('access-status').textContent = 'Opening your reading room…';
     try {
-      const response = await fetch('/api/session',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({invite:token})});
+      await canceled;
+      if (attempt !== accessToken || request !== inviteRequest) return;
+      const {response,state:sessionState} = await exchangeSession({method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({invite:token})});
       if (attempt !== accessToken) return;
       if (!response.ok) throw new Error('This invitation could not be verified. Check the link and try again.');
-      const sessionState = await response.json();
-      if (attempt !== accessToken) return;
       if (sessionState.authenticated !== true) throw new Error('This invitation could not be verified. Check the link and try again.');
       retainedInvite = ''; $('invite-code').required = true; $('invite-code').value = ''; await bootstrap();
     } catch (error) {
@@ -667,22 +695,26 @@
   }
   $('invite-form').addEventListener('submit',event => { event.preventDefault(); activateInvite($('invite-code').value); });
   async function signOut() {
-    ++accessToken;
+    const attempt = ++accessToken;
+    ++inviteRequest; retainedInvite = ''; $('invite-code').required = true;
     try {
-      const response = await fetch('/api/session',{method:'DELETE'});
+      await cancelSessionExchange();
+      if (attempt !== accessToken) return;
+      const {response} = await exchangeSession({method:'DELETE'});
+      if (attempt !== accessToken) return;
       if (!response.ok) throw new Error('Sign out could not finish. Please try again.');
       closeAccess();
-    } catch (error) { $('transition-panel').hidden = false; $('transition-status').textContent = error.message; }
+    } catch (error) { if (attempt === accessToken) { $('transition-panel').hidden = false; $('transition-status').textContent = error.message; } }
   }
   $('sign-out').addEventListener('click',signOut);
   $('sign-out-settings').addEventListener('click',signOut);
   audio.addEventListener('error',async () => {
-    if (!book) return;
+    if (!book || sessionExchange) return;
     const token = accessToken, activeBook = book;
     try { const response = await fetch('/api/session',{cache:'no-store'});
-      if (token !== accessToken || book !== activeBook || !response.ok) return;
+      if (token !== accessToken || book !== activeBook || sessionExchange || !response.ok) return;
       const session = await response.json();
-      if (token === accessToken && book === activeBook && session.authenticated !== true) closeAccess();
+      if (token === accessToken && book === activeBook && !sessionExchange && session.authenticated !== true) closeAccess();
     } catch (_) { /* A connection failure keeps the existing retry and bookmark. */ }
   });
   function consumeInvitation() {
