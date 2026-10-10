@@ -2,12 +2,15 @@
 from __future__ import annotations
 
 import copy
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 import hashlib
 import importlib.util
 import json
 from pathlib import Path
 import shutil
 import tempfile
+import threading
 import unittest
 from unittest.mock import patch
 
@@ -59,6 +62,91 @@ class ContentContractTests(unittest.TestCase):
 
     def registry(self, **kwargs):
         return content.build_registry(self.source, [self.manifest, self.other], expected_chapters=2, **kwargs)
+
+    def test_scoped_reader_binds_every_canonical_manuscript_read_and_raw_hash(self):
+        raw = self.source_text.replace("\n", "\r\n").encode("utf-8")
+        for manifest in [self.manifest, self.other]:
+            manifest["source_sha256"]["part1.md"] = hashlib.sha256(raw).hexdigest()
+        manuscript = self.source / "part1.md"
+        manuscript.write_bytes(b"unrelated current path bytes\n")
+        calls = []
+        def reader(path):
+            self.assertIsInstance(path, Path)
+            self.assertEqual(path, manuscript)
+            calls.append(path)
+            return raw
+        with content.scoped_input_reader(reader):
+            registry = self.registry()
+        self.assertGreaterEqual(len(calls), 3, "source hashing, canonical prose and opening credits must all be bound")
+        self.assertEqual(registry["sourceHashes"]["part1.md"], hashlib.sha256(raw).hexdigest())
+        self.assertEqual(registry["tracks"][1]["bodyMarkdown"], self.registry_body())
+        self.assertNotIn("\r", registry["tracks"][1]["bodyMarkdown"])
+        self.assertEqual(manuscript.read_bytes(), b"unrelated current path bytes\n")
+        with self.assertRaises(content.ContentError):
+            self.registry()
+
+    def registry_body(self):
+        return "Dr. Vale waited. *Why now?*\n\n---\n\n**Later.** She paid 4.2 dollars."
+
+    def test_scoped_project_registry_loads_all_89_chapters_from_bound_inputs(self):
+        root = (Path(self.temp.name) / "project").resolve()
+        manuscript = root / "Draft/v6/part1.md"
+        source = "# LUMEN\n\n" + "\n\n".join(
+            f"## Chapter {number}\n\nSentence {number}." for number in range(1, 90)) + "\n"
+        raw = source.replace("\n", "\r\n").encode("utf-8")
+        manifest = {
+            "source_sha256": {"part1.md": hashlib.sha256(raw).hexdigest()},
+            "items": [{"id": "chapter-000-001", "chapter": 0, "text": "Lumen. Written by Rob Xie."}]
+                + [{"id": f"chapter-{number:03d}-001", "chapter": number,
+                    "text": f"Chapter {content.number_words(number).title()}.\n\nSentence {number}."}
+                   for number in range(1, 90)]
+                + [{"id": "closing-credits", "chapter": 90, "text": "The End."}],
+        }
+        pilot = {"id": "chapter-001-pilot", "chapterId": "chapter-001", "manuscriptVersion": "v6",
+                 "paragraphs": [{"id": "p001", "text": "Sentence 1.",
+                                 "sentences": [{"id": "p001-s01", "text": "Sentence 1."}]}]}
+        metadata = {manuscript: raw, root / "web/data/chapter-001.json": content.json_bytes(pilot)}
+        for edition, voice in [("v7", "Autonoe"), ("v8", "Charon")]:
+            metadata[root / f"Audiobook/{edition}/generation-manifest.json"] = content.json_bytes(
+                dict(manifest, voice=voice))
+        for path in metadata:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(b"unrelated current path bytes\n")
+        observed = []
+        def reader(path):
+            self.assertIn(path, metadata, "nested loader input must have a binding")
+            observed.append(path)
+            return metadata[path]
+        with content.scoped_input_reader(reader):
+            registry = content.load_project_registry(root)
+        self.assertEqual(len(registry["tracks"]), 91)
+        self.assertEqual(len(registry["toc"]), 89)
+        self.assertEqual(registry["tracks"][-2]["bodyMarkdown"], "Sentence 89.")
+        self.assertEqual(registry["sourceHashes"]["part1.md"], hashlib.sha256(raw).hexdigest())
+        self.assertEqual(set(observed), set(metadata))
+        self.assertEqual(observed.count(manuscript), 3)
+        self.assertEqual(registry["legacyAliases"]["chapter-001-pilot"]["sentenceIds"],
+                         {"p001-s01": "v6:chapter-001:p001-s01"})
+        with self.assertRaises(content.ContentError):
+            content.load_project_registry(root)
+
+    def test_scoped_inventory_reader_observes_all_exact_metadata_without_audio_reads(self):
+        root, registry = self.production_fixture()
+        metadata = {path.resolve(): path.read_bytes() for path in root.rglob("*.json")}
+        for path in metadata:
+            path.write_bytes(b"{invalid replacement bytes}\n")
+        observed = []
+        def reader(path):
+            self.assertIsInstance(path, Path)
+            self.assertEqual(path.suffix, ".json", "inventory must not read audio or model bodies")
+            self.assertIn(path, metadata, "every consumed input must have an original binding")
+            observed.append(path)
+            return metadata[path]
+        with content.scoped_input_reader(reader):
+            inventory = content.load_recording_inventory(root, registry)
+        self.assertEqual(len(inventory["recordings"]), 8)
+        self.assertEqual(set(observed), set(metadata))
+        self.assertTrue(all(not row["audioHashVerified"] for row in inventory["recordings"]))
 
     def timing_fixture(self):
         registry = self.registry()
@@ -899,6 +987,94 @@ class ContentContractTests(unittest.TestCase):
                                 "verificationReportSha256": "a" * 64}}
         with self.assertRaisesRegex(content.ContentError, "technical|verification"):
             content.validate_timing_map(track, recording, timing, require_approved=True)
+
+
+class ScopedInputReaderTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.path = Path(self.temp.name) / "metadata.json"
+        self.path.write_bytes(b'{"value":"disk"}\n')
+
+    def test_scope_parses_and_hashes_the_exact_injected_bytes_then_restores_defaults(self):
+        raw = b'{\r\n"value":"bound"\r}\r\n'
+        observed = []
+        def reader(path):
+            self.assertEqual(path, self.path)
+            self.assertIsInstance(path, Path)
+            observed.append(path)
+            return raw
+        with content.scoped_input_reader(reader):
+            self.assertEqual(content.read_json(self.path), {"value": "bound"})
+            self.assertEqual(content.file_hash(self.path), hashlib.sha256(raw).hexdigest())
+        self.assertEqual(len(observed), 2)
+        self.assertEqual(content.read_json(self.path), {"value": "disk"})
+        self.assertEqual(content.file_hash(self.path), hashlib.sha256(self.path.read_bytes()).hexdigest())
+
+    def test_nested_scopes_and_exception_unwinding_restore_the_previous_reader(self):
+        outer = lambda path: b'{"value":"outer"}'
+        inner = lambda path: b'{"value":"inner"}'
+        with content.scoped_input_reader(outer):
+            self.assertEqual(content.read_json(self.path)["value"], "outer")
+            with self.assertRaisesRegex(RuntimeError, "scope fixture"):
+                with content.scoped_input_reader(inner):
+                    self.assertEqual(content.read_json(self.path)["value"], "inner")
+                    raise RuntimeError("scope fixture")
+            self.assertEqual(content.read_json(self.path)["value"], "outer")
+            with self.assertRaises(content.ContentError):
+                with content.scoped_input_reader(None):
+                    pass
+            self.assertEqual(content.read_json(self.path)["value"], "outer")
+        self.assertEqual(content.read_json(self.path)["value"], "disk")
+
+    def test_concurrent_thread_scopes_do_not_change_each_other_or_the_calling_thread(self):
+        barrier = threading.Barrier(3)
+        def read_in_thread(value):
+            raw = json.dumps({"value": value}).encode("utf-8")
+            with content.scoped_input_reader(lambda path: raw):
+                barrier.wait(timeout=5)
+                result = content.read_json(self.path)["value"]
+                barrier.wait(timeout=5)
+                return result, content.file_hash(self.path)
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            first = executor.submit(read_in_thread, "first")
+            second = executor.submit(read_in_thread, "second")
+            barrier.wait(timeout=5)
+            self.assertEqual(content.read_json(self.path)["value"], "disk")
+            barrier.wait(timeout=5)
+            self.assertEqual(first.result(timeout=5), ("first", hashlib.sha256(b'{"value": "first"}').hexdigest()))
+            self.assertEqual(second.result(timeout=5), ("second", hashlib.sha256(b'{"value": "second"}').hexdigest()))
+
+    def test_concurrent_async_scopes_remain_isolated_across_awaits(self):
+        async def run():
+            ready, count = asyncio.Event(), []
+            async def read(value):
+                raw = json.dumps({"value": value}).encode("utf-8")
+                with content.scoped_input_reader(lambda path: raw):
+                    count.append(True)
+                    if len(count) == 2:
+                        ready.set()
+                    await ready.wait()
+                    await asyncio.sleep(0)
+                    return content.read_json(self.path)["value"], content.file_hash(self.path)
+            return await asyncio.gather(read("first"), read("second"))
+        expected = [(value, hashlib.sha256(json.dumps({"value": value}).encode()).hexdigest()) for value in ["first", "second"]]
+        self.assertEqual(asyncio.run(run()), expected)
+        self.assertEqual(content.read_json(self.path)["value"], "disk")
+
+    def test_invalid_reader_results_unbound_inputs_and_invalid_utf8_never_fall_back_to_disk(self):
+        for returned in [None, "text", bytearray(b'{}'), {}, b'\xff']:
+            with self.subTest(returned=type(returned).__name__), content.scoped_input_reader(lambda path: returned):
+                with self.assertRaises(content.ContentError):
+                    content.read_json(self.path)
+        def unbound(path):
+            raise OSError("unbound metadata fixture")
+        with content.scoped_input_reader(unbound):
+            with self.assertRaisesRegex(content.ContentError, "unbound metadata fixture"):
+                content.read_json(self.path)
+            with self.assertRaisesRegex(OSError, "unbound metadata fixture"):
+                content.file_hash(self.path)
+        self.assertEqual(content.read_json(self.path)["value"], "disk")
 
 
 class ActualInventoryTests(unittest.TestCase):

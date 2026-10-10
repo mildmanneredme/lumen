@@ -786,35 +786,56 @@ def collect_release_fileset(root, backup_id):
     """
     import book_content as content
     root = Path(root).resolve()
+    manuscript_inputs = {path.relative_to(root).as_posix() for path in (root / "Draft/v6").glob("part*.md")}
+    require(bool(manuscript_inputs), "Missing required backup selection input: Draft/v6 manuscript parts")
     selection_inputs = {}
     def bind_selection_input(name):
-        if name in selection_inputs or not (root / name).exists():
+        if name in selection_inputs:
             return
+        require((root / name).exists(), f"Missing required backup selection input: {name}")
         path = owned_file(root, name)
         require(path.suffix in {".json", ".md"}, "Selection inputs must be metadata or manuscript files")
         binding = file_binding(path)
-        source_hash = file_digest(path)
+        with opened_parent(path) as (parent, filename):
+            descriptor = os.open(filename, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=parent)
+            with opened_stream(descriptor, "rb") as incoming:
+                before = os.fstat(incoming.fileno())
+                require_source_state(before, binding[1])
+                raw = incoming.read(before.st_size + 1)
+                require(len(raw) == before.st_size, f"Backup selection input byte count changed: {name}")
+                require_source_state(os.fstat(incoming.fileno()), binding[1])
+        source_hash = hashlib.sha256(raw).hexdigest()
         require_file_binding(path, binding, "Backup selection input")
-        selection_inputs[name] = binding, source_hash
+        selection_inputs[name] = binding, source_hash, raw
+    def read_selection_input(path):
+        try:
+            name = Path(path).absolute().relative_to(root).as_posix()
+        except ValueError as exc:
+            raise BackupError(f"Unbound backup selection input: {path}") from exc
+        require(name in selection_inputs, f"Unbound backup selection input: {name}")
+        return selection_inputs[name][2]
     def check_selection_inputs():
-        for name, (binding, source_hash) in selection_inputs.items():
+        require({path.relative_to(root).as_posix() for path in (root / "Draft/v6").glob("part*.md")} == manuscript_inputs,
+                "Backup selection input inventory changed: manuscript parts")
+        for name, (binding, source_hash, _) in selection_inputs.items():
             path = root / name
             require_file_binding(path, binding, "Backup selection input")
             require(file_digest(path) == source_hash, f"Backup selection input digest changed: {name}")
             require_file_binding(path, binding, "Backup selection input")
     for edition in ["v7", "v8"]:
-        bind_selection_input(f"Audiobook/{edition}/generation-manifest.json")
-    bind_selection_input("web/data/chapter-001.json")
-    for path in (root / "Draft/v6").glob("part*.md"):
-        bind_selection_input(path.relative_to(root).as_posix())
-    registry = content.load_project_registry(root)
-    for edition in ["v7", "v8"]:
-        for name in ["chapters.json", "delivery/delivery-manifest.json", "mastered/mastering-report.json"]:
+        for name in ["generation-manifest.json", "chapters.json", "delivery/delivery-manifest.json", "mastered/mastering-report.json"]:
             bind_selection_input(f"Audiobook/{edition}/{name}")
+    bind_selection_input("web/data/chapter-001.json")
+    for name in sorted(manuscript_inputs):
+        bind_selection_input(name)
+    with content.scoped_input_reader(read_selection_input):
+        registry = content.load_project_registry(root)
+    for edition in ["v7", "v8"]:
         for track in registry.get("tracks", []):
             for suffix in [".checkpoint.json", ".qa.json"]:
                 bind_selection_input(f"Audiobook/{edition}/mastered/{track['id']}{suffix}")
-    inventory = content.load_recording_inventory(root, registry)
+    with content.scoped_input_reader(read_selection_input):
+        inventory = content.load_recording_inventory(root, registry)
     names, hashes = set(), {}
 
     def add(name, expected=None):
@@ -831,7 +852,11 @@ def collect_release_fileset(root, backup_id):
         checkpoint_name = str(Path(name).with_suffix(".checkpoint.json"))
         qa_name = str(Path(name).with_suffix(".qa.json"))
         bind_selection_input(checkpoint_name)
-        checkpoint = read_json(owned_file(root, checkpoint_name))
+        try:
+            checkpoint = json.loads(read_selection_input(root / checkpoint_name).decode("utf-8"))
+        except ValueError as exc:
+            raise BackupError(f"Cannot read backup selection JSON: {exc}") from exc
+        require(isinstance(checkpoint, dict), "Backup JSON must be an object")
         add(checkpoint_name); add(qa_name)
         output_hashes = checkpoint.get("output_sha256")
         require(isinstance(output_hashes, dict) and isinstance(output_hashes.get("lossless_wav"), str)
@@ -881,7 +906,7 @@ def collect_release_fileset(root, backup_id):
             except BackupError:
                 continue
             add(path.name)
-    for name, (_, source_hash) in selection_inputs.items():
+    for name, (_, source_hash, _) in selection_inputs.items():
         add(name, source_hash)
     check_selection_inputs()
     plan = prepare_fileset(root, sorted(names), backup_id, expected_hashes=hashes)
@@ -889,7 +914,7 @@ def collect_release_fileset(root, backup_id):
     # selected the raw takes, master bytes, or canonical manuscript.
     check_selection_inputs()
     planned_rows = {row["path"]: row for row in plan["files"]}
-    for name, (binding, source_hash) in selection_inputs.items():
+    for name, (binding, source_hash, _) in selection_inputs.items():
         row = planned_rows[name]
         require({key: row[key] for key in ("bytes", "mtimeNs", "sourceIdentity")} == binding[1]
                 and row.get("expectedSha256") == source_hash,
