@@ -16,7 +16,6 @@ import math
 import os
 from pathlib import Path
 import re
-import shutil
 import stat
 import sys
 import time
@@ -56,21 +55,21 @@ def open_source(root, row):
     backup.check_source_clock(root, row)
 
 
-def check_free(parent, reserve, next_bytes=0):
-    backup.require(shutil.disk_usage(parent).free >= reserve + next_bytes,
+def check_free(parent_descriptor, reserve, next_bytes=0):
+    backup.require(backup.available_bytes(parent_descriptor) >= reserve + next_bytes,
                    "Insufficient local free space during archive; incomplete file retained")
 
 
 class GuardedOutput:
     """Check the reserve and absolute file-size cap on every ZIP write."""
-    def __init__(self, stream, parent, reserve, maximum):
-        self.stream, self.parent, self.reserve, self.maximum = stream, parent, reserve, maximum
+    def __init__(self, stream, parent_descriptor, reserve, maximum):
+        self.stream, self.parent_descriptor, self.reserve, self.maximum = stream, parent_descriptor, reserve, maximum
         self.high_water = 0
 
     def write(self, data):
         end = self.stream.tell() + len(data)
         backup.require(max(self.high_water, end) <= self.maximum, "Compressed backup exceeded its explicit archive cap")
-        check_free(self.parent, self.reserve, max(0, end - self.high_water))
+        check_free(self.parent_descriptor, self.reserve, max(0, end - self.high_water))
         written = self.stream.write(data)
         backup.require(written == len(data), "Incomplete compressed backup write")
         self.high_water = max(self.high_water, end)
@@ -233,15 +232,16 @@ def archive_snapshot(root, destination, plan, *, maximum_archive_bytes,
     checksum_path = sidecar_path(destination)
     backup.require(not checksum_path.exists() and not checksum_path.is_symlink(), "Backup checksum sidecar already exists")
     states = source_states(root, rows)
-    backup.require(shutil.disk_usage(parent).free >= maximum_archive_bytes + minimum_free_bytes,
-                   "Insufficient local free space for the explicit archive cap plus reserve")
+    publication = None
     try:
         with backup.opened_parent(destination) as (output_parent, name):
+            backup.require(backup.available_bytes(output_parent) >= maximum_archive_bytes + minimum_free_bytes,
+                           "Insufficient local free space for the explicit archive cap plus reserve")
             output_parent_info = os.fstat(output_parent)
             output_parent_identity = output_parent_info.st_dev, output_parent_info.st_ino
             descriptor = os.open(name, os.O_CREAT | os.O_EXCL | os.O_RDWR | os.O_NOFOLLOW, 0o600, dir_fd=output_parent)
             with os.fdopen(descriptor, "w+b", buffering=0) as outgoing:
-                guarded = GuardedOutput(outgoing, parent, minimum_free_bytes, maximum_archive_bytes)
+                guarded = GuardedOutput(outgoing, output_parent, minimum_free_bytes, maximum_archive_bytes)
                 files, copied_bytes = [], 0
                 with zipfile.ZipFile(guarded, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=3,
                                      allowZip64=True) as archive:
@@ -252,7 +252,7 @@ def archive_snapshot(root, destination, plan, *, maximum_archive_bytes,
                                            f"Backup source identity changed after planning: {row['path']}")
                             with archive.open(info_for(row["path"]), "w", force_zip64=True) as entry:
                                 for block in iter(lambda: incoming.read(CHUNK_BYTES), b""):
-                                    check_free(parent, minimum_free_bytes)
+                                    check_free(output_parent, minimum_free_bytes)
                                     backup.require_source_state(os.fstat(incoming.fileno()), row)
                                     entry.write(block); result.update(block); count += len(block)
                                     backup.require_source_state(os.fstat(incoming.fileno()), row)
@@ -283,37 +283,53 @@ def archive_snapshot(root, destination, plan, *, maximum_archive_bytes,
                 backup.require(identity(os.fstat(outgoing.fileno())) == archive_identity,
                                "Backup archive changed during checksum calculation")
                 assert_sources_unchanged(root, rows, states)
-        sidecar = {"schemaVersion": 1, "backupId": plan["backupId"], "planSha256": plan["planSha256"],
-                   "manifestSha256": manifest["manifestSha256"], "archiveBytes": archive_bytes,
-                   "archiveSha256": archive_hash, "archiveMd5": archive_md5,
-                   "sourceBytes": plan["totalBytes"], "files": len(files), "copyStatus": "complete",
-                   "remoteSyncStatus": "pending", "cloudDestinationFolderId": plan["cloudDestinationFolderId"]}
-        check_free(parent, minimum_free_bytes, len(backup.encoded(sidecar)))
-        require_owned_path(destination, output_parent_identity, archive_identity, "Backup archive")
-        publication = write_exclusive_json(checksum_path, sidecar)
-        backup.require(publication["parentIdentity"] == output_parent_identity,
-                       "Completion sidecar parent differs from its archive")
-        try:
+            sidecar = {"schemaVersion": 1, "backupId": plan["backupId"], "planSha256": plan["planSha256"],
+                       "manifestSha256": manifest["manifestSha256"], "archiveBytes": archive_bytes,
+                       "archiveSha256": archive_hash, "archiveMd5": archive_md5,
+                       "sourceBytes": plan["totalBytes"], "files": len(files), "copyStatus": "complete",
+                       "remoteSyncStatus": "pending", "cloudDestinationFolderId": plan["cloudDestinationFolderId"]}
+            check_free(output_parent, minimum_free_bytes, len(backup.encoded(sidecar)))
             require_owned_path(destination, output_parent_identity, archive_identity, "Backup archive")
-            require_owned_path(checksum_path, output_parent_identity, publication["fileIdentity"], "Completion sidecar")
-        except OSError as error:
-            # The marker has already been exclusively published. Reconcile one
-            # transient final-check I/O error, never a changed identity or an
-            # unbounded stream of retries; no source/audio hashes are repeated.
+            publication = write_exclusive_json(checksum_path, sidecar)
+            backup.require(publication["parentIdentity"] == output_parent_identity,
+                           "Completion sidecar parent differs from its archive")
+            try:
+                require_owned_path(destination, output_parent_identity, archive_identity, "Backup archive")
+                require_owned_path(checksum_path, output_parent_identity, publication["fileIdentity"], "Completion sidecar")
+            except OSError as error:
+                # The marker has already been exclusively published. Reconcile one
+                # transient final-check I/O error, never a changed identity or an
+                # unbounded stream of retries; no source/audio hashes are repeated.
+                try:
+                    require_owned_path(destination, output_parent_identity, archive_identity, "Backup archive")
+                    readback_owned_json(checksum_path, backup.encoded(sidecar), output_parent_identity,
+                                        publication["fileIdentity"][:2], publication["fileIdentity"])
+                    require_owned_path(destination, output_parent_identity, archive_identity, "Backup archive")
+                except (OSError, backup.BackupError) as failure:
+                    raise backup.BackupError(f"Published archive final check and exact owned-byte reconciliation failed: {failure}") from error
+                diagnostic = {"status": "exact-readback-after-write-error", "durabilityVerified": False,
+                              "error": str(error), "phase": "post-publication-identity-check"}
+                if publication["diagnostic"]:
+                    diagnostic["priorPublicationError"] = publication["diagnostic"]["error"]
+                publication["diagnostic"] = diagnostic
+            return dict(sidecar, completionPublication=publication["diagnostic"]) if publication["diagnostic"] else sidecar
+    except (OSError, backup.BackupError, zipfile.BadZipFile, RuntimeError) as exc:
+        if isinstance(exc, OSError) and publication is not None:
+            # The capacity descriptor stays open through publication. A late
+            # close error must reconcile its known completed output, too.
             try:
                 require_owned_path(destination, output_parent_identity, archive_identity, "Backup archive")
                 readback_owned_json(checksum_path, backup.encoded(sidecar), output_parent_identity,
                                     publication["fileIdentity"][:2], publication["fileIdentity"])
                 require_owned_path(destination, output_parent_identity, archive_identity, "Backup archive")
-            except (OSError, backup.BackupError) as failure:
-                raise backup.BackupError(f"Published archive final check and exact owned-byte reconciliation failed: {failure}") from error
-            diagnostic = {"status": "exact-readback-after-write-error", "durabilityVerified": False,
-                          "error": str(error), "phase": "post-publication-identity-check"}
-            if publication["diagnostic"]:
-                diagnostic["priorPublicationError"] = publication["diagnostic"]["error"]
-            publication["diagnostic"] = diagnostic
-        return dict(sidecar, completionPublication=publication["diagnostic"]) if publication["diagnostic"] else sidecar
-    except (OSError, backup.BackupError, zipfile.BadZipFile, RuntimeError) as exc:
+            except (OSError, backup.BackupError):
+                pass
+            else:
+                diagnostic = {"status": "exact-readback-after-write-error", "durabilityVerified": False,
+                              "error": str(exc), "phase": "output-parent-close"}
+                if publication["diagnostic"]:
+                    diagnostic["priorPublicationError"] = publication["diagnostic"]["error"]
+                return dict(sidecar, completionPublication=diagnostic)
         raise backup.BackupError(f"Archive remains incomplete without a completion sidecar: {exc}") from exc
 
 
@@ -469,32 +485,32 @@ def restore_sample(root, path, destination, paths, *, minimum_free_bytes=backup.
         rows = selected_rows(index, paths)
         for row in rows:
             read_entry(archive, row)
-        backup.require(shutil.disk_usage(parent).free >= sum(row["bytes"] for row in rows) + minimum_free_bytes,
-                       "Insufficient local free space for restored sample plus reserve")
-        backup.create_snapshot_directory(destination)
         with backup.opened_parent(destination) as (snapshot_parent, snapshot_name):
+            backup.require(backup.available_bytes(snapshot_parent) >= sum(row["bytes"] for row in rows) + minimum_free_bytes,
+                           "Insufficient local free space for restored sample plus reserve")
+            backup.create_snapshot_directory(destination)
             snapshot_parent_info = os.fstat(snapshot_parent)
             snapshot_info = os.stat(snapshot_name, dir_fd=snapshot_parent, follow_symlinks=False)
             backup.require(stat.S_ISDIR(snapshot_info.st_mode), "Restore destination must be a real directory")
             snapshot_parent_identity = snapshot_parent_info.st_dev, snapshot_parent_info.st_ino
             snapshot_identity = snapshot_info.st_dev, snapshot_info.st_ino
-        restored_files = []
-        for row in rows:
-            with backup.opened_parent(destination / row["path"], create=True) as (output_parent, name):
-                output_parent_info = os.fstat(output_parent)
-                output_parent_identity = output_parent_info.st_dev, output_parent_info.st_ino
-                descriptor = os.open(name, os.O_CREAT | os.O_EXCL | os.O_WRONLY | os.O_NOFOLLOW, 0o600, dir_fd=output_parent)
-                with os.fdopen(descriptor, "wb") as outgoing:
-                    guarded = GuardedOutput(outgoing, parent, minimum_free_bytes, row["bytes"])
-                    read_entry(archive, row, guarded)
-                    outgoing.flush(); os.fsync(outgoing.fileno())
-                    output_identity = identity(os.fstat(outgoing.fileno()))
-            backup.require(backup.file_digest(destination / row["path"]) == row["sha256"], "Restored sample hash differs")
-            restored_files.append((destination / row["path"], output_parent_identity, output_identity))
-        require_owned_directory(destination, snapshot_parent_identity, snapshot_identity)
-        for output, output_parent_identity, output_identity in restored_files:
-            require_owned_path(output, output_parent_identity, output_identity, "Restored sample")
-        report = verification_report(manifest, rows, "local-restored-archive-sample")
+            restored_files = []
+            for row in rows:
+                with backup.opened_parent(destination / row["path"], create=True) as (output_parent, name):
+                    output_parent_info = os.fstat(output_parent)
+                    output_parent_identity = output_parent_info.st_dev, output_parent_info.st_ino
+                    descriptor = os.open(name, os.O_CREAT | os.O_EXCL | os.O_WRONLY | os.O_NOFOLLOW, 0o600, dir_fd=output_parent)
+                    with os.fdopen(descriptor, "wb") as outgoing:
+                        guarded = GuardedOutput(outgoing, output_parent, minimum_free_bytes, row["bytes"])
+                        read_entry(archive, row, guarded)
+                        outgoing.flush(); os.fsync(outgoing.fileno()); os.fsync(output_parent)
+                        output_identity = identity(os.fstat(outgoing.fileno()))
+                backup.require(backup.file_digest(destination / row["path"]) == row["sha256"], "Restored sample hash differs")
+                restored_files.append((destination / row["path"], output_parent_identity, output_identity))
+            require_owned_directory(destination, snapshot_parent_identity, snapshot_identity)
+            for output, output_parent_identity, output_identity in restored_files:
+                require_owned_path(output, output_parent_identity, output_identity, "Restored sample")
+            report = verification_report(manifest, rows, "local-restored-archive-sample")
     return report
 
 

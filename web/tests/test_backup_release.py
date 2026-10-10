@@ -728,10 +728,112 @@ class BackupReleaseTests(unittest.TestCase):
         self.assertFalse(self.destination.exists())
 
     def test_insufficient_disk_space_keeps_drive_untouched(self):
-        with patch.object(backup.shutil, "disk_usage", return_value=type("Usage", (), {"free": 10})()):
+        with patch.object(backup, "available_bytes", return_value=10):
             with self.assertRaisesRegex(backup.BackupError, "space"):
                 backup.copy_snapshot(self.root, self.destination, self.plan(), minimum_free_bytes=3)
         self.assertFalse(self.destination.exists())
+
+    def assert_pinned_capacity_after_parent_swap(self, mode):
+        selected = sorted(self.paths)[0]
+        if mode == "restore":
+            self.run_copy()
+            parent = self.base / "restore-parent"
+            parent.mkdir()
+            destination = parent / "restored"
+            target = destination / selected
+        else:
+            parent, destination = self.destination.parent, self.destination
+            target = destination / "files" / selected
+        original_parent = parent.stat()
+        displaced = parent.with_name(parent.name + "-retained")
+        retained_target = displaced / target.relative_to(parent)
+        original_open = backup.os.open
+        moved, pinned_checks = [], []
+        reserve = 32
+        def move_after_output_open(name, flags, *args, **kwargs):
+            descriptor = original_open(name, flags, *args, **kwargs)
+            if flags & os.O_CREAT and name == target.name and not moved:
+                parent.rename(displaced)
+                parent.mkdir(mode=0o700)
+                moved.append(True)
+            return descriptor
+        def actual_filesystem_capacity(descriptor):
+            info = os.fstat(descriptor)
+            original = (info.st_dev, info.st_ino) == (original_parent.st_dev, original_parent.st_ino)
+            if original:
+                pinned_checks.append(bool(moved))
+            free = reserve - 1 if original and moved else 2 ** 30
+            return type("Volume", (), {"f_bavail": free, "f_frsize": 1, "f_bfree": 2 ** 50})()
+        # The replaced logical folder appears roomy, while the filesystem of
+        # the already-open output has fallen below the promised reserve.
+        with patch.object(backup.os, "open", side_effect=move_after_output_open), \
+             patch.object(backup.os, "fstatvfs", side_effect=actual_filesystem_capacity), \
+             patch.object(backup.shutil, "disk_usage", return_value=type("Usage", (), {"free": 2 ** 30})()):
+            with self.assertRaises(backup.BackupError) as failure:
+                if mode == "restore":
+                    backup.restore_sample(self.root, self.destination, destination, [selected], minimum_free_bytes=reserve)
+                else:
+                    backup.copy_snapshot(self.root, destination, self.plan(), minimum_free_bytes=reserve)
+        self.assertTrue(moved)
+        self.assertEqual(retained_target.stat().st_size, 0, "No data may be written after the pinned volume loses its reserve")
+        self.assertIn(True, pinned_checks, "Capacity must inspect the original live descriptor after the logical parent moves")
+        self.assertIn("space", str(failure.exception))
+        self.assertFalse((displaced / destination.name / "backup-manifest.json").exists())
+
+    def test_backup_capacity_stays_on_original_filesystem_after_logical_parent_swap(self):
+        self.assert_pinned_capacity_after_parent_swap("copy")
+
+    def test_restore_capacity_stays_on_original_filesystem_after_logical_parent_swap(self):
+        self.assert_pinned_capacity_after_parent_swap("restore")
+
+    def test_outer_capacity_close_error_reconciles_only_original_completed_copy(self):
+        original_available, original_close, original_stat = backup.available_bytes, backup.os.close, backup.os.stat
+        for fault in ["transient", "replacement", "persistent-readback"]:
+            with self.subTest(fault=fault):
+                destination = self.destination.parent / ("lumen-capacity-close-" + fault)
+                plan = backup.prepare_fileset(self.root, self.paths, destination.name)
+                marker = destination / "backup-manifest.json"
+                capacity, failed, readback_failures = [], [], []
+                def record_capacity(descriptor):
+                    if not capacity:
+                        capacity.append(descriptor)
+                    return original_available(descriptor)
+                def late_close(descriptor):
+                    result = original_close(descriptor)
+                    if capacity and descriptor == capacity[0] and marker.exists() and not failed:
+                        failed.append(True)
+                        if fault == "replacement":
+                            raw = marker.read_bytes()
+                            marker.rename(marker.with_name("retained-owned-marker.json"))
+                            marker.write_bytes(raw)
+                        raise OSError("primary outer capacity close failure")
+                    return result
+                def fail_persistent_readback(name, *args, **kwargs):
+                    if failed and fault == "persistent-readback" and kwargs.get("dir_fd") is not None \
+                            and name == "backup-manifest.json":
+                        readback_failures.append(True)
+                        raise OSError("secondary persistent completion readback failure")
+                    return original_stat(name, *args, **kwargs)
+                with patch.object(backup, "available_bytes", side_effect=record_capacity), \
+                     patch.object(backup.os, "close", side_effect=late_close), \
+                     patch.object(backup.os, "stat", side_effect=fail_persistent_readback):
+                    if fault == "transient":
+                        result = backup.copy_snapshot(self.root, destination, plan, minimum_free_bytes=0)
+                        self.assertEqual(result["copyStatus"], "complete")
+                        self.assertEqual(result.get("completionPublication"),
+                                         {"status": "exact-readback-after-write-error", "durabilityVerified": False})
+                    else:
+                        with self.assertRaisesRegex((OSError, backup.BackupError), "primary outer capacity close failure") as failure:
+                            backup.copy_snapshot(self.root, destination, plan, minimum_free_bytes=0)
+                        if isinstance(failure.exception, backup.BackupError):
+                            self.assertEqual(str(failure.exception.__cause__), "primary outer capacity close failure")
+                self.assertEqual(len(failed), 1)
+                self.assertEqual(len(readback_failures), 1 if fault == "persistent-readback" else 0)
+                self.assertEqual(backup.read_json(destination / "backup-state.json")["copyStatus"], "prepared")
+                self.assertNotIn("completionPublication", backup.read_json(marker))
+                self.assertEqual(backup.verify_snapshot(destination)["verifiedFiles"], len(self.paths))
+                if fault == "replacement":
+                    self.assertEqual(marker.read_bytes(), (destination / "retained-owned-marker.json").read_bytes())
 
     def test_public_runtime_destination_and_symlink_parent_reject_before_copy(self):
         destination = self.root / "web/dist/backup"
@@ -1003,7 +1105,7 @@ class BackupReleaseTests(unittest.TestCase):
         restored = self.base / "restore-default-reserve"
         sample_bytes = (self.root / self.paths[0]).stat().st_size
         usage = type("Usage", (), {"free": sample_bytes + backup.DEFAULT_RESERVE_BYTES - 1})()
-        with patch.object(backup.shutil, "disk_usage", return_value=usage):
+        with patch.object(backup, "available_bytes", return_value=usage.free):
             with self.assertRaisesRegex(backup.BackupError, "space"):
                 backup.restore_sample(self.root, self.destination, restored, [self.paths[0]])
         self.assertFalse(restored.exists())
@@ -1015,7 +1117,7 @@ class BackupReleaseTests(unittest.TestCase):
         total = sum((self.root / name).stat().st_size for name in selected)
         reserve = 17
         usage = type("Usage", (), {"free": total + reserve - 1})()
-        with patch.object(backup.shutil, "disk_usage", return_value=usage):
+        with patch.object(backup, "available_bytes", return_value=usage.free):
             with self.assertRaisesRegex(backup.BackupError, "space"):
                 backup.restore_sample(self.root, self.destination, restored, selected,
                                       minimum_free_bytes=reserve)
@@ -1038,7 +1140,7 @@ class BackupReleaseTests(unittest.TestCase):
         usage = type("Usage", (), {"free": sample_bytes})()
         arguments = ["--root", str(self.root), "--restore-sample", str(self.destination),
                      "--destination", str(restored), "--path", self.paths[0], "--minimum-free-bytes"]
-        with patch.object(backup.shutil, "disk_usage", return_value=usage):
+        with patch.object(backup, "available_bytes", return_value=usage.free):
             with self.assertRaises(SystemExit) as failure:
                 backup.main(arguments + ["1"])
             self.assertEqual(failure.exception.code, 2)
@@ -1062,7 +1164,7 @@ class BackupReleaseTests(unittest.TestCase):
         def available(_):
             free = sum(sizes) + reserve if not completed else sizes[1] + reserve - 1
             return type("Usage", (), {"free": free})()
-        with patch.object(backup.shutil, "disk_usage", side_effect=available), \
+        with patch.object(backup, "available_bytes", side_effect=lambda descriptor: available(descriptor).free), \
              patch.object(backup, "copy_hashed", side_effect=copy_then_lose_space):
             with self.assertRaisesRegex(backup.BackupError, "space.*incomplete"):
                 backup.restore_sample(self.root, self.destination, restored, selected,
@@ -1085,7 +1187,7 @@ class BackupReleaseTests(unittest.TestCase):
             written = target.stat().st_size if target.exists() else 0
             unrelated_usage = 1 if written >= backup.CHUNK_BYTES else 0
             return type("Usage", (), {"free": total + reserve - written - unrelated_usage})()
-        with patch.object(backup.shutil, "disk_usage", side_effect=available):
+        with patch.object(backup, "available_bytes", side_effect=lambda descriptor: available(descriptor).free):
             with self.assertRaisesRegex(backup.BackupError, "space.*incomplete"):
                 backup.restore_sample(self.root, self.destination, restored, selected,
                                       minimum_free_bytes=reserve)
@@ -1102,7 +1204,7 @@ class BackupReleaseTests(unittest.TestCase):
         def available(_):
             written = sum((restored / name).stat().st_size for name in selected if (restored / name).exists())
             return type("Usage", (), {"free": total + backup.DEFAULT_RESERVE_BYTES - written})()
-        with patch.object(backup.shutil, "disk_usage", side_effect=available):
+        with patch.object(backup, "available_bytes", side_effect=lambda descriptor: available(descriptor).free):
             report = backup.restore_sample(self.root, self.destination, restored, selected)
             self.assertEqual(available(None).free, backup.DEFAULT_RESERVE_BYTES)
         self.assertEqual(report["verificationScope"], "local-restored-sample")
@@ -1260,7 +1362,7 @@ class BackupReleaseTests(unittest.TestCase):
             return type("Usage", (), {"free": initial_free - copied})()
 
         with patch.object(backup.os, "fdopen", side_effect=growing_fdopen), \
-             patch.object(backup.shutil, "disk_usage", side_effect=disk_space):
+             patch.object(backup, "available_bytes", side_effect=lambda descriptor: disk_space(descriptor).free):
             with self.assertRaisesRegex(backup.BackupError, "grew|byte count changed|identity changed"):
                 backup.copy_snapshot(self.root, self.destination, plan, minimum_free_bytes=reserve)
         target = self.destination / "files" / name
@@ -1285,7 +1387,7 @@ class BackupReleaseTests(unittest.TestCase):
             written = target.stat().st_size if target.exists() else 0
             unrelated_usage = 1 if written >= backup.CHUNK_BYTES else 0
             return type("Usage", (), {"free": plan["totalBytes"] + reserve - written - unrelated_usage})()
-        with patch.object(backup.shutil, "disk_usage", side_effect=available):
+        with patch.object(backup, "available_bytes", side_effect=lambda descriptor: available(descriptor).free):
             with self.assertRaisesRegex(backup.BackupError, "space.*incomplete"):
                 backup.copy_snapshot(self.root, self.destination, plan, minimum_free_bytes=reserve)
         self.assertEqual(target.stat().st_size, backup.CHUNK_BYTES)
@@ -1306,7 +1408,7 @@ class BackupReleaseTests(unittest.TestCase):
         def available(_):
             written = sum(path.stat().st_size for path in (self.destination / "files").rglob("*") if path.is_file())
             return type("Usage", (), {"free": plan["totalBytes"] + reserve - written})()
-        with patch.object(backup.shutil, "disk_usage", side_effect=available):
+        with patch.object(backup, "available_bytes", side_effect=lambda descriptor: available(descriptor).free):
             manifest = backup.copy_snapshot(self.root, self.destination, plan, minimum_free_bytes=reserve)
         self.assertEqual(manifest["copyStatus"], "complete")
         self.assertEqual(available(None).free, reserve)
