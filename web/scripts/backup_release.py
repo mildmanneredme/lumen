@@ -43,6 +43,10 @@ class BackupError(ValueError):
     pass
 
 
+class BackupIOError(BackupError):
+    """A backup validation operation failed because of its underlying IO."""
+
+
 def require(condition, message):
     if not condition:
         raise BackupError(message)
@@ -66,11 +70,41 @@ def signed(value, field):
     return result
 
 
+@contextmanager
+def opened_stream(descriptor, mode, *args, **kwargs):
+    """Close owned IO without replacing an existing primary failure."""
+    stream = os.fdopen(descriptor, mode, *args, **kwargs)
+    try:
+        incoming = stream.__enter__()
+        yield incoming
+    except BaseException:
+        failure = sys.exc_info()
+        try:
+            stream.__exit__(*failure)
+        except OSError:
+            pass
+        raise
+    else:
+        stream.__exit__(None, None, None)
+
+
+def close_descriptors(descriptors):
+    primary, first_error = sys.exc_info()[0] is not None, None
+    for descriptor in descriptors:
+        try:
+            os.close(descriptor)
+        except OSError as exc:
+            if not primary and first_error is None:
+                first_error = exc
+    if first_error is not None:
+        raise first_error
+
+
 def read_json(path):
     try:
         with opened_parent(path) as (parent, name):
             descriptor = os.open(name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=parent)
-            with os.fdopen(descriptor, "rb") as incoming:
+            with opened_stream(descriptor, "rb") as incoming:
                 before = os.fstat(incoming.fileno())
                 require(stat.S_ISREG(before.st_mode), "Backup JSON source must be a regular file")
                 raw = incoming.read(before.st_size + 1)
@@ -130,7 +164,7 @@ def source_clock(path):
             require(stat.S_ISREG(info.st_mode), "Backup source must be a regular file")
             return source_state(info)
         finally:
-            os.close(descriptor)
+            close_descriptors([descriptor])
 
 
 def require_source_state(info, row):
@@ -219,48 +253,102 @@ def opened_parent(path, *, create=False):
             if create:
                 try:
                     os.mkdir(part, 0o700, dir_fd=descriptors[-1])
+                    os.fsync(descriptors[-1])
                 except FileExistsError:
                     pass
             descriptors.append(os.open(part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW,
                                        dir_fd=descriptors[-1]))
         yield descriptors[-1], path.name
     finally:
-        for descriptor in reversed(descriptors):
-            os.close(descriptor)
+        close_descriptors(reversed(descriptors))
+
+
+def file_binding(path):
+    """Bind a named regular file and its logical parent without hashing bytes."""
+    with opened_parent(path) as (parent, name):
+        parent_info = os.fstat(parent)
+        info = os.stat(name, dir_fd=parent, follow_symlinks=False)
+        require(stat.S_ISREG(info.st_mode), "Backup bound file must be regular")
+        return (parent_info.st_dev, parent_info.st_ino), source_state(info)
+
+
+def require_file_binding(path, binding, label):
+    try:
+        require(file_binding(path) == binding, f"{label} logical path or identity changed")
+    except OSError as exc:
+        raise BackupIOError(f"Cannot inspect {label} logical path or identity: {exc}") from exc
+
+
+def require_directory_binding(path, binding):
+    try:
+        with opened_parent(path) as (parent, name):
+            parent_info = os.fstat(parent)
+            info = os.stat(name, dir_fd=parent, follow_symlinks=False)
+            require(stat.S_ISDIR(info.st_mode) and binding ==
+                    ((parent_info.st_dev, parent_info.st_ino), (info.st_dev, info.st_ino)),
+                    "Restore directory logical path or identity changed")
+    except OSError as exc:
+        raise BackupIOError(f"Cannot inspect restore directory logical path or identity: {exc}") from exc
+
+
+def _create_snapshot_directory(destination, *, files=False):
+    with opened_parent(destination) as (parent, name):
+        os.mkdir(name, 0o700, dir_fd=parent)
+        descriptor = os.open(name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=parent)
+        try:
+            parent_info, info = os.fstat(parent), os.fstat(descriptor)
+            binding = ((parent_info.st_dev, parent_info.st_ino), (info.st_dev, info.st_ino))
+            if files:
+                os.mkdir("files", 0o700, dir_fd=descriptor)
+                os.fsync(descriptor)
+            os.fsync(parent)
+        finally:
+            close_descriptors([descriptor])
+    require_directory_binding(destination, binding)
+    return binding
 
 
 def create_snapshot_directory(destination, *, files=False):
-    with opened_parent(destination) as (parent, name):
-        os.mkdir(name, 0o700, dir_fd=parent)
-        if files:
-            descriptor = os.open(name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=parent)
-            try:
-                os.mkdir("files", 0o700, dir_fd=descriptor)
-            finally:
-                os.close(descriptor)
+    _create_snapshot_directory(destination, files=files)
 
 
-def write_json(path, value):
+def write_json(path, value, *, exclusive=False, created=None, published=None):
+    """Replace mutable state, or exclusively create an immutable final marker."""
     temporary = path.name + ".tmp-" + uuid.uuid4().hex
+    payload = encoded(value)
     with opened_parent(path) as (parent, name):
         try:
-            descriptor = os.open(temporary, os.O_CREAT | os.O_EXCL | os.O_WRONLY | os.O_NOFOLLOW,
+            descriptor = os.open(name if exclusive else temporary, os.O_CREAT | os.O_EXCL | os.O_WRONLY | os.O_NOFOLLOW,
                                  0o600, dir_fd=parent)
-            with os.fdopen(descriptor, "wb") as stream:
-                stream.write(encoded(value)); stream.flush(); os.fsync(stream.fileno())
-            os.replace(temporary, name, src_dir_fd=parent, dst_dir_fd=parent)
+            with opened_stream(descriptor, "wb") as stream:
+                parent_info, info = os.fstat(parent), os.fstat(stream.fileno())
+                if created is not None:
+                    created(((parent_info.st_dev, parent_info.st_ino), (info.st_dev, info.st_ino)))
+                require(stream.write(payload) == len(payload), "Incomplete backup metadata write")
+                stream.flush()
+                if not exclusive:
+                    os.fsync(stream.fileno())
+                    os.replace(temporary, name, src_dir_fd=parent, dst_dir_fd=parent)
+                parent_info = os.fstat(parent)
+                if published is not None:
+                    published(((parent_info.st_dev, parent_info.st_ino), source_state(os.fstat(stream.fileno()))))
+                if exclusive:
+                    os.fsync(stream.fileno())
+                os.fsync(parent)
         finally:
-            try:
-                os.unlink(temporary, dir_fd=parent)
-            except FileNotFoundError:
-                pass
+            if not exclusive:
+                try:
+                    os.unlink(temporary, dir_fd=parent)
+                except OSError:
+                    # Retain a failed temporary rather than mask the primary IO error.
+                    pass
 
 
 def file_digest(path):
     result = hashlib.sha256()
     with opened_parent(path) as (parent, name):
         descriptor = os.open(name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=parent)
-        with os.fdopen(descriptor, "rb") as stream:
+        with opened_stream(descriptor, "rb") as stream:
             before = os.fstat(stream.fileno())
             require(stat.S_ISREG(before.st_mode), "Backup hash source must be a regular file")
             opened_state, count = source_state(before), 0
@@ -275,14 +363,15 @@ def file_digest(path):
     return result.hexdigest()
 
 
-def copy_hashed(source, destination, *, maximum_bytes=None, expected_source=None, before_write=None):
+def copy_hashed(source, destination, *, maximum_bytes=None, expected_source=None, before_write=None,
+                completed_output=None):
     """Copy at most the approved byte count; reject growth before writing it."""
     require(maximum_bytes is None or type(maximum_bytes) is int and maximum_bytes >= 0,
             "Invalid backup copy byte limit")
     result, count = hashlib.sha256(), 0
     with opened_parent(source) as (parent, name):
         source_fd = os.open(name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=parent)
-        with os.fdopen(source_fd, "rb") as incoming:
+        with opened_stream(source_fd, "rb") as incoming:
             before = os.fstat(incoming.fileno())
             require(stat.S_ISREG(before.st_mode), "Backup source must be a regular file")
             if expected_source is not None:
@@ -294,23 +383,41 @@ def copy_hashed(source, destination, *, maximum_bytes=None, expected_source=None
             with opened_parent(destination, create=True) as (outgoing_parent, outgoing_name):
                 destination_fd = os.open(outgoing_name, os.O_CREAT | os.O_EXCL | os.O_WRONLY | os.O_NOFOLLOW,
                                          0o600, dir_fd=outgoing_parent)
-                with os.fdopen(destination_fd, "wb") as outgoing:
+                # Unbuffered chunk writes let flush/fsync preserve the recorded
+                # file clock; they need not legitimately change buffered bytes.
+                with opened_stream(destination_fd, "wb", buffering=0) as outgoing:
+                    output_state = source_state(os.fstat(outgoing.fileno()))
                     while count < limit:
                         block = incoming.read(min(CHUNK_BYTES, limit - count))
                         require(bool(block), "Backup source byte count changed during copy")
                         require_source_state(os.fstat(incoming.fileno()), opened_state)
                         if before_write:
                             before_write(count)
-                        outgoing.write(block); result.update(block); count += len(block)
+                        require_source_state(os.fstat(outgoing.fileno()), output_state)
+                        require(outgoing.write(block) == len(block), "Incomplete backup destination write")
+                        result.update(block); count += len(block)
+                        output_state = source_state(os.fstat(outgoing.fileno()))
+                        require(output_state["bytes"] == count, "Backup destination byte count changed during copy")
                         if before_write:
                             # Account for buffered bytes before the next capacity check.
                             outgoing.flush()
+                            require_source_state(os.fstat(outgoing.fileno()), output_state)
                         require_source_state(os.fstat(incoming.fileno()), opened_state)
                     require(not incoming.read(1), "Backup source grew beyond its approved byte count")
                     require_source_state(os.fstat(incoming.fileno()), opened_state)
-                    outgoing.flush(); os.fsync(outgoing.fileno())
+                    require_source_state(os.fstat(outgoing.fileno()), output_state)
+                    outgoing.flush()
+                    require_source_state(os.fstat(outgoing.fileno()), output_state)
+                    info = os.fstat(outgoing_parent)
+                    output_binding = ((info.st_dev, info.st_ino), output_state)
+                    if completed_output is not None:
+                        completed_output(output_binding)
+                    os.fsync(outgoing.fileno())
+                    os.fsync(outgoing_parent)
                     if before_write:
                         before_write(count)
+                    require_source_state(os.fstat(outgoing.fileno()), output_state)
+                    require_file_binding(destination, output_binding, "Copied destination")
     return count, result.hexdigest()
 
 
@@ -336,8 +443,8 @@ def copy_snapshot(root, destination, plan, *, minimum_free_bytes=DEFAULT_RESERVE
         check_source_clock(root, row)
     require(shutil.disk_usage(parent).free >= plan["totalBytes"] + minimum_free_bytes,
             "Insufficient local free space for the backup plus reserve")
-    create_snapshot_directory(destination, files=True)
-    copied = []
+    directory_binding = _create_snapshot_directory(destination, files=True)
+    copied, outputs, owned_marker, published = [], [], [], []
     state = {"schemaVersion": 1, "backupId": plan["backupId"], "planSha256": plan["planSha256"],
              "copyStatus": "incomplete", "remoteSyncStatus": "pending", "files": copied,
              "totalBytes": plan["totalBytes"], "copiedBytes": 0}
@@ -347,16 +454,38 @@ def copy_snapshot(root, destination, plan, *, minimum_free_bytes=DEFAULT_RESERVE
     def check_capacity(copied=0):
         require(shutil.disk_usage(parent).free >= remaining - copied + minimum_free_bytes,
                 "Insufficient local free space during backup; incomplete copy retained")
+    def check_outputs():
+        require_directory_binding(destination, directory_binding)
+        for path, binding in outputs:
+            require_file_binding(path, binding, "Copied backup file")
+    def check_publication(*, require_final=True):
+        require(len(owned_marker) == 1 and (not require_final or len(published) == 1),
+                "Owned backup manifest was not fully published")
+        marker = destination / "backup-manifest.json"
+        with pinned_json(marker, expected_bytes=encoded(manifest)) as (actual, check):
+            require(actual == manifest, "Published backup manifest payload differs")
+            binding = file_binding(marker)
+            identity = binding[1]["sourceIdentity"]
+            require((binding[0], (identity["device"], identity["inode"])) == owned_marker[0],
+                    "Published backup manifest ownership identity changed")
+            if published:
+                require_file_binding(marker, published[0], "Published backup manifest")
+            check_outputs()
     try:
         for row in rows:
             check_capacity()
             source = check_source_clock(root, row)
+            written = []
             count, source_hash = copy_hashed(source, destination / "files" / row["path"],
                                              maximum_bytes=row["bytes"], expected_source=row,
-                                             before_write=check_capacity)
+                                             before_write=check_capacity, completed_output=written.append)
             require(count == row["bytes"], f"Backup source byte count changed: {row['path']}")
             check_source_clock(root, row)
             require(row.get("expectedSha256", source_hash) == source_hash, f"Backup production hash differs: {row['path']}")
+            require(len(written) == 1, "Copied backup file identity was not captured")
+            output = destination / "files" / row["path"]
+            require_file_binding(output, written[0], "Copied backup file")
+            outputs.append((output, written[0]))
             copied.append({"path": row["path"], "bytes": count, "sha256": source_hash})
             state["copiedBytes"] += count
             remaining -= count
@@ -366,6 +495,7 @@ def copy_snapshot(root, destination, plan, *, minimum_free_bytes=DEFAULT_RESERVE
         # Earlier files must remain unchanged while later files are copied.
         for row in rows:
             check_source_clock(root, row)
+        check_outputs()
         manifest = signed({"schemaVersion": 1, "backupId": plan["backupId"], "planSha256": plan["planSha256"],
                            "createdAt": datetime.now(timezone.utc).isoformat(),
                            "cloudDestinationFolderId": plan["cloudDestinationFolderId"],
@@ -375,17 +505,23 @@ def copy_snapshot(root, destination, plan, *, minimum_free_bytes=DEFAULT_RESERVE
         state["copyStatus"] = "prepared"
         write_json(destination / "backup-state.json", state)
         # Publish the immutable completion marker after every fallible state write.
-        write_json(destination / "backup-manifest.json", manifest)
+        write_json(destination / "backup-manifest.json", manifest, exclusive=True,
+                   created=owned_marker.append, published=published.append)
+        check_publication()
         return manifest
     except (OSError, BackupError) as exc:
-        if manifest is not None:
+        io_failure = isinstance(exc, OSError) or (isinstance(exc, BackupIOError)
+                                                   and isinstance(exc.__cause__, OSError))
+        if io_failure and manifest is not None and len(owned_marker) == 1:
             try:
-                published = read_json(owned_file(destination, "backup-manifest.json"))
+                check_publication(require_final=False)
             except (OSError, BackupError):
-                published = None
-            # A cleanup error after atomic publication cannot undo that commit.
-            if published == manifest:
-                return manifest
+                pass
+            else:
+                # Exact owned bytes establish local completion, with durability
+                # explicitly unconfirmed after a late write/flush/cleanup error.
+                return dict(manifest, completionPublication={"status": "exact-readback-after-write-error",
+                                                           "durabilityVerified": False})
         state["copyStatus"] = "incomplete"
         state["error"] = str(exc)
         try:
@@ -396,9 +532,39 @@ def copy_snapshot(root, destination, plan, *, minimum_free_bytes=DEFAULT_RESERVE
         raise BackupError(f"Backup remains incomplete: {exc}") from exc
 
 
-def manifest_files(snapshot, paths=None):
-    snapshot = existing_directory(snapshot)
-    manifest = read_json(owned_file(snapshot, "backup-manifest.json"))
+@contextmanager
+def pinned_json(path, *, expected_bytes=None):
+    """Keep the exact metadata descriptor and named identity until success."""
+    with opened_parent(path) as (parent, name):
+        descriptor = os.open(name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=parent)
+        with opened_stream(descriptor, "rb") as incoming:
+            before, parent_info = os.fstat(incoming.fileno()), os.fstat(parent)
+            require(stat.S_ISREG(before.st_mode), "Backup metadata must be a regular file")
+            state = source_state(before)
+            binding = ((parent_info.st_dev, parent_info.st_ino), state)
+            try:
+                require(expected_bytes is None or before.st_size == len(expected_bytes),
+                        "Backup metadata expected byte count differs")
+                raw = incoming.read(before.st_size + 1)
+                require(len(raw) == before.st_size, "Backup metadata byte count changed while reading")
+                require_source_state(os.fstat(incoming.fileno()), state)
+                require(expected_bytes is None or raw == expected_bytes, "Backup metadata expected payload differs")
+                value = json.loads(raw.decode("utf-8"))
+            except OSError as exc:
+                raise BackupIOError(f"Cannot read backup metadata: {exc}") from exc
+            except ValueError as exc:
+                raise BackupError(f"Cannot read backup metadata: {exc}") from exc
+            require(isinstance(value, dict), "Backup metadata must be an object")
+            def check():
+                require_source_state(os.fstat(incoming.fileno()), state)
+                require_file_binding(path, binding, "Backup metadata")
+            check()
+            yield value, check
+            # This check runs only on success; an existing primary failure wins.
+            check()
+
+
+def manifest_rows(manifest, paths=None):
     require(manifest.get("schemaVersion") == 1 and manifest.get("copyStatus") == "complete", "Backup is incomplete")
     require(manifest.get("manifestSha256") == digest({key: value for key, value in manifest.items() if key != "manifestSha256"}),
             "Backup manifest digest changed")
@@ -415,19 +581,38 @@ def manifest_files(snapshot, paths=None):
         require(isinstance(paths, (list, tuple)) and bool(paths) and len(set(paths)) == len(paths), "Restore needs unique explicit paths")
         require(all(path in index for path in paths), "Unknown backup restore path")
         rows = [index[path] for path in paths]
-    return snapshot, manifest, rows
+    return rows
+
+
+@contextmanager
+def pinned_manifest(snapshot, paths=None):
+    snapshot = existing_directory(snapshot)
+    with pinned_json(owned_file(snapshot, "backup-manifest.json")) as (manifest, check):
+        rows = manifest_rows(manifest, paths)
+        yield snapshot, manifest, rows, check
+
+
+def manifest_files(snapshot, paths=None):
+    with pinned_manifest(snapshot, paths) as (snapshot, manifest, rows, check):
+        return snapshot, manifest, rows
 
 
 def verify_snapshot(snapshot, paths=None):
-    snapshot, manifest, rows = manifest_files(snapshot, paths)
-    for row in rows:
-        path = owned_file(snapshot, "files/" + row["path"])
-        require(path.stat().st_size == row["bytes"] and file_digest(path) == row["sha256"],
-                f"Backup current-byte hash/size differs: {row['path']}")
-    return {"schemaVersion": 1, "backupId": manifest["backupId"], "manifestSha256": manifest["manifestSha256"],
-            "verificationScope": "local-backup-all-files" if paths is None else "local-backup-sample",
-            "verifiedFiles": len(rows), "verifiedBytes": sum(row["bytes"] for row in rows),
-            "remoteSyncVerified": False, "verifiedAt": datetime.now(timezone.utc).isoformat()}
+    with pinned_manifest(snapshot, paths) as (snapshot, manifest, rows, check):
+        verified = []
+        for row in rows:
+            path = owned_file(snapshot, "files/" + row["path"])
+            binding = file_binding(path)
+            require(binding[1]["bytes"] == row["bytes"] and file_digest(path) == row["sha256"],
+                    f"Backup current-byte hash/size differs: {row['path']}")
+            require_file_binding(path, binding, "Verified backup file")
+            verified.append((path, binding))
+        for path, binding in verified:
+            require_file_binding(path, binding, "Verified backup file")
+        return {"schemaVersion": 1, "backupId": manifest["backupId"], "manifestSha256": manifest["manifestSha256"],
+                "verificationScope": "local-backup-all-files" if paths is None else "local-backup-sample",
+                "verifiedFiles": len(rows), "verifiedBytes": sum(row["bytes"] for row in rows),
+                "remoteSyncVerified": False, "verifiedAt": datetime.now(timezone.utc).isoformat()}
 
 
 def restore_sample(root, snapshot, destination, paths, *, minimum_free_bytes=DEFAULT_RESERVE_BYTES):
@@ -441,29 +626,44 @@ def restore_sample(root, snapshot, destination, paths, *, minimum_free_bytes=DEF
     require(destination != public_root and public_root not in destination.parents,
             "Restore destination cannot be public web/dist")
     report = verify_snapshot(snapshot, paths)
-    snapshot, manifest, rows = manifest_files(snapshot, paths)
-    require(manifest["manifestSha256"] == report["manifestSha256"],
-            "Backup manifest changed after sample verification")
-    remaining = sum(row["bytes"] for row in rows)
-    require(shutil.disk_usage(parent).free >= remaining + minimum_free_bytes,
-            "Insufficient local free space for restored sample plus reserve")
-    create_snapshot_directory(destination)
-    def check_capacity(copied=0):
-        require(shutil.disk_usage(parent).free >= remaining - copied + minimum_free_bytes,
-                "Insufficient local free space during restore; incomplete sample retained")
     try:
-        for row in rows:
-            check_capacity()
-            source = owned_file(snapshot, "files/" + row["path"])
-            count, source_hash = copy_hashed(source, destination / row["path"], maximum_bytes=row["bytes"],
-                                             before_write=check_capacity)
-            require(count == row["bytes"] and source_hash == row["sha256"], f"Restore source changed during copy: {row['path']}")
-            restored = owned_file(destination, row["path"])
-            require(file_digest(restored) == row["sha256"], f"Restored byte hash differs: {row['path']}")
-            remaining -= count
+        with pinned_manifest(snapshot, paths) as (snapshot, manifest, rows, check_manifest):
+            require(manifest["manifestSha256"] == report["manifestSha256"],
+                    "Backup manifest changed after sample verification")
+            remaining = sum(row["bytes"] for row in rows)
+            require(shutil.disk_usage(parent).free >= remaining + minimum_free_bytes,
+                    "Insufficient local free space for restored sample plus reserve")
+            directory_binding = _create_snapshot_directory(destination)
+            outputs, sources = [], []
+            def check_capacity(copied=0):
+                require(shutil.disk_usage(parent).free >= remaining - copied + minimum_free_bytes,
+                        "Insufficient local free space during restore; incomplete sample retained")
+            for row in rows:
+                check_capacity()
+                check_manifest()
+                require_directory_binding(destination, directory_binding)
+                source = owned_file(snapshot, "files/" + row["path"])
+                source_binding = file_binding(source)
+                written = []
+                count, source_hash = copy_hashed(source, destination / row["path"], maximum_bytes=row["bytes"],
+                                                 expected_source=source_binding[1], before_write=check_capacity,
+                                                 completed_output=written.append)
+                require(count == row["bytes"] and source_hash == row["sha256"], f"Restore source changed during copy: {row['path']}")
+                require_file_binding(source, source_binding, "Restore source")
+                restored = owned_file(destination, row["path"])
+                require(len(written) == 1, "Restore output identity was not captured")
+                require_file_binding(restored, written[0], "Restored file")
+                require(file_digest(restored) == row["sha256"], f"Restored byte hash differs: {row['path']}")
+                require_file_binding(restored, written[0], "Restored file")
+                outputs.append((restored, written[0]))
+                sources.append((source, source_binding))
+                remaining -= count
+            for path, binding in sources + outputs:
+                require_file_binding(path, binding, "Restore source or output")
+            require_directory_binding(destination, directory_binding)
+            return dict(report, verificationScope="local-restored-sample")
     except (OSError, BackupError) as exc:
         raise BackupError(f"Restore remains incomplete: {exc}") from exc
-    return dict(report, verificationScope="local-restored-sample")
 
 
 def collect_release_fileset(root, backup_id):
@@ -583,8 +783,11 @@ def main(argv=None):
                     print(json.dumps({"copiedFiles": done, "files": total, "copiedBytes": copied, "bytes": all_bytes}), flush=True)
                     last[0] = now
             manifest = copy_snapshot(root, args.destination, read_json(args.copy), minimum_free_bytes=args.minimum_free_bytes, progress=progress)
-            print(json.dumps({"copyStatus": manifest["copyStatus"], "remoteSyncStatus": "pending", "files": len(manifest["files"]),
-                              "bytes": manifest["totalBytes"], "manifestSha256": manifest["manifestSha256"]}))
+            result = {"copyStatus": manifest["copyStatus"], "remoteSyncStatus": "pending", "files": len(manifest["files"]),
+                      "bytes": manifest["totalBytes"], "manifestSha256": manifest["manifestSha256"]}
+            if "completionPublication" in manifest:
+                result["completionPublication"] = manifest["completionPublication"]
+            print(json.dumps(result))
         elif args.verify:
             print(json.dumps(verify_snapshot(args.verify, args.path or None)))
         else:
