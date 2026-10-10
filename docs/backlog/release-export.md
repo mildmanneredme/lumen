@@ -152,12 +152,17 @@ python3 web/scripts/release_export.py \
   --inventory /private/tmp/inventory.json \
   --timings /private/tmp/reviewed-timings.json \
   --plan /private/tmp/release-plan.json \
-  --out /private/tmp/lumen-approved-staging
+  --out Audiobook/author-audit/lumen-approved-staging
 ```
 
 Use `--scenes` only for an existing reviewed scene mapping. With no `--out`,
-staging defaults to `/private/tmp/lumen-release-<releaseId>`. All exports reject
-`web/dist` destinations, including symlink redirection. Content-hash writes are
+private/authenticated staging defaults to
+`<selected root>/Audiobook/author-audit/lumen-release-<releaseId>`, so every
+generated JSON source is eligible for the project-owned private uploader.
+An explicit private `--out` must resolve inside that selected root; outside-root
+and symlink escapes fail before source verification or staging. Public exports
+retain `/private/tmp/lumen-release-<releaseId>` as their default. All exports
+reject `web/dist` destinations, including symlink redirection. Content-hash writes are
 exclusive and idempotent; existing different bytes at an immutable path fail.
 Keep staging outside production sources and committed bulk media directories.
 
