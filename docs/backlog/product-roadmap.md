@@ -1,6 +1,17 @@
 # Product roadmap: full Lumen audiobook web launch
 
-Status: proposed implementation backlog. Updated: 10 October 2026. Primary device: Android with Chrome.
+Status: implementation started; local author audit and private content foundation delivered. Updated: 10 October 2026. Primary device: Android with Chrome.
+
+### Execution record — 10 October 2026
+
+The author selected **local-only access for the narration audit** and requested character confirmation before further art production. Unfinished audio, manuscript exports, and author notes remain local.
+
+- **Delivered: author audit.** [PR #1](https://github.com/mildmanneredme/lumen/pull/1) merged after two independent review rounds and fixes for stale review bindings and generation-input verification. Run `python3 web/scripts/audit_server.py` and open `http://127.0.0.1:8766/audit`. The queue contains 377 OpenAI candidates plus 755 unresolved/inconclusive local Charon candidates, with distinct evidence and audio clocks. Feedback persists with revision history; export groups explicitly requested corrections into source-take repair plans. Seventeen backend and eighteen Chrome behavioral checks pass. [Audit guide](../../web/audit/README.md).
+- **Delivered: private P0/P2 foundation.** Reconciled 91 tracks, 89 story chapters, 12,915 chapter-qualified sentence anchors, 182 narrator recordings, and 60 pilot aliases. All 182 existing MP3 hashes matched their delivery manifests (2,657,554,540 bytes). Timing validation binds the final audio, canonical text, and reviewed map hash; exports are immutable and reject symlink escapes into public assets. Twenty-three tests pass. [Content contract](content-contract.md).
+- **Ready for author confirmation:** [23 character profiles and two provisional model sheets](character-confirmation.md). Seb's height discrepancy, Polk's age, and Daniel's wardrobe are explicit decisions. No model or appearance has been marked approved.
+- **Current production gates:** saved human audit decisions; scoped fresh takes and re-audits; remaining 354 OpenAI transcription chunks (API credits exhausted); complete chapter listening approval; final narrator timing maps; publication/access and media budget decisions. Full-book illustration generation remains held at the P1 gate.
+
+This is completed infrastructure, not a declaration that the full audiobook is launch-ready. Chapter/narrator reader integration, media delivery, remaining illustrations, physical Android acceptance, beta, and launch are still open below.
 
 ## 1. Launch approach
 
@@ -13,8 +24,8 @@ The first full-book release should provide both approved voices, faithful prose,
 | Area | What exists | What remains |
 | --- | --- | --- |
 | Web reader | Chapter 1 opening pilot: 320.190 seconds, 60 sentence cues, eight paintings; touch seeking, saved place, text settings, Media Session, Android installation eligibility | Full-book data, navigation, narrator switching, book completion, real-phone acceptance |
-| Audio | Both editions generated, mastered, and packaged locally | Transcript comparison, human listening approval, warning disposition, final release hashes |
-| Text | Both production editions bind to the same five v6 manuscript part hashes | Full-book canonical anchor registry and explicit future migrations |
+| Audio | Both editions generated, mastered, and packaged locally; 182 physical MP3 hashes verified; partial OpenAI and local Charon comparisons; local author audit | Complete comparison, human listening approval, scoped repairs, warning disposition, approved final release hashes |
+| Text | Both production editions bind to the same five v6 manuscript part hashes; canonical registry and verified pilot aliases implemented | Future manuscript migrations and final reader integration |
 | Artwork | Painted realism; private cast bible; Adrian and Daniel model sheets | Approval of provisional models, remaining needed character/location references, chapter beat boards and final illustrations |
 | Hosting | Vercel project lumen in robert-xies-projects; static app and pilot audio | Media storage/CDN selection, upload verification, cross-origin playback, capacity and cost controls |
 | Offline | Cached reader shell and visited paintings; audio streams online | Visited chapter text/timing cache and CDN artwork integration; offline audio is later work |
@@ -28,9 +39,9 @@ The first full-book release should provide both approved voices, faithful prose,
 
 Each edition contains opening credits/epigraph, **89 story chapters**, and closing credits. Existing chapter MP3s are mono, 44.1 kHz, 192 kbps. M4B and chapter ZIP packages also exist. The combined chapter MP3 payload is approximately 2.66 GB in decimal units.
 
-The delivery manifests report technical completion and successful package verification. All 91 chapter report rows in each edition still await local ASR content checks and have listening approval set to false. A single complete listening pass through both editions requires about **30 hours 45 minutes at normal speed**, before corrections and rechecks.
+The delivery manifests report technical completion and successful package verification. Human chapter listening approval remains false. Later analysis checked 142/496 chunks with OpenAI before credits ran out; Charon also has a completed local recheck pass with unresolved listening candidates. These results do not grant chapter approval. A single complete listening pass through both editions requires about **30 hours 45 minutes at normal speed**, before corrections and rechecks.
 
-These findings come from production metadata and file existence/size inspection. Preparing this roadmap did not rehash every audio file or listen to the full book. The web edition registry still marks both full editions as pending; local package completion does not enable them in the app. Sources: [edition registry](../../web/data/narration-editions.json), [v7 delivery manifest](../../Audiobook/v7/delivery/delivery-manifest.json), [v8 delivery manifest](../../Audiobook/v8/delivery/delivery-manifest.json), [v7 QA status](../../Audiobook/v7/delivery/QA-STATUS.txt), [v8 QA status](../../Audiobook/v8/delivery/QA-STATUS.txt).
+The inventory figures were subsequently verified against every physical chapter MP3 hash during foundation implementation. No full-book human listening pass was performed by engineering. The web edition registry still marks both full editions as pending; local package completion does not enable them in the app. Sources: [edition registry](../../web/data/narration-editions.json), [v7 delivery manifest](../../Audiobook/v7/delivery/delivery-manifest.json), [v8 delivery manifest](../../Audiobook/v8/delivery/delivery-manifest.json), [v7 QA status](../../Audiobook/v7/delivery/QA-STATUS.txt), [v8 QA status](../../Audiobook/v8/delivery/QA-STATUS.txt).
 
 ## 2. Decisions to settle before implementation
 
@@ -101,9 +112,9 @@ Owner: author/product, with engineering and audio production.
 - [ ] Complete the decisions above and assign a release ID and owners.
 - [ ] Inventory all 91 tracks × two voices: source text hash, selected clip IDs, master path, final web audio hash, duration, size, technical warnings, content approval, timing approval, artwork status.
 - [ ] Reconcile track order, part headings, spoken chapter headings, credits, epigraph, and chapter labels. Confirm no story chapter or spoken passage is missing.
-- [ ] Preserve the existing pilot and source production directories. Use a separate release export/staging location; do not overwrite v7/v8 assets in place.
+- [x] Preserve the existing pilot and source production directories. Use a separate release export/staging location; do not overwrite v7/v8 assets in place.
 - [ ] Back up approved source text, masters, manifests, and art references outside the laptop; verify a sample restore. Keep bulk production audio and API receipts outside Git.
-- [ ] Define publication readiness separately from generation/mastering/package completion.
+- [x] Define publication readiness separately from generation/mastering/package completion.
 
 **Exit gate:** one reconciled inventory, agreed launch scope, and identified reviewers. The inventory initially shows pending approvals rather than pretending the recordings are ready to publish.
 
@@ -111,7 +122,7 @@ Owner: author/product, with engineering and audio production.
 
 Owner: audio production and author/editor.
 
-- [ ] Restore a working transcription environment. v7's local MLX worker could not access Metal in the headless session; v8's runtime lacked mlx-whisper. Choose a compatible local worker or an explicitly selected alternative. Record model/version and processing cost.
+- [x] Restore a working transcription environment. Subsequent production runs completed Charon local rechecks and used OpenAI gpt-4o-transcribe for 142 chunks, retaining model/cost/provenance. The OpenAI collection remains incomplete because API credits are exhausted.
 - [ ] Compare every track against the canonical narration text. Flag omissions, additions, repetitions, wrong names, accidental instructions, mispronunciations, abrupt joins, and unusual silence. ASR discrepancies are review candidates, not automatic proof of a narration defect.
 - [ ] Listen to both complete editions and every flagged passage, including track starts/ends and every join between the 248 selected clips in each edition. Record approved, accepted-with-note, or correction-needed for each finding.
 - [ ] Review the warning lists in section 9. Specifically compare opening credits: the same 44-word source runs about 98.99 seconds in Autonoe and 21.78 seconds in Charon. This is an observed discrepancy to inspect, not a diagnosed defect.
@@ -127,8 +138,8 @@ Owner: audio production and author/editor.
 Owner: engineering, reviewed by author/audio editor.
 
 - [ ] Preserve the existing pilot exporter. Add a full-book exporter that accepts a track ID, narrator ID, release ID, and selected approved source files. The current prepare_pilot.py is intentionally hardcoded to the v6 Chapter 1 excerpt and a roughly five-minute cut.
-- [ ] Build a canonical anchor registry. Current pilot IDs such as p001-s01 are positional and chapter-local; qualify them by chapter and keep an explicit alias/migration map for the existing pilot. New manuscript revisions must not silently reuse an ID for different prose.
-- [ ] Preserve punctuation, paragraph boundaries, emphasis, headings, and credits. Keep normalization used for ASR comparison separate from the displayed manuscript.
+- [x] Build a canonical anchor registry. Current pilot IDs such as p001-s01 are positional and chapter-local; qualify them by chapter and keep an explicit alias/migration map for the existing pilot. New manuscript revisions must not silently reuse an ID for different prose.
+- [x] Preserve punctuation, paragraph boundaries, emphasis, headings, and credits. Keep normalization used for ASR comparison separate from the displayed manuscript.
 - [ ] Choose the web encoding through listening and phone playback tests. The approved 192 kbps MP3 chapters are a valid candidate; evaluate a lighter 128 kbps mono MP3 export if quality remains acceptable. Retain lossless masters.
 - [ ] Bind each timing map to the **final encoded web file**, including its SHA-256 and decoded media duration. Re-encoding changes the recording identity and can change clock offsets.
 - [ ] Align every final track independently for both voices. Account for spoken introductions, mastering edits, pauses, joins, and encoder delay; do not copy v6 pilot timings or one narrator's seconds into another recording.
