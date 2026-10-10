@@ -72,6 +72,6 @@ For disaster recovery, fetch the complete cloud snapshot into a fresh directory,
 python3 -m unittest discover -s web/tests -p test_backup_release.py -v
 ```
 
-The 45 backup fixtures use tiny temporary files and cover exact copying, production hash mismatch, source changes and same-size replacements after planning, nonblocking FIFO rejection, OAuth and parent-directory credential/receipt and generated-directory exclusions, symlink rejection, snapshot and restore disk-space reserves, earlier-backup preservation, immutable manifests, and verified sample restore/tamper failure. They do not upload files or read production audio bodies. A further 24 fixtures verify the archive route described in [archive-backup.md](archive-backup.md).
+The 47 backup fixtures use tiny temporary files and cover exact copying, production hash mismatch, source changes and same-size replacements after planning, nonblocking FIFO rejection, OAuth and parent-directory credential/receipt and generated-directory exclusions, symlink rejection, snapshot and restore disk-space reserves, earlier-backup preservation, immutable manifests, and verified sample restore/tamper failure. They do not upload files or read production audio bodies. A further 24 fixtures verify the archive route described in [archive-backup.md](archive-backup.md).
 
 Destination discovery and engineering preparation are complete. The actual versioned copy, cloud-sync confirmation, remote inventory/checksum evidence, and production restore sample remain pending until their recorded checks have finished.

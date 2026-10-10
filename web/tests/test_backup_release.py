@@ -122,6 +122,40 @@ class BackupReleaseTests(unittest.TestCase):
                     backup.prepare_fileset(self.root, [name], "lumen-backup-fixture")
         self.assertFalse(self.destination.exists())
 
+    def test_camelcase_and_compact_credential_components_reject_explicit_sources(self):
+        for name in ["web/serviceAccountKey.json", "privateKey.json", "apiKey.json",
+                     "web/APIKey.json", "docs/privateKEY.json", "web/SERVICEAccountKey.json",
+                     "web/clientSecret.json", "docs/accessToken.json", "web/MyAPIKeys.json",
+                     "web/serviceAccountKey/config.json", "docs/.APIKeys/config.json",
+                     "web/APIKEY.json", "docs/privatekey/config.json",
+                     "web/SERVICEACCOUNTKEY.json", "docs/serviceaccountkey/config.json",
+                     "web/.OAuth/config.json"]:
+            with self.subTest(name=name):
+                source = self.root / name
+                source.parent.mkdir(parents=True, exist_ok=True)
+                source.write_text('{"fixture":"camelcase-credential"}')
+                with self.assertRaisesRegex(backup.BackupError, "Excluded credential"):
+                    backup.prepare_fileset(self.root, [name], "lumen-backup-fixture")
+        self.assertFalse(self.destination.exists())
+
+    def test_credential_normalization_keeps_innocent_words_and_original_source_paths(self):
+        paths = ["web/APIKeyboard.js", "web/privateKeynote.js", "docs/serviceAccountability.md",
+                 "web/accessTokenize.js", "docs/authTokenization.md", "web/OpenAIResponse.js",
+                 "web/server/private-access.cjs"]
+        for name in paths:
+            source = self.root / name
+            source.parent.mkdir(parents=True, exist_ok=True)
+            source.write_text("innocent source fixture")
+        plan = backup.prepare_fileset(self.root, paths, "lumen-backup-fixture")
+        self.assertEqual([row["path"] for row in plan["files"]], sorted(paths))
+        sys.path.insert(0, str(SCRIPT.parent))
+        self.addCleanup(lambda: sys.path.remove(str(SCRIPT.parent)))
+        import book_content as content
+        with patch.object(content, "load_project_registry", return_value={}), \
+             patch.object(content, "load_recording_inventory", return_value={"recordings": []}):
+            collected = backup.collect_release_fileset(self.root, "lumen-backup-fixture")
+        self.assertTrue(set(paths).issubset(row["path"] for row in collected["files"]))
+
     def test_changed_plan_source_clock_is_rejected_before_destination_creation(self):
         plan = self.plan()
         (self.root / self.paths[0]).write_text("source changed")
@@ -716,7 +750,12 @@ else:
                      "web/art-direction/secrets/config.json",
                      "web/private_keys/config.json", "docs/api_keys/config.json",
                      "web/PRIVATE-KEYS/config.json", "docs/API-KEYS/config.json",
-                     "web/service_accounts/google.json", "docs/SERVICE-ACCOUNTS/config.json"]
+                     "web/service_accounts/google.json", "docs/SERVICE-ACCOUNTS/config.json",
+                     "serviceAccountKey.json", "privateKey.json", "apiKey.json",
+                     "web/serviceAccountKey.json", "web/APIKey.json",
+                     "docs/.APIKeys/config.json", "web/serviceAccountKey/config.json",
+                     "Audiobook/v7/serviceAccountKey.json", "Audiobook/v8/privateKey.json",
+                     "Audiobook/v7/mastered/APIKey.json", "Audiobook/v8/delivery/MyAPIKeys.json"]
         for name in excluded:
             path = self.root / name; path.parent.mkdir(parents=True, exist_ok=True); path.write_text("excluded")
         (self.root / "web/env/linked.py").symlink_to(self.root / self.paths[0])

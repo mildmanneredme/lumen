@@ -35,8 +35,8 @@ GENERATED_DIRECTORIES = {"env", "venv", "models", "cache", "caches", "checkpoint
                          "downloaded-models", "models-cache", "pytest-cache", "mypy-cache",
                          "ruff-cache", "tox", "nox"}
 CREDENTIAL_COMPONENT = re.compile(
-    r"(?:^|[._-])(?:secrets?|credentials?|private[-_]keys?|service[-_]accounts?|api[-_]keys?|"
-    r"access[-_]token|oauth|client[-_]secrets?|refresh[-_]token|id[-_]token|auth[-_]token|tokens?)(?:[._-]|$)")
+    r"(?:^|[._-])(?:secrets?|credentials?|private[-_]?keys?|service[-_]?accounts?(?:[-_]?keys?)?|api[-_]?keys?|"
+    r"access[-_]?tokens?|oauth|client[-_]?secrets?|refresh[-_]?tokens?|id[-_]?tokens?|auth[-_]?tokens?|tokens?)(?:[._-]|$)")
 
 
 class BackupError(ValueError):
@@ -83,6 +83,12 @@ def read_json(path):
     return value
 
 
+def credential_words(component):
+    """Keep CamelCase/acronym boundaries without changing the source path."""
+    component = re.sub(r"([A-Z]+)([A-Z][a-z])", r"\1_\2", component)
+    return re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", component).lower()
+
+
 def safe_relative(name):
     require(isinstance(name, str) and name and "\x00" not in name and "\\" not in name,
             "Invalid backup relative path")
@@ -95,7 +101,8 @@ def safe_relative(name):
             and not any(part.startswith(".env") for part in lower_parts)
             and filename not in BLOCKED_FILES
             and Path(filename).suffix not in BLOCKED_SUFFIXES
-            and not any(CREDENTIAL_COMPONENT.search(part) for part in lower_parts),
+            and not any(CREDENTIAL_COMPONENT.search(part) for part in
+                        lower_parts + [credential_words(part) for part in path.parts]),
             f"Excluded credential, receipt, environment, or key path: {name}")
     return path
 
