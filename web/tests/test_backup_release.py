@@ -96,6 +96,16 @@ class BackupReleaseTests(unittest.TestCase):
                 backup.prepare_fileset(self.root, ["linked.md"], "lumen-backup-fixture")
             link.unlink()
 
+    def test_common_oauth_credentials_are_rejected_even_when_explicitly_selected(self):
+        for name in ["token.json", "refresh_token.json", "client_secret_lumen.json",
+                     "web/client_secrets.json", "web/oauth-token.json", "web/id_token.json"]:
+            with self.subTest(name=name):
+                source = self.root / name
+                source.parent.mkdir(parents=True, exist_ok=True)
+                source.write_text('{"fixture":"secret"}')
+                with self.assertRaisesRegex(backup.BackupError, "Excluded credential"):
+                    backup.prepare_fileset(self.root, [name], "lumen-backup-fixture")
+
     def test_changed_plan_source_clock_is_rejected_before_destination_creation(self):
         plan = self.plan()
         (self.root / self.paths[0]).write_text("source changed")
@@ -503,10 +513,16 @@ else:
         checkpoint = {"output_sha256": {"lossless_wav": hashlib.sha256(lossless.read_bytes()).hexdigest()}}
         mp3.with_suffix(".checkpoint.json").write_text(json.dumps(checkpoint))
         mp3.with_suffix(".qa.json").write_text('{"warnings":[]}')
-        for name in ["Audiobook/v8/receipts/secret.json", "Audiobook/v8/delivery/redundant.m4b",
+        excluded = ["Audiobook/v8/receipts/secret.json", "Audiobook/v8/delivery/redundant.m4b",
                      "Audiobook/v8/delivery/redundant.zip", "web/.env.local", "web/node_modules/module.js",
-                     "web/.npmrc", "Audiobook/v8/raw/unselected.wav"]:
+                     "web/.npmrc", "Audiobook/v8/raw/unselected.wav", "token.json", "refresh_token.json",
+                     "client_secret_lumen.json", "web/client_secrets.json", "web/env/site.py",
+                     "web/models/weights.bin", "docs/cache/proof.json", "Audiobook/author-audit/env/config.py"]
+        for name in excluded:
             path = self.root / name; path.parent.mkdir(parents=True, exist_ok=True); path.write_text("excluded")
+        (self.root / "web/env/linked.py").symlink_to(self.root / self.paths[0])
+        cast = self.root / "web/art-direction/models/portrait.png"
+        cast.parent.mkdir(parents=True); cast.write_bytes(b"approved portrait fixture")
         docs = self.root / "docs/backlog/roadmap.md"; docs.parent.mkdir(parents=True); docs.write_text("restore me")
         inventory = {"recordings": [{"sourcePath": self.paths[2], "sha256": hashlib.sha256(mp3.read_bytes()).hexdigest(),
                      "selectedClips": [{"sourcePath": self.paths[1], "rawAudioSha256": hashlib.sha256(raw.read_bytes()).hexdigest()}]}]}
@@ -517,6 +533,8 @@ else:
         self.assertIn("Audiobook/v8/mastered/chapter-001.wav", names)
         self.assertIn("Audiobook/v8/raw/chapter-001-001.json", names)
         self.assertIn("docs/backlog/roadmap.md", names)
+        self.assertIn("web/art-direction/models/portrait.png", names)
+        self.assertTrue(set(excluded).isdisjoint(names))
         self.assertFalse(any(name.endswith((".m4b", ".zip")) or "receipts" in name or "unselected" in name or ".env" in name or "node_modules" in name or ".npmrc" in name for name in names))
         self.assertEqual(sum("expectedSha256" in row for row in plan["files"]), 3)
 

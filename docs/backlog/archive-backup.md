@@ -48,8 +48,17 @@ the failed file or any older backup.
 Create a private reviewed plan using `backup_release.py --plan`. It already
 selects the current accepted MP3s, selected raw WAVs and their metadata,
 lossless masters, manuscript, code, continuity references, and review evidence.
-It excludes credentials, all `.env` variants, private keys, models,
+It excludes credentials, all `.env` variants, private keys, downloaded model weights,
 environments, API receipts, unselected raw takes, and redundant M4B/ZIP builds.
+
+The generic collector also skips cache directories. Before reviewing the final
+execution plan, add only the exact ASR JSON paths referenced by the finalized
+timing evidence, with their recorded `cacheSha256` values as expected hashes.
+Use `prepare_fileset` to rebuild the augmented plan with fresh source identities
+and totals. Verify all 496 selected caches are included, with no unreferenced
+caches or model weights, and record the finalized evidence hashes used for
+selection. These small files are needed to reproduce timing validation after
+recovery; the generic `--plan` output alone is insufficient for this release.
 
 Execution requires a fresh schema-2 plan. Each source is bound to its device,
 inode, ctime, size, and mtime when planned, then checked through its opened
@@ -133,8 +142,9 @@ does not establish cloud durability.
 python3 -m unittest discover -s web/tests -p test_archive_backup.py
 ```
 
-Twenty-four archive fixtures and 31 backup fixtures verify original bytes, ZIP64 streaming, deterministic paths
+Twenty-four archive fixtures and 32 backup fixtures verify original bytes, ZIP64 streaming, deterministic paths
 and timestamps, checksum binding, full verification, sample restore, exclusive
 files, public-path and symlink defenses, source identity changes, reserve and
 size-cap failures, malformed entries, source replacement after planning,
-nonblocking FIFO rejection, and explicit CLI restoration scope.
+nonblocking FIFO rejection, OAuth credential and generated-directory exclusions,
+and explicit CLI restoration scope.

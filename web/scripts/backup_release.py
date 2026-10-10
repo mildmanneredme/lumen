@@ -89,7 +89,8 @@ def safe_relative(name):
             and not any(part.startswith(".env") for part in lower_parts)
             and filename not in BLOCKED_FILES
             and Path(filename).suffix not in BLOCKED_SUFFIXES
-            and not re.search(r"(?:^|[._-])(?:credentials?|private[-_]key|service[-_]account|api[-_]key|access[-_]token)(?:[._-]|$)", filename),
+            and not re.search(r"(?:^|[._-])(?:credentials?|private[-_]key|service[-_]account|api[-_]key|access[-_]token)(?:[._-]|$)", filename)
+            and not re.search(r"(?:^|[._-])(?:oauth|client[-_]secrets?|refresh[-_]token|id[-_]token|auth[-_]token|tokens?)(?:[._-]|$)", filename),
             f"Excluded credential, receipt, environment, or key path: {name}")
     return path
 
@@ -449,6 +450,12 @@ def collect_release_fileset(root, backup_id):
         if not directory.is_dir():
             continue
         for path in directory.rglob("*"):
+            # Inspect directories directly below every selected root too;
+            # approved character models are intentional source references.
+            if (not path.is_relative_to(root / "web/art-direction") and
+                    any(part.lower() in {"env", "models", "cache", "checkpoints"}
+                        for part in path.relative_to(directory).parts[:-1])):
+                continue
             if not path.is_file():
                 continue
             name = path.relative_to(root).as_posix()
@@ -457,9 +464,6 @@ def collect_release_fileset(root, backup_id):
             try:
                 safe_relative(name)
             except BackupError:
-                continue
-            # GPU environments/models may be nested in old transcription jobs.
-            if any(part.lower() in {"env", "models", "cache", "checkpoints"} for part in path.relative_to(root).parts[2:]) and not name.startswith("web/art-direction/"):
                 continue
             add(name)
     for edition in ["v7", "v8"]:

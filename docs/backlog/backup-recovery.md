@@ -12,6 +12,7 @@ The installed Drive desktop mount is `/Users/robxie/Library/CloudStorage/GoogleD
 - The existing 182 mastered MP3s and 182 lossless mastered WAVs, with QA and mastering checkpoints.
 - Manuscript versions, current generation/chapter/delivery manifests, production scripts, and local audit/recheck evidence.
 - Reader code, assets, tests, continuity references, approved casting records, roadmap and recovery documents, and private release/proof artifacts.
+- The exact 496 selected ASR JSON caches referenced by the finalized timing evidence, with their recorded `cacheSha256` values bound as expected hashes. The generic collector skips cache directories: augment its paths/hash bindings and call `prepare_fileset` again to produce fresh schema-2 identities and totals. Verify all 496 are present, exclude unrelated caches and downloaded model weights, and record the finalized evidence hashes used for selection. A generic `--plan` output alone cannot reproduce the finalizer after recovery.
 
 Receipts and attempt/API response folders, environments, downloaded model caches, credentials, `.env` files, private keys, and redundant M4B/ZIP packages are excluded. Existing Drive packages are preserved. A newly selected audio take changes the fileset and requires a fresh plan. No 128 kbps alternate encode is part of this scope.
 
@@ -71,6 +72,6 @@ For disaster recovery, fetch the complete cloud snapshot into a fresh directory,
 python3 -m unittest discover -s web/tests -p test_backup_release.py -v
 ```
 
-The 31 backup fixtures use tiny temporary files and cover exact copying, production hash mismatch, source changes and same-size replacements after planning, nonblocking FIFO rejection, credential/receipt exclusions, symlink rejection, disk-space reserves, earlier-backup preservation, immutable manifests, and verified sample restore/tamper failure. They do not upload files or read production audio bodies. A further 24 fixtures verify the archive route described in [archive-backup.md](archive-backup.md).
+The 32 backup fixtures use tiny temporary files and cover exact copying, production hash mismatch, source changes and same-size replacements after planning, nonblocking FIFO rejection, OAuth credential/receipt and generated-directory exclusions, symlink rejection, disk-space reserves, earlier-backup preservation, immutable manifests, and verified sample restore/tamper failure. They do not upload files or read production audio bodies. A further 24 fixtures verify the archive route described in [archive-backup.md](archive-backup.md).
 
 Destination discovery and engineering preparation are complete. The actual versioned copy, cloud-sync confirmation, remote inventory/checksum evidence, and production restore sample remain pending until their recorded checks have finished.
