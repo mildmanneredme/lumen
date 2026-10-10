@@ -241,11 +241,123 @@ class BackupReleaseTests(unittest.TestCase):
     def test_restore_sample_verifies_new_restored_bytes(self):
         manifest = self.run_copy()
         restored = self.base / "restore"
-        report = backup.restore_sample(self.root, self.destination, restored, [self.paths[0], self.paths[2]])
+        report = backup.restore_sample(self.root, self.destination, restored, [self.paths[0], self.paths[2]],
+                                       minimum_free_bytes=0)
         self.assertEqual(report["verifiedFiles"], 2)
         self.assertEqual(report["manifestSha256"], manifest["manifestSha256"])
         self.assertEqual(report["verificationScope"], "local-restored-sample")
         for name in [self.paths[0], self.paths[2]]:
+            self.assertEqual((restored / name).read_bytes(), (self.root / name).read_bytes())
+
+    def test_restore_default_reserve_rejects_insufficient_capacity_before_creation(self):
+        self.run_copy()
+        restored = self.base / "restore-default-reserve"
+        sample_bytes = (self.root / self.paths[0]).stat().st_size
+        usage = type("Usage", (), {"free": sample_bytes + backup.DEFAULT_RESERVE_BYTES - 1})()
+        with patch.object(backup.shutil, "disk_usage", return_value=usage):
+            with self.assertRaisesRegex(backup.BackupError, "space"):
+                backup.restore_sample(self.root, self.destination, restored, [self.paths[0]])
+        self.assertFalse(restored.exists())
+
+    def test_restore_capacity_counts_every_selected_file_and_reserve(self):
+        self.run_copy()
+        restored = self.base / "restore-selected-capacity"
+        selected = [self.paths[0], self.paths[2]]
+        total = sum((self.root / name).stat().st_size for name in selected)
+        reserve = 17
+        usage = type("Usage", (), {"free": total + reserve - 1})()
+        with patch.object(backup.shutil, "disk_usage", return_value=usage):
+            with self.assertRaisesRegex(backup.BackupError, "space"):
+                backup.restore_sample(self.root, self.destination, restored, selected,
+                                      minimum_free_bytes=reserve)
+        self.assertFalse(restored.exists())
+
+    def test_restore_invalid_reserve_rejects_before_creation(self):
+        self.run_copy()
+        restored = self.base / "restore-invalid-reserve"
+        for reserve in [-1, True, 1.5, "17", None]:
+            with self.subTest(reserve=reserve):
+                with self.assertRaisesRegex(backup.BackupError, "Invalid free-space reserve"):
+                    backup.restore_sample(self.root, self.destination, restored, [self.paths[0]],
+                                          minimum_free_bytes=reserve)
+                self.assertFalse(restored.exists())
+
+    def test_restore_cli_honors_explicit_reserve_and_zero_override(self):
+        self.run_copy()
+        restored = self.base / "restore-cli-reserve"
+        sample_bytes = (self.root / self.paths[0]).stat().st_size
+        usage = type("Usage", (), {"free": sample_bytes})()
+        arguments = ["--root", str(self.root), "--restore-sample", str(self.destination),
+                     "--destination", str(restored), "--path", self.paths[0], "--minimum-free-bytes"]
+        with patch.object(backup.shutil, "disk_usage", return_value=usage):
+            with self.assertRaises(SystemExit) as failure:
+                backup.main(arguments + ["1"])
+            self.assertEqual(failure.exception.code, 2)
+            self.assertFalse(restored.exists())
+            self.assertEqual(backup.main(arguments + ["0"]), 0)
+        self.assertEqual((restored / self.paths[0]).read_bytes(), (self.root / self.paths[0]).read_bytes())
+
+    def test_restore_rechecks_remaining_sample_capacity_before_next_file(self):
+        self.run_copy()
+        manifest_before = (self.destination / "backup-manifest.json").read_bytes()
+        selected = [self.paths[0], self.paths[2]]
+        sizes = [(self.root / name).stat().st_size for name in selected]
+        reserve = 17
+        restored = self.base / "restore-space-race"
+        original = backup.copy_hashed
+        completed = []
+        def copy_then_lose_space(source, destination, **kwargs):
+            result = original(source, destination, **kwargs)
+            completed.append(destination)
+            return result
+        def available(_):
+            free = sum(sizes) + reserve if not completed else sizes[1] + reserve - 1
+            return type("Usage", (), {"free": free})()
+        with patch.object(backup.shutil, "disk_usage", side_effect=available), \
+             patch.object(backup, "copy_hashed", side_effect=copy_then_lose_space):
+            with self.assertRaisesRegex(backup.BackupError, "space.*incomplete"):
+                backup.restore_sample(self.root, self.destination, restored, selected,
+                                      minimum_free_bytes=reserve)
+        self.assertEqual(completed, [restored / selected[0]])
+        self.assertEqual((restored / selected[0]).read_bytes(), (self.root / selected[0]).read_bytes())
+        self.assertFalse((restored / selected[1]).exists())
+        self.assertEqual((self.destination / "backup-manifest.json").read_bytes(), manifest_before)
+
+    def test_restore_rechecks_remaining_bytes_before_every_chunk(self):
+        selected = [self.paths[0], self.paths[2]]
+        (self.root / selected[0]).write_bytes(b"x" * (backup.CHUNK_BYTES * 2 + 17))
+        self.run_copy()
+        manifest_before = (self.destination / "backup-manifest.json").read_bytes()
+        total = sum((self.root / name).stat().st_size for name in selected)
+        reserve = 64
+        restored = self.base / "restore-chunk-space"
+        target = restored / selected[0]
+        def available(_):
+            written = target.stat().st_size if target.exists() else 0
+            unrelated_usage = 1 if written >= backup.CHUNK_BYTES else 0
+            return type("Usage", (), {"free": total + reserve - written - unrelated_usage})()
+        with patch.object(backup.shutil, "disk_usage", side_effect=available):
+            with self.assertRaisesRegex(backup.BackupError, "space.*incomplete"):
+                backup.restore_sample(self.root, self.destination, restored, selected,
+                                      minimum_free_bytes=reserve)
+        self.assertEqual(target.stat().st_size, backup.CHUNK_BYTES)
+        self.assertEqual(target.read_bytes(), b"x" * backup.CHUNK_BYTES)
+        self.assertFalse((restored / selected[1]).exists())
+        self.assertEqual((self.destination / "backup-manifest.json").read_bytes(), manifest_before)
+
+    def test_restore_exact_capacity_preserves_default_reserve(self):
+        self.run_copy()
+        selected = [self.paths[0], self.paths[2]]
+        total = sum((self.root / name).stat().st_size for name in selected)
+        restored = self.base / "restore-exact-default-capacity"
+        def available(_):
+            written = sum((restored / name).stat().st_size for name in selected if (restored / name).exists())
+            return type("Usage", (), {"free": total + backup.DEFAULT_RESERVE_BYTES - written})()
+        with patch.object(backup.shutil, "disk_usage", side_effect=available):
+            report = backup.restore_sample(self.root, self.destination, restored, selected)
+            self.assertEqual(available(None).free, backup.DEFAULT_RESERVE_BYTES)
+        self.assertEqual(report["verificationScope"], "local-restored-sample")
+        for name in selected:
             self.assertEqual((restored / name).read_bytes(), (self.root / name).read_bytes())
 
     def test_restore_rejects_public_runtime_destination_before_creation(self):

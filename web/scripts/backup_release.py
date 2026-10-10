@@ -266,7 +266,7 @@ def file_digest(path):
     return result.hexdigest()
 
 
-def copy_hashed(source, destination, *, maximum_bytes=None, expected_source=None):
+def copy_hashed(source, destination, *, maximum_bytes=None, expected_source=None, before_write=None):
     """Copy at most the approved byte count; reject growth before writing it."""
     require(maximum_bytes is None or type(maximum_bytes) is int and maximum_bytes >= 0,
             "Invalid backup copy byte limit")
@@ -280,6 +280,8 @@ def copy_hashed(source, destination, *, maximum_bytes=None, expected_source=None
                 require_source_state(before, expected_source)
             opened_state = source_state(before)
             limit = before.st_size if maximum_bytes is None else maximum_bytes
+            if before_write:
+                before_write(0)
             with opened_parent(destination, create=True) as (outgoing_parent, outgoing_name):
                 destination_fd = os.open(outgoing_name, os.O_CREAT | os.O_EXCL | os.O_WRONLY | os.O_NOFOLLOW,
                                          0o600, dir_fd=outgoing_parent)
@@ -288,11 +290,18 @@ def copy_hashed(source, destination, *, maximum_bytes=None, expected_source=None
                         block = incoming.read(min(CHUNK_BYTES, limit - count))
                         require(bool(block), "Backup source byte count changed during copy")
                         require_source_state(os.fstat(incoming.fileno()), opened_state)
+                        if before_write:
+                            before_write(count)
                         outgoing.write(block); result.update(block); count += len(block)
+                        if before_write:
+                            # Account for buffered bytes before the next capacity check.
+                            outgoing.flush()
                         require_source_state(os.fstat(incoming.fileno()), opened_state)
                     require(not incoming.read(1), "Backup source grew beyond its approved byte count")
                     require_source_state(os.fstat(incoming.fileno()), opened_state)
                     outgoing.flush(); os.fsync(outgoing.fileno())
+                    if before_write:
+                        before_write(count)
     return count, result.hexdigest()
 
 
@@ -392,7 +401,8 @@ def verify_snapshot(snapshot, paths=None):
             "remoteSyncVerified": False, "verifiedAt": datetime.now(timezone.utc).isoformat()}
 
 
-def restore_sample(root, snapshot, destination, paths):
+def restore_sample(root, snapshot, destination, paths, *, minimum_free_bytes=DEFAULT_RESERVE_BYTES):
+    require(type(minimum_free_bytes) is int and minimum_free_bytes >= 0, "Invalid free-space reserve")
     root = Path(root).resolve()
     destination = Path(destination).absolute()
     require(not destination.exists() and not destination.is_symlink(), "Restore destination already exists")
@@ -403,13 +413,25 @@ def restore_sample(root, snapshot, destination, paths):
             "Restore destination cannot be public web/dist")
     report = verify_snapshot(snapshot, paths)
     snapshot, _, rows = manifest_files(snapshot, paths)
+    remaining = sum(row["bytes"] for row in rows)
+    require(shutil.disk_usage(parent).free >= remaining + minimum_free_bytes,
+            "Insufficient local free space for restored sample plus reserve")
     create_snapshot_directory(destination)
-    for row in rows:
-        source = owned_file(snapshot, "files/" + row["path"])
-        count, source_hash = copy_hashed(source, destination / row["path"], maximum_bytes=row["bytes"])
-        require(count == row["bytes"] and source_hash == row["sha256"], f"Restore source changed during copy: {row['path']}")
-        restored = owned_file(destination, row["path"])
-        require(file_digest(restored) == row["sha256"], f"Restored byte hash differs: {row['path']}")
+    def check_capacity(copied=0):
+        require(shutil.disk_usage(parent).free >= remaining - copied + minimum_free_bytes,
+                "Insufficient local free space during restore; incomplete sample retained")
+    try:
+        for row in rows:
+            check_capacity()
+            source = owned_file(snapshot, "files/" + row["path"])
+            count, source_hash = copy_hashed(source, destination / row["path"], maximum_bytes=row["bytes"],
+                                             before_write=check_capacity)
+            require(count == row["bytes"] and source_hash == row["sha256"], f"Restore source changed during copy: {row['path']}")
+            restored = owned_file(destination, row["path"])
+            require(file_digest(restored) == row["sha256"], f"Restored byte hash differs: {row['path']}")
+            remaining -= count
+    except (OSError, BackupError) as exc:
+        raise BackupError(f"Restore remains incomplete: {exc}") from exc
     return dict(report, verificationScope="local-restored-sample")
 
 
@@ -528,7 +550,8 @@ def main(argv=None):
         else:
             require(args.root is not None, "--restore-sample requires explicit --root for the public boundary")
             require(args.destination is not None and args.path, "--restore-sample requires --destination and explicit --path values")
-            print(json.dumps(restore_sample(args.root, args.restore_sample, args.destination, args.path)))
+            print(json.dumps(restore_sample(args.root, args.restore_sample, args.destination, args.path,
+                                            minimum_free_bytes=args.minimum_free_bytes)))
     except (BackupError, OSError, ValueError) as exc:
         parser.exit(2, f"Backup failed: {exc}\n")
     return 0
