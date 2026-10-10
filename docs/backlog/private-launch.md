@@ -1,6 +1,6 @@
 # Private release operations
 
-The first full-book release uses the stable Lumen Vercel project, both unchanged 192 kbps editions, female narration by default, generic illustration placeholders, and one shared access code for approximately 50 readers. Character and artwork review continues separately. This guide records the operational plan; it does not claim a deployment, paid provisioning, physical-phone acceptance, or exercised production rollback.
+The first full-book release uses the stable Lumen Vercel project, both unchanged 192 kbps editions, female narration by default, generic illustration placeholders, and one shared access code for approximately 50 readers. Character and artwork review continues separately. The private R2 upload and Worker deployment are complete. This guide records the remaining launch plan; production promotion, physical-phone acceptance and an exercised production rollback are not yet complete.
 
 The author has now selected and enabled Cloudflare R2. Its private bucket and Worker gateway replace the proposed Blob delivery. See [Cloudflare delivery](cloudflare-delivery.md) for the sole access authority, direct media streaming, upload verification and candidate promotion procedure. Keep Workers on its free plan while measuring hosted behavior.
 
@@ -8,7 +8,7 @@ The author has now selected and enabled Cloudflare R2. Its private bucket and Wo
 
 Rob Xie owns the private audience, support, hosting budget, release decisions and incident response. The welcome screen directs readers to the person who shared their access code for help or feedback. No email campaign, feedback database or additional analytics service is required for this release.
 
-Use the hosting provider's private request/error and transfer/spend records. Record only the information needed to diagnose delivery: time, response status, asset path, chapter/narrator identifier, and release/deployment identity. Do not copy access codes, session cookies, environment values, manuscript passages or complete browser bookmarks into logs or issue reports.
+Use the hosting provider's private request/error and transfer/spend records. Record only the information needed to diagnose delivery: time, response status, asset path, chapter/narrator identifier, and release/deployment identity. Do not copy access codes, session cookies, signed media URL queries, environment values, manuscript passages or complete browser bookmarks into logs or issue reports. Worker observability and Logpush remain disabled; use sanitized status/path evidence rather than enabling credential-bearing logs.
 
 ## Promotion evidence
 
@@ -21,7 +21,7 @@ Before publishing the full book, retain a private release record containing:
 - The immediate previous production deployment ID/URL, source commit, app shell identity and matching environment/index pointer. Preserve the pilot as the initial fallback.
 - Drive backup creation, full local verification and sample restoration records, with cloud sync/checksum status stated separately.
 
-The current locally verified media release is `lumen-private-192-v4`, with 182 original MP3s and 183 JSON files. The current production pilot remains unchanged until candidate hosting verification passes. Deploy from `web/` using the existing project configuration; root and web Git deployment guards prevent automatic publication of repository pushes.
+The verified R2 media release is `lumen-private-192-v4`, with 182 original MP3s and 183 JSON files. All 365 assets passed full remote SHA-256 and sample-range verification; the immutable server index was published last and the temporary upload Worker was removed. The current production pilot remains unchanged until candidate hosting verification passes. Deploy from `web/` using the existing project configuration; root and web Git deployment guards prevent automatic publication of repository pushes.
 
 ## First 48 hours
 
@@ -32,7 +32,7 @@ Check provider request/error logs, media transfer, budget consumption and reader
 - A new missing immutable asset, repeated 5xx response or interrupted chapter transition requires investigation against the recorded inventory and provider logs. Reproduce before changing the release pointer.
 - Set an account spending alert at 75% of the approved monthly ceiling, plus an alert for a forecast exceeding that ceiling where the account supports it. At the ceiling, stop new invitations and new media publication while reviewing the funded plan. Do not assume an alert is a hard spending cap or silently interrupt current listening.
 
-The monthly ceiling, available account credits and repository privacy change still require the outstanding author decision. Confirm the provider's actual alert/limit behavior before provisioning; no new budget is implied by these thresholds.
+The monthly ceiling, available account credits and repository privacy change still require the outstanding author decision. Confirm the provider's actual alert/limit behavior before production promotion; no paid Workers upgrade or new spending ceiling is implied by these thresholds.
 
 ## Coherent rollback
 

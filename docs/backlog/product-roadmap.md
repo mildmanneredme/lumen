@@ -1,6 +1,6 @@
 # Product roadmap: full Lumen audiobook web launch
 
-Status: private full-book implementation and verification; hosting promotion and cloud-backup byte verification pending. Updated: 10 October 2026. Primary device: Android with Chrome.
+Status: private full-book implementation with verified R2 media upload; protected-preview browser verification, production promotion and cloud-backup byte verification pending. Updated: 10 October 2026. Primary device: Android with Chrome.
 
 ### Execution record — 10 October 2026
 
@@ -15,7 +15,8 @@ The author selected **local-only access for the narration audit** and requested 
 - **Timing evidence:** all 496 selected raw clips have local ASR caches. Across both recordings, 23,673 sentence positions have measured cues and 2,171 are explicitly unavailable. Uncertain passages retain their exact manuscript text and audio; they receive no invented seek/highlight time. Technical alignment verification does not claim a full human timing review.
 - **Local export verified:** 365 immutable assets / 2,667,475,488 bytes prepared after fresh verification of actual masters, selected raw sources and exact ASR caches; all 1,095 inventory range samples match source bytes. No remote publication is implied.
 - **Backup created and locally verified:** `lumen-backup-20261010-v4-1249` contains 6,340 files / 23,510,599,520 source bytes in a 20,495,430,382-byte ZIP. Full local hash verification and a seven-file restore passed. Drive confirms the versioned archive in the owner-only Lumen folder with the expected size; the checksum companion also matches downloaded bytes. Full cloud byte verification remains pending because the connector rejects files over 256 MiB. [Backup evidence and recovery](backup-recovery.md).
-- **Remaining release work:** private Blob provisioning/upload and hosted range verification, stable-origin deployment, Drive archive cloud checksum/remote restore proof, hosting budget and repository privacy decision. [Private release operations](private-launch.md) assigns support, incident thresholds and coherent rollback evidence. Character/model and story artwork review remain separate holds.
+- **Cloudflare provisioned and uploaded:** [PR #9](https://github.com/mildmanneredme/lumen/pull/9) merged after independent review, 118 backend/operator/deployment checks, 27 actual workerd HTTP checks and a clear GitHub review. The private APAC Standard R2 bucket contains all 365 immutable assets plus the index (2,667,632,125 bytes). Every object passed a complete remote SHA-256 read; all 1,095 sample ranges matched. The temporary uploader was deleted after verification. Workers stays on its free plan and bucket public domains remain disabled. Live gateway verification passed 39 checks, all 182 audio header/grant bindings and a complete 35,239,853-byte chapter hash, including exact ranges, CORS and access denials. Direct native Chrome audio passed 18 further checks in both voices, including unbuffered seek, ±15 seconds and resume; it did not test the Vercel app UI or bookmarks. The protected Vercel preview is built; the stable pilot is unchanged. [Cloudflare delivery](cloudflare-delivery.md).
+- **Remaining release work:** protected Vercel browser playback evidence, coherent preview rollback and stable-origin deployment, Drive archive cloud checksum/remote restore proof, hosting budget and repository privacy decision. [Private release operations](private-launch.md) assigns support, incident thresholds and coherent rollback evidence. Character/model and story artwork review remain separate holds.
 
 The author has authorized a full private launch with placeholders after technical verification. Earlier public-beta/artwork and complete-listening gates below are superseded where they conflict with the recorded release specification. Unperformed checks remain open; the production pilot is unchanged until verified promotion.
 
@@ -33,7 +34,7 @@ The first full-book release should provide both approved voices, faithful prose,
 | Audio | Both unchanged 192 kbps editions, 182 physical MP3 hashes verified, source-bound author as-is approval, measured maps with explicit gaps, and local author audit | Optional complete human listening/alignment review; no regeneration required for this private release |
 | Text | Faithful canonical v6 prose, 12,922 stable sentence anchors, checked pilot migration, full reader integration and verified private export | Future manuscript migrations |
 | Artwork | Painted realism; private cast bible; Adrian and Daniel model sheets | Approval of provisional models, remaining needed character/location references, chapter beat boards and final illustrations |
-| Hosting | Stable Vercel pilot; reviewed invitation/session/private Blob API and root/web Git deployment guards | Approved hosting budget, private Blob provisioning/upload, actual hosted Range/authorization verification and manual CLI promotion |
+| Hosting | Stable Vercel pilot; private R2 bucket and reviewed Worker gateway; complete 365-asset hash/range upload verification; protected Vercel candidate built; Git deployment guards | Hosted browser playback and authorization verification, coherent rollback, production bridge settings and CLI promotion; spending ceiling |
 | Offline | Cached reader shell and visited paintings; audio streams online | Visited chapter text/timing cache and CDN artwork integration; offline audio is later work |
 
 ### Audio inventory verified for this roadmap
@@ -58,7 +59,7 @@ Record the answers in the release specification. These are planning decisions, n
 - [x] **Voice experience:** Female narrator / Autonoe by default; Male narrator / Charon selectable and remembered. This supersedes the initial Charon recommendation. Confirm whether new listeners choose a voice before starting and whether both must be ready for the public launch.
 - [x] **Illustration coverage:** generic placeholders authorized for this private launch; character and story imagery review continues separately. Historical illustration planning: approve a baseline for every chapter and a richer beat list for priority chapters. An intentional cover treatment is acceptable for a declared audio beta; it must not silently stand in for a finished illustrated chapter.
 - [x] **Continuation behavior:** implemented as an opt-in preference; returning visits remain paused. Initial planning: recommend an auto-continue preference after playback has started, plus visible Next chapter and Previous chapter controls. Returning visits open paused with Continue.
-- [ ] **Hosting budget and account:** choose a media provider, initial audience estimate, monthly spending limit, and person responsible for alerts and incident response. Include transcription, artwork revisions, and hosting separately from earlier TTS generation budgets.
+- [ ] **Hosting budget:** Cloudflare R2 and Workers Free are selected and provisioned for approximately 50 readers; Rob Xie owns operations. Record the monthly spending ceiling and account alerts/usage-limit response. Include artwork revisions and hosting separately from earlier TTS generation budgets; no paid Workers upgrade is authorized.
 - [x] **Public address:** preserve the current origin for existing bookmarks. If a custom domain is desired, plan an explicit bookmark export/import or migration flow before switching; a redirect alone cannot transfer browser storage.
 - [x] **Download products:** M4B/ZIP download products remain later work. Initial planning: decide whether to offer the existing M4B/ZIP packages at launch. Download buttons are separate from offline playback inside the app.
 
@@ -161,7 +162,7 @@ Owner: engineering, reviewed by author/audio editor.
 
 Owner: engineering/operations, budget approved by product.
 
-**Recommended starting point:** keep the app on Vercel and compare Vercel Blob with Cloudflare R2 using the measured traffic model. Vercel Blob reduces account/setup work; R2 is attractive for a public full-book audience because its direct egress is not billed. Select one provider for the beta.
+**Selected delivery:** private R2 Standard storage with a Workers Free gateway, retaining the existing Vercel reader. R2 public domains remain disabled. The provider comparison below is historical planning; direct R2 egress is free while storage, operations and attached services retain their own allowances and limits.
 
 | Option | Useful fit | Decision and verification |
 | --- | --- | --- |
@@ -169,16 +170,17 @@ Owner: engineering/operations, budget approved by product.
 | Cloudflare R2 Standard + custom domain | Public audio/art delivery with no direct R2 egress charge | Confirm account/domain setup, storage/operation costs, caching rules, and browser headers. Use a production custom domain; r2.dev is intended for development. Other attached metered services can still charge. [R2 pricing](https://developers.cloudflare.com/r2/pricing/), [public buckets](https://developers.cloudflare.com/r2/buckets/public-buckets/) |
 | Private/paid delivery | Invite-only or purchased access | Protect text, timing data, artwork, and audio. Implement private objects/authorized delivery, entitlement checks, URL refresh, and byte-range playback tests; prove the chosen provider's approach before selection. An obscure public URL or CORS policy does not restrict who can download a book. |
 
-- [ ] Create the selected store/bucket with the publication model's access policy; configure production and preview environments and narrowly scoped upload credentials outside browser code/Git.
+- [x] Create the private store/bucket and scoped uploader outside browser code/Git. R2 public domains are disabled; encrypted Worker and preview bridge settings are configured.
+- [ ] Configure the three production bridge settings after candidate verification; retain the previous production identity and matching rollback configuration.
 - [x] Add invite-only authorized manifest/data delivery; fixtures verify expired/revoked access, logout, and unauthorized requests for every protected asset type. Real-host proof remains pending. Define URL renewal across pauses, new Range requests, and chapter transitions; include any required authorization/streaming service in the capacity model.
-- [ ] Upload only approved release assets, using immutable content-hashed keys. Set audio/mpeg, image/webp, and JSON content types; preserve exact encoded audio bytes.
-- [ ] Configure long-lived caching for immutable assets and revalidation for the mutable book/release pointer. Check large-file caching limits if offering M4B/ZIP downloads; those packages are much larger than chapter streams.
-- [ ] Configure CORS for the app origin and controlled preview origins, allowing GET/HEAD and the needed Range behavior. Expose Content-Range, Accept-Ranges, Content-Length, and ETag for verification where needed. Keep anonymous cross-origin audio compatible with the current audio element. [CORS configuration](https://developers.cloudflare.com/r2/buckets/cors/)
-- [ ] Verify real GET Range requests return **206**, exact requested bytes, a correct Content-Range, and an unchanged total size. Test beginning, middle, end, seeking into an unbuffered section, and unsatisfiable ranges.
+- [x] Upload the approved private release under immutable content-hashed keys: 182 original audio/mpeg MP3s and 183 JSON files. No story artwork was added; original audio bytes are preserved.
+- [x] Apply private/no-store to protected JSON and media, and keep private requests out of the service worker. Immutable R2 keys and a hash-bound index are retained for rollback. Public caching and M4B/ZIP downloads remain separate future choices.
+- [x] Configure private Worker CORS for the grant’s exact reader origin, including the canonical app and explicitly allowed preview. Live gateway checks passed canonical/opaque-origin CORS, authenticated preflight, HEAD, exposed range/length/ETag headers and invalid/foreign-origin denials. Native Vercel preview acceptance remains separate. [Worker delivery](cloudflare-delivery.md)
+- [x] Verify live Cloudflare GET ranges return **206**, exact bytes, correct Content-Range and unchanged total size, including beginning/middle/end, closed/open/suffix ranges, conditionals and unsatisfiable ranges. Direct native Chrome also sought unbuffered audio in both voices. Vercel app-control/browser acceptance remains open.
 - [ ] Verify cache behavior and byte ranges together on the actual CDN, including cold responses. Check Content-Length and partial-response behavior rather than assuming an upload proves streamability. [Cloudflare range/cache behavior](https://developers.cloudflare.com/cache/concepts/cache-responses/)
-- [ ] Verify every uploaded object's checksum against the release inventory. Keep local hashes as authority; do not assume an object-store ETag is a SHA-256.
+- [x] Verify all 365 uploaded object SHA-256 values through complete remote reads against the release inventory; also verify all 1,095 sample ranges and final object identities. R2 ETags are recorded only as validators.
 - [ ] Point a preview manifest to uploaded assets; test Android Chrome against the real media hostname.
-- [ ] Publish the manifest only after every referenced required asset passes verification. Keep prior assets available for open tabs, old timing maps, and rollback.
+- [x] Publish the immutable server index last, after every required object passed integrity verification. This completes storage publication, not production reader promotion; prior assets remain available for rollback.
 
 **Exit gate:** verified public or authorized delivery, native seeking on the chosen host, a funded operating plan, and bulk media archives outside web/dist. Prefer direct CDN media delivery; any provider-required authorized streaming route must preserve ranges and have measured transfer/function costs.
 
@@ -294,7 +296,7 @@ These are derived estimates from current local file sizes, excluding images, ret
 - [ ] Set a monthly limit and actionable alerts; confirm the host's behavior at allowance/spend limits and a response that preserves existing listeners.
 - [ ] Measure a complete and a partial beta listen on the actual host; compare metered usage with estimates.
 - [ ] Keep app generation/TTS out of user playback requests. CDN media delivery should scale independently from app deployments or a database.
-- [ ] Review current provider prices and account entitlements at provisioning time. Vercel Blob bills delivery and associated requests/origin traffic; R2 bills storage/operations and has no direct egress fee, while attached services can add charges. Provider cost is not the total operating cost. [Vercel usage](https://vercel.com/docs/vercel-blob/usage-and-pricing), [R2 usage](https://developers.cloudflare.com/r2/pricing/)
+- [x] Review current provider prices and account entitlements at provisioning time. R2 Standard includes account-wide storage/operation allowances and no direct Internet egress fee; Workers remains Free. The 2.6676 GB release fits otherwise-unused storage allowances. Overage billing, request/CPU limits, existing Vercel charges and an author-set spending ceiling remain separate. Provider cost is not the total operating cost. [Vercel usage](https://vercel.com/docs/vercel-blob/usage-and-pricing), [R2 usage](https://developers.cloudflare.com/r2/pricing/)
 
 ## 6. Work order and first implementation slice
 
@@ -380,4 +382,4 @@ Consult [v7 mastering report](../../Audiobook/v7/mastered/mastering-report.json)
 - [Progress tests](../../web/tests/progress.cjs), [reader checks](../../web/tests/browser-smoke.cjs), [resume checks](../../web/tests/resume-navigation.cjs), [phone/PWA checks](../../web/tests/mobile-pwa.cjs)
 - [Latest deployment evidence](../../web/data/deployment.json)
 
-External hosting/browser documentation was checked on 10 October 2026. Recheck prices, account limits, and provider behavior when implementing; the architecture and targets above are recommendations, not provisioned infrastructure.
+External hosting/browser documentation and account settings were checked on 10 October 2026. R2 storage and the Worker gateway are provisioned and the immutable release upload is verified. Hosted browser checks, coherent rollback, stable-origin promotion and physical-device acceptance remain open; completed fixtures or storage uploads do not establish those results.

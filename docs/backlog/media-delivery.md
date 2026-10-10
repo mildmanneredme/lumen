@@ -1,10 +1,10 @@
 # Lumen media delivery and release operations
 
-Updated 10 October 2026. Engineering preparation is independent of character finalization; image generation remains delayed. No full-book media has been uploaded, no storage has been provisioned, and no billing plan has been changed by this work.
+Updated 10 October 2026. The author selected Cloudflare and enabled R2. All 365 immutable release assets and their server index are now uploaded to private R2 storage and independently verified by full SHA-256 reads and 1,095 sample ranges. The temporary uploader has been removed. The protected Vercel candidate is built; hosted browser verification and stable-origin promotion remain pending. Character/artwork review continues separately with generic placeholders in this release.
 
 ## Implemented delivery proof
 
-The selected launch uses private Vercel Blob behind authenticated, same-origin `/api/` routes. [Private server operations](../../web/server/README.md) document the implemented uploader, full-object/range verification, source-bound server index and invitation lifecycle. Its private verifier first checks guest denial and the exact authenticated `/api/book` manifest, then authenticated HEAD, ranges and unsatisfiable-range behavior for every asset. Responses use `private, no-store`; the service worker bypasses private requests. The standard `npm run test:private` command includes all 32 backend/operator and deployment-resource regressions. Actual Blob creation, upload, secure environment configuration and hosted verification await the spending ceiling.
+The selected launch uses private R2 and a Cloudflare Worker behind the stable Vercel reader API. The Worker owns access policy and sessions. Vercel forwards small JSON requests over an authenticated bridge and redirects authorized audio to the Worker; MP3 bodies stay out of Vercel Functions. [Cloudflare delivery](cloudflare-delivery.md) records secret ownership, signed media grants, range streaming, actual upload receipts and promotion gates. Responses use `private, no-store`; the service worker bypasses private requests. The reviewed integration passed 118 backend/operator/deployment checks and 27 actual workerd HTTP checks. Live gateway authorization passed 39 checks, including all 182 audio HEAD/grant bindings and a complete largest-chapter stream. Direct native Chrome audio also passed 18 checks in both voices, including cold seeking, ±15 seconds and resume. Those proofs remain separate from complete R2 object integrity, Vercel app/browser acceptance and physical-device testing. The older private Blob implementation remains an optional fallback; no Blob store was provisioned.
 
 The Python [verify_delivery.py](../../web/scripts/verify_delivery.py) is the separate **public-media profile** retained for future public-delivery choices. Its input inventory is an operator-private file; the URLs it tests must allow anonymous public access. It performs a HEAD, three GET ranges, and an unsatisfiable range for each asset. The beginning/middle/end bodies must match independently computed source sample SHA-256 values, the exact inclusive `Content-Range`, total file size, and `Content-Length`. Wrong bytes or file totals, compressed range bodies, missing CORS, unexpected redirects, and inadequate cache policies fail the check. An ETag is recorded as a provider validator; it is never treated as a SHA-256. Do not use this public profile to certify the selected private release.
 
@@ -20,7 +20,7 @@ Eighteen tests exercise tiny local HTTP fixtures, including thirteen malformed r
 python3 -m unittest discover -s web/tests -p test_verify_delivery.py
 ```
 
-## Upload inventory contract
+## Retained public-verifier inventory contract
 
 Keep the upload inventory with private release artifacts outside `web/dist`. It is produced by the release exporter and used by a separately authorized uploader/verifier. Public manifests must omit local paths, authoring references, credentials, and signed links intended only for an audit.
 
@@ -70,7 +70,7 @@ The source inventory contains **182 MP3s / 2,657,554,540 bytes**. Autonoe is 1,3
 
 Two retained audio releases occupy 5.3151 GB; three occupy 7.9727 GB. Art, text, timings, alternate encodes, backups, and download packages add to storage. The two existing M4Bs are about 0.94 GB each; their ZIPs are about 1.33 GB each. Chapters fit both providers' ordinary cache size limits. Entire M4B/ZIP products exceed those limits and need separate measured download delivery. Vercel Blob's cache ceiling is 512 MB; Cloudflare Free/Pro/Business cache ceiling is also 512 MB. [Blob limits](https://vercel.com/docs/vercel-blob/usage-and-pricing), [Cloudflare cache limits](https://developers.cloudflare.com/cache/concepts/default-cache-behavior/).
 
-**Recorded choice:** private Vercel Blob with the existing stable Vercel app origin and approximately 50 invitees. The public-provider comparison below is retained as earlier planning evidence; it does not change that decision. The private architecture also meters function/transfer usage and needs an explicit spending ceiling before provisioning.
+**Recorded choice:** private R2 Standard storage with a Workers Free gateway, the stable Vercel app origin and approximately 50 invited readers. The verified release occupies 2,667,632,125 bytes including its index. The account had no existing R2 storage during preflight. No paid Workers upgrade was performed. The following public-provider cost comparison is retained as earlier planning evidence; it does not measure this private Worker gateway. R2 storage/operation overages remain billable and the account spending ceiling is still an author decision.
 
 R2 Standard currently includes 10 GB-month, one million Class A operations, and ten million Class B operations monthly. Above those allowances it charges $0.015/GB-month, $4.50/million Class A, and $0.36/million Class B; direct Internet egress is free. Billing rounds up units, and these allowances apply to the account, not solely Lumen. Use Standard rather than Infrequent Access for actively played audio. [R2 pricing](https://developers.cloudflare.com/r2/pricing/).
 
@@ -93,22 +93,24 @@ At an illustrative **30% byte-weighted cache miss ratio**, Singapore origin-tran
 
 For R2, an illustrative 20 origin reads per chapter produces 1,820 reads per full listen: 45,500 / 182,000 / 1.82 million / 18.2 million in the four rows. With otherwise-unused free allowances, only the last exceeds ten million; its rounded additional read charge is approximately $3.24. This assumption must be replaced with observed origin operations. Cloudflare can expand a small client range to 1 MiB boundaries and issue several origin requests, so browser request counts alone cannot price R2 reads. [Range behavior](https://developers.cloudflare.com/cache/reference/range-requests/), [R2 billing](https://developers.cloudflare.com/r2/pricing/).
 
-## Account evidence and decisions required
+## Account evidence and remaining decisions
 
 Read-only CLI checks on 10 October confirmed Vercel CLI **48.6.0**, project `lumen`, project ID `prj_g2eoQPikqSKEEEouyT3FBTuEfACs`, and scope `robert-xies-projects`. The stable app origin remains `https://lumen-phi-five.vercel.app/`. [vercel.json](../../web/vercel.json) sets `outputDirectory: dist`; deploy from `web/` so that local configuration applies. Remote project inspection reports default framework settings, so it does not by itself prove the effective local deployment output. Existing release evidence is in [deployment.json](../../web/data/deployment.json).
 
-The installed CLI exposes public Blob operations and store add/get/remove. Its help does not expose the newer private/signed-URL commands; use an explicitly selected compatible SDK/CLI if choosing that architecture. No credentials were printed or copied. These checks do not establish billing plan, unused allowances, current store connection, Cloudflare account/domain ownership, or a monthly limit.
+The original installed Vercel CLI was 48.6.0; candidate deployment and environment operations now use pinned CLI 63.1.2. Cloudflare CLI authentication, R2 activation, a private APAC Standard bucket and the Workers gateway were verified. Original media hashes and stable logical asset URLs are unchanged. Worker observability and Logpush are disabled to avoid recording signed media credentials. Local operator environments follow the encrypted dotenvx convention. A complete Vercel browser proof remains pending the author’s decision on a temporary deployment-protection testing token; deployment protection remains enabled.
 
-- [ ] Author selects public/free, invite-only, or paid access and approves what material may leave local staging.
-- [ ] Author/operations selects provider, expected audience, monthly spending ceiling, alert recipient, and response to usage limits.
-- [ ] Audio/editor approves the release's exact recordings; alignment reviewer approves the final hashes and timing maps.
-- [ ] Operations verifies account entitlement, actual regional rates, and narrow upload credentials without placing them in browser code or Git.
-- [ ] If R2 is selected, identify an existing domain/Cloudflare account or approve domain setup. Changing the **media hostname** does not require changing the stable reader origin.
-- [ ] Private/paid access adds authentication, entitlement checks, protected text/timings/art, method-specific signed requests, renewal, logout/expiry tests, and explicit offline cache rules before publication.
+- [x] Author selected a private shared-code release of current audio, faithful prose and placeholder artwork for approximately 50 readers.
+- [ ] Record the monthly spending ceiling and account alert/limit response. Cloudflare, the audience and owner Rob Xie are already selected; Workers stays Free unless separately authorized.
+- [x] Author accepted both unchanged 192 kbps editions as-is. Source-bound hashes and technical timing verification passed; unavailable cues remain explicit and no full human timing review is claimed.
+- [x] Verified R2 entitlement, Standard allowances, private bucket policy, encrypted server configuration and a separate temporary upload secret; uploader removed after complete integrity verification.
+- [x] Provisioned the authorized Cloudflare account and Worker hostname. R2 public domains remain disabled; the stable reader origin is unchanged.
+- [ ] Complete hosted browser verification and coherent rollback evidence before stable-origin publication. Session/invite/grant authorization and private-cache rules are implemented and reviewed; physical Android acceptance remains separate.
 
-These decisions block provisioning/publication, not fixtures, contracts, reader navigation, export tools, or rollout preparation.
+The completed provisioning does not establish a completed launch. Keep the pilot in production until the candidate’s hosted checks pass; retain private release receipts and the immutable index for rollback.
 
-## Provisioning and playback proof checklist
+## Retained public-provider provisioning checklist
+
+The following provider/domain/cache instructions are historical planning for future public media. They do not apply to the selected private Worker gateway, which uses no-store responses and leaves all R2 public domains disabled. Use [Cloudflare delivery](cloudflare-delivery.md) for the current deployment and verification procedure.
 
 For **R2 Standard**, create the selected access policy and least-privilege upload access; connect a production custom domain in the same Cloudflare account, and configure cache behavior before a preview. `r2.dev` is rate-limited development access and does not provide the production caching/security setup. Keep it disabled when custom-domain access is intended to be protected. [R2 public buckets](https://developers.cloudflare.com/r2/buckets/public-buckets/).
 
@@ -131,9 +133,9 @@ Cloudflare's current range path requires coherent total size, exact unencoded pa
 2. Upload and verify approved media **before** exposing a manifest. Deploy the coherent app/data release to a Vercel preview using the existing project and local `web/vercel.json`. No author-only artifacts may enter `dist`.
 3. Prove saved pilot migration and the intended release on preview, then verify the unchanged stable origin's alias, PWA files, first/last tracks, narrator switching, and completion/resume in the production candidate.
 4. Publish/promote the app and release pointer coherently. Keep listening tabs on their loaded release; retain previous immutable files and service-worker caches until their references can age out. Do not replace audio bytes behind an established URL or force an active listener to reload.
-5. Watch playback/seek failures, media 404s, resume failures, CDN/origin bytes and request counts, cache effectiveness, and spend for the first 48 hours. Assign actionable thresholds before launch; operation and media usage must be measured separately.
+5. Watch playback/seek failures, media 404s, resume failures, Worker/Vercel errors, R2 operation counts, Worker request/CPU allowances and account spend for the first 48 hours. Use sanitized paths/statuses rather than signed media queries. Assign actionable thresholds before launch; service limits and media usage must be measured separately.
 6. For a blocking regression, restore the recorded working app **and its coherent manifest pointer**, retain all valid audio assets, and verify stable-origin resume without clearing local progress. Vercel rollback restores app deployment/aliases, not an independently modified external manifest or object store.
 
 The installed CLI supports `vercel rollback <deployment-id-or-url> --scope robert-xies-projects` from `web/`. The currently recorded pilot deployment is `dpl_EeReRPLBLBjyRgXwNoLhVULuhKjG`; record the actual immediate predecessor when publishing a later release. Hobby rollback eligibility is limited to the previous production deployment. Rollback disables automatic production alias assignment until another deployment is promoted; verify alias state and restore normal promotion behavior deliberately. [Vercel rollback](https://vercel.com/docs/instant-rollback).
 
-Rollback has been **prepared, not executed**. Actual preview/CDN/phone checks, provider and publication decisions, paid provisioning, uploads, and launch remain pending.
+Rollback has been **prepared, not executed**. Private R2 provisioning, complete release upload, direct live gateway checks and representative native Cloudflare audio checks are complete. Vercel app/browser acceptance, coherent rollback rehearsal, stable-origin promotion, physical-phone acceptance, account spending ceiling and repository privacy decision remain pending.

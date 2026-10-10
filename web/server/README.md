@@ -1,12 +1,11 @@
 # Private reader delivery
 
-Only the empty reader shell is static. The complete manuscript, timing maps,
-recordings, and future paintings belong to a **private** Vercel Blob store.
-No client Blob tokens, unauthenticated upload route, filesystem route, or
-arbitrary URL proxy is provided.
+Only the empty reader shell is static. The selected full-book release uses **private Cloudflare R2** and a Worker gateway. Vercel sends small session/book/JSON requests over a secret-authenticated bridge and redirects audio to the Worker. The Worker owns the invite registry, sessions, signed media grants and immutable index. See [Cloudflare delivery](../../docs/backlog/cloudflare-delivery.md) for the reviewed build/upload procedure and current hosted evidence.
+
+The previous private Blob implementation remains a supported fallback. Its configuration and uploader are documented separately below; no Blob store was provisioned for this release.
 
 `api/session.js`, `api/book.js`, and `api/assets/[...path].js` use the shared
-Node adapter and a server-only, pinned `@vercel/blob` SDK. The existing Vercel
+Node adapter. `LUMEN_WORKER_ORIGIN` selects the Cloudflare bridge; without it, the adapter uses the server-only, pinned `@vercel/blob` fallback SDK. The existing Vercel
 project uses Node 24. Run `npm ci` inside `web/` and
 `node --test web/tests/private-access*.cjs` from the repository root.
 
@@ -26,15 +25,17 @@ The shared access code contains six short words. Uppercase letters, spaces and d
 invite expiry, whichever comes first. Every request rechecks invite revocation,
 expiry, and version. Revoking/removing a grant or incrementing its version invalidates its sessions after the updated server configuration is deployed. Logout removes the current browser cookie.
 
-Responses use `private, no-store`, `Vary: Cookie`, and same-origin resource
-policy. Full book assets receive no cross-origin grant. An unauthenticated
-request fails before reading the private index or invoking Blob. HEAD and
-conditional requests authenticate too. The service worker must not intercept
-these routes or audio Range requests.
+Responses use `private, no-store`. Unauthenticated requests fail before reading the private index or requesting media. HEAD and conditional requests authenticate too. In Cloudflare mode audio receives a 307 redirect with a separately signed path/hash/release/invite/expiry grant. The Worker validates that grant and its current invite policy before streaming. JSON remains behind the Vercel bridge. The service worker bypasses private API and Worker media requests, including Range requests.
 
-## Server environment
+## Selected Cloudflare environment
 
-Server-only values are supplied to the deployed Vercel Functions. Locally use
+Vercel receives only `LUMEN_APP_ORIGIN`, `LUMEN_WORKER_ORIGIN` and `LUMEN_BRIDGE_KEY`. The Worker receives the sole session/invite configuration, immutable R2 index pointer/hash, separate media signing secret, exact allowed origins and private R2 binding. The temporary uploader uses a separate secret and is deleted after integrity verification. Keep all secret values in the machine’s encrypted ignored dotenvx files and transfer only declared bindings privately; the owner’s plaintext code never enters either deployed service. Rotations/revocations require deploying the updated Worker policy.
+
+Private receipts currently prove the complete 365-asset R2 upload and uploader cleanup. The Vercel candidate remains protected; hosted browser verification and production promotion are pending.
+
+## Legacy Blob server environment
+
+The following values apply only when the Blob fallback is selected. Server-only values are supplied to those Vercel Functions. Locally use
 the machine's dotenvx wrapper from `web/`, with encrypted ignored owner-only `.env` and `.env.shared` files and a separate owner-only `.env.keys`; never put these values in frontend build
 variables, JavaScript, static JSON, source-control commits, or command arguments.
 
@@ -78,7 +79,7 @@ reviewer information are excluded from the resulting index. Remote byte/range
 verification remains a promotion prerequisite, performed before binding the
 index in the production environment.
 
-## Private upload and verification
+## Legacy Blob upload and verification
 
 The operator [upload_private_release.cjs](../scripts/upload_private_release.cjs)
 is excluded from the deployment. It accepts the exporter inventory and an
@@ -118,7 +119,7 @@ It requires private/no-store and same-origin resource policy; it does not
 assume public CORS or anonymous delivery. Its report records access verification
 separately from the uploader's deliberate complete physical hash proof.
 
-## Audio seeking
+## Legacy Blob audio seeking
 
 Audio streams through the native browser network stack. Single byte ranges,
 open ranges, and suffix ranges return exact `206` bytes and `Content-Range`;
