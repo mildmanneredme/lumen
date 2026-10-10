@@ -44,8 +44,8 @@ An explicit plan selects a release subset and its required voices:
   "schemaVersion": 1,
   "releaseId": "approved-beta-1",
   "accessModel": "private",
-  "appDataURLbase": "https://reader.example/releases/",
-  "mediaURLbase": "https://media.example/lumen/",
+  "appDataURLbase": "https://reader.example/api/assets/approved-beta-1/",
+  "mediaURLbase": "https://reader.example/api/assets/approved-beta-1/",
   "author": "Rob Xie",
   "defaultTrackId": "chapter-001",
   "defaultNarratorId": "charon",
@@ -67,7 +67,14 @@ explicit path prefixes. An omitted `extentId` defaults to `<track>-full`. A full
 chapter cannot reuse a legacy pilot extent ID.
 
 `accessModel` must explicitly be `private`, `public`, or `authenticated`. Selecting
-an access model does not implement it or authorize remote publication. Every
+an access model does not implement it or authorize remote publication. Private
+and authenticated plans require both bases under the same app origin’s
+`/api/assets/` route, matching the implemented private uploader. Public plans
+can use distinct media origins. Default HTTPS ports and IPv6 hosts normalize
+to browser-compatible origins. Hosts must use canonical ASCII DNS/IP forms
+(use explicit punycode for international names), and every private asset path
+must match the server’s safe segment grammar and 500-character limit before
+staging writes begin. Every
 selected track must have at least one approved voice, and the default recording
 must be ready. Track order follows the canonical book. Omitted optional maps
 produce `pending` for an existing edition or `unavailable` for an absent edition;

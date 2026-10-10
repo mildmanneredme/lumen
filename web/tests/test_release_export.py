@@ -47,7 +47,7 @@ class ReleaseExportTests(unittest.TestCase):
         self.timing["approvals"]["alignment"]["timingSha256"] = release.content.timing_content_hash(self.timing)
         self.timings = {self.track["id"]: {"charon": self.timing}}
         self.plan = {"schemaVersion": 1, "releaseId": "fixture-beta-1", "accessModel": "private",
-                     "appDataURLbase": "https://reader.example/releases/", "mediaURLbase": "https://media.example/lumen/",
+                     "appDataURLbase": "https://reader.example/api/assets/fixture/", "mediaURLbase": "https://reader.example/api/assets/fixture/",
                      "author": "Rob Xie", "defaultTrackId": self.track["id"], "defaultNarratorId": "charon",
                      "narrators": [{"id": "autonoe", "label": "Autonoe"}, {"id": "charon", "label": "Charon"}],
                      "tracks": [{"id": self.track["id"], "extentId": "chapter-001-full", "requiredNarratorIds": ["charon"]}]}
@@ -198,13 +198,29 @@ class ReleaseExportTests(unittest.TestCase):
                     self.build(plan=dict(self.plan, **change))
                 self.assertFalse(self.staging.exists())
 
+    def test_private_plans_reject_origins_and_paths_the_uploader_cannot_serve(self):
+        for access in ["private", "authenticated"]:
+            for changes in [
+                {"appDataURLbase": "https://reader.example/releases/", "mediaURLbase": "https://reader.example/api/assets/"},
+                {"appDataURLbase": "https://reader.example/api/assets/", "mediaURLbase": "https://media.example/api/assets/"},
+                {"appDataURLbase": "https://reader.example/api/assets/", "mediaURLbase": "https://reader.example/audio/"},
+                {"appDataURLbase": "https://reader.example/api/assets/release:beta/", "mediaURLbase": "https://reader.example/api/assets/"},
+                {"appDataURLbase": "https://reader.example/api/assets/", "mediaURLbase": "https://reader.example/api/assets//beta/"},
+                {"appDataURLbase": "https://münich.example/api/assets/", "mediaURLbase": "https://münich.example/api/assets/"},
+                {"appDataURLbase": "https://reader.example/api/assets/" + "x" * 490 + "/", "mediaURLbase": "https://reader.example/api/assets/"},
+            ]:
+                with self.subTest(access=access, changes=changes):
+                    with self.assertRaises(release.content.ContentError):
+                        self.build(plan=dict(self.plan, accessModel=access, **changes))
+                    self.assertFalse(self.staging.exists())
+
     def test_https_default_port_normalizes_for_private_delivery(self):
         plan = dict(self.plan, appDataURLbase="https://READER.example:443/api/assets/",
-                    mediaURLbase="https://media.example:00443/lumen/")
+                    mediaURLbase="https://reader.example:00443/api/assets/")
         result = self.build(plan=plan)
         self.assertEqual(result["uploadInventory"]["appOrigin"], "https://reader.example")
         self.assertEqual(result["uploadInventory"]["mediaOrigins"],
-                         ["https://reader.example", "https://media.example"])
+                         ["https://reader.example"])
         self.assertTrue(all(":443" not in row["url"] and ":00443" not in row["url"]
                             for row in result["uploadInventory"]["assets"]))
         self.assertEqual(release.url_base("https://[::1]:443/assets/", "fixture"),
@@ -213,6 +229,15 @@ class ReleaseExportTests(unittest.TestCase):
                          ("https://[::1]/assets/", "https://[::1]"))
         self.assertEqual(release.url_base("https://reader.example:8443/assets/", "fixture"),
                          ("https://reader.example:8443/assets/", "https://reader.example:8443"))
+
+    def test_authenticated_api_and_public_cross_origin_plans_remain_supported(self):
+        private = self.build(plan=dict(self.plan, accessModel="authenticated"))
+        self.assertEqual(private["uploadInventory"]["mediaOrigins"], ["https://reader.example"])
+        public = self.build(plan=dict(self.plan, accessModel="public",
+            appDataURLbase="https://reader.example/releases/", mediaURLbase="https://media.example/lumen/"))
+        self.assertEqual(public["uploadInventory"]["mediaOrigins"],
+                         ["https://reader.example", "https://media.example"])
+        self.assertTrue(self.read_chapter(public)["audio"]["src"].startswith("https://media.example/lumen/"))
 
     def test_url_bases_require_absolute_secure_stable_urls(self):
         for url in ["/media/", "http://media.example/", "https://user:secret@media.example/",
@@ -226,7 +251,7 @@ class ReleaseExportTests(unittest.TestCase):
         result = self.build()
         upload = result["uploadInventory"]
         self.assertEqual(upload["appOrigin"], "https://reader.example")
-        self.assertEqual(upload["mediaOrigins"], ["https://reader.example", "https://media.example"])
+        self.assertEqual(upload["mediaOrigins"], ["https://reader.example"])
         for row in upload["assets"]:
             data = Path(row["sourcePath"]).read_bytes()
             self.assertTrue(row["immutable"])

@@ -43,10 +43,29 @@ def url_base(value, name):
                     f"{name} requires an absolute HTTPS URL without credentials, query, fragment, or traversal")
     content.require(port is None or 0 < port < 65536, f"Invalid {name} port")
     host = parsed.hostname.lower()
+    content.require(host.isascii(), "URL hosts must use ASCII or explicit punycode")
     if ":" in host:
         host = "[" + ipaddress.IPv6Address(host).compressed + "]"
+    else:
+        try:
+            host = str(ipaddress.IPv4Address(host.rstrip(".")))
+        except ipaddress.AddressValueError:
+            content.require(re.fullmatch(r"[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?\.?", host) is not None
+                            and all(0 < len(label) <= 63 and not label.startswith("-") and not label.endswith("-")
+                                    for label in host.rstrip(".").split("."))
+                            and re.fullmatch(r"(?:[0-9]+|0x[0-9a-f]+)", host.rstrip(".").split(".")[-1]) is None,
+                            "URL host must be a canonical DNS name or IP address")
     origin = "https://" + host + (":" + str(port) if port is not None and port != 443 else "")
     return origin + parsed.path.rstrip("/") + "/", origin
+
+
+def require_private_asset_url(url, origin):
+    prefix = origin + "/api/assets/"
+    content.require(url.startswith(prefix), "Private asset must use its app API origin")
+    relative = url[len(prefix):]
+    content.require(0 < len(relative) <= 500 and all(
+        re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*", segment) is not None
+        for segment in relative.split("/")), "Private asset path cannot be served by the uploader")
 
 
 def validate_plan(plan, registry):
@@ -55,6 +74,11 @@ def validate_plan(plan, registry):
     content.require(plan.get("accessModel") in {"private", "public", "authenticated"}, "Explicit accessModel is required")
     app_base, app_origin = url_base(plan.get("appDataURLbase"), "appDataURLbase")
     media_base, media_origin = url_base(plan.get("mediaURLbase"), "mediaURLbase")
+    if plan["accessModel"] in {"private", "authenticated"}:
+        prefix = app_origin + "/api/assets/"
+        content.require(media_origin == app_origin and app_base.startswith(prefix)
+                        and media_base.startswith(prefix),
+                        "Private release bases must use the same-origin /api/assets/ delivery route")
     visible_text(plan.get("author"), "author")
     narrators = plan.get("narrators")
     content.require(isinstance(narrators, list) and bool(narrators) and all(isinstance(row, dict)
@@ -83,6 +107,16 @@ def validate_plan(plan, registry):
     content.require(len(set(extents)) == len(extents), "Duplicate full reading extent ID")
     content.require(plan.get("defaultTrackId") in ids and plan.get("defaultNarratorId") in narrator_ids,
                     "Release defaults must belong to the explicit selection")
+    if plan["accessModel"] in {"private", "authenticated"}:
+        sample_hash = "0" * 64
+        urls = [app_base + "tracks/chapter-000/book-manifest." + sample_hash + ".json",
+                media_base + "images/" + sample_hash + ".webp"]
+        for row in selected:
+            for narrator in row["requiredNarratorIds"]:
+                urls.extend([app_base + "tracks/" + row["id"] + "/reader-" + narrator + "." + sample_hash + ".json",
+                             media_base + "audio/" + narrator + "/" + row["id"] + "." + sample_hash + ".mp3"])
+        for url in urls:
+            require_private_asset_url(url, app_origin)
     return app_base, media_base, app_origin, list(dict.fromkeys([app_origin, media_origin]))
 
 
@@ -331,6 +365,9 @@ def build_release(root, registry, inventory, timing_maps, scenes_by_track, plan,
         manifest["tracks"].append(row)
     default = next(row for row in manifest["tracks"] if row["id"] == manifest["defaultTrackId"])
     content.require(default["recordings"][manifest["defaultNarratorId"]]["status"] == "ready", "Release default recording is pending/unavailable")
+    if plan["accessModel"] in {"private", "authenticated"}:
+        for url in list(uploads) + [row[3] for row in prepared]:
+            require_private_asset_url(url, app_origin)
     # Complete every content, review, lineage, and physical-byte check before writing.
     for track_id, narrator_id, payload, url in prepared:
         asset = content.export_asset(staging, track_id, "reader-" + narrator_id, payload)
