@@ -513,7 +513,7 @@
       ensure(
         sentence && (bookmark.audioTime === 0 || (bookmark.anchorMeasured !== false && finite(sentence.start) && finite(sentence.end))),
         'MISSING_ANCHOR',
-        'Your saved passage could not be mapped to this recording. Your old bookmark is kept; choose a passage explicitly.',
+        'Your saved passage could not be mapped to this recording. Your old bookmark is kept; you can start this chapter from the beginning.',
       );
       if (bookmark.audioTime === 0) return { time: 0, completed: false, mapped: true };
       const fraction =
@@ -547,7 +547,9 @@
         const loaded = validateChapter(payload, track, narratorId, recording);
         const stored = getHistory()[trackId]?.bookmark;
         const bookmark =
-          request.bookmark === undefined
+          request.startFromBeginning === true
+            ? null
+            : request.bookmark === undefined
             ? validBookmark(stored)
               ? stored
               : null
