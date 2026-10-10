@@ -480,10 +480,68 @@ def timing_content_hash(timing):
     return object_hash({key: value for key, value in timing.items() if key != "approvals"})
 
 
-def validate_timing_map(track, recording, timing, *, require_approved=False):
+TECHNICAL_ALIGNMENT_METHOD = "hash-bound-local-asr-map-rebuild-v1"
+SYNC_GAP_REASONS = {"no-positive-duration-ASR-anchor", "overlapping-ASR-interval", "low-confidence-ASR-anchor"}
+
+
+def validate_technical_alignment(track, recording, timing, report):
+    """Check report bindings; exporters additionally recompute its actual evidence."""
+    approval = timing.get("approvals", {}).get("alignment", {})
+    require(isinstance(report, dict) and type(report.get("schemaVersion")) is int and report["schemaVersion"] == 1
+            and report.get("kind") == "technical-alignment-verification"
+            and report.get("status") == "verified" and report.get("method") == TECHNICAL_ALIGNMENT_METHOD,
+            "Missing actual technical alignment verification report")
+    require(isinstance(approval, dict) and approval.get("status") == "verified"
+            and approval.get("method") == TECHNICAL_ALIGNMENT_METHOD
+            and approval.get("verificationReportSha256") == object_hash(report),
+            "Technical alignment verification report hash/method differs")
+    try:
+        checked = datetime.fromisoformat(report.get("checkedAt", "").replace("Z", "+00:00"))
+    except (ValueError, TypeError, AttributeError) as exc:
+        raise ContentError("Missing technical verification timestamp") from exc
+    require(checked.tzinfo is not None and approval.get("verifiedAt") == report["checkedAt"], "Stale technical verification timestamp")
+    bindings = {"trackId": track["id"], "narratorId": recording["narratorId"],
+                "audioSha256": recording["sha256"], "textSha256": track["textSha256"],
+                "timingSha256": timing_content_hash(timing), "selectionSha256": recording.get("selectionSha256"),
+                "masterIdentitySha256": recording.get("masterIdentitySha256"),
+                "generationManifestSha256": recording.get("generationManifestSha256")}
+    require(all(report.get(key) == value and approval.get(key) == value for key, value in bindings.items())
+            and all(valid_hash(bindings[key]) for key in bindings if key.endswith("Sha256")),
+            "Technical alignment source/audio/text/timing identity differs")
+    checks = report.get("checks", {})
+    require(isinstance(checks, dict) and all(checks.get(key) is True for key in
+            ["masterBytesVerified", "rawSourceBytesVerified", "cacheBytesVerified", "sourceLineageVerified", "mapRecomputed"]),
+            "Technical alignment verification checks are incomplete")
+    evidence = report.get("cacheEvidence")
+    clips = recording.get("selectedClips", [])
+    require(isinstance(evidence, list) and bool(evidence) and evidence == timing.get("evidence")
+            and len(evidence) == len(clips) and all(isinstance(row, dict) for row in evidence),
+            "Technical alignment cache evidence is missing or stale")
+    for row, clip in zip(evidence, clips):
+        require(row.get("id") == clip.get("id") and row.get("rawAudioSha256") == clip.get("rawAudioSha256")
+                and row.get("requestSha256") == clip.get("requestSha256")
+                and row.get("expectedTextSha256") == clip.get("textSha256")
+                and valid_hash(row.get("cacheSha256")) and valid_hash(row.get("decoderIdentitySha256")),
+                "Technical alignment cache/source selection differs")
+    source = timing.get("sourceBindings")
+    require(isinstance(source, dict) and source == report.get("sourceBindings")
+            and all(source.get(key) == recording.get(key) for key in
+                    ["selectionSha256", "masterIdentitySha256", "generationManifestSha256"])
+            and valid_hash(source.get("sourceQaSha256")), "Technical alignment mastering/QA source binding differs")
+    measured = sum(cue.get("syncStatus") == "measured" for cue in timing["sentences"])
+    require(all(type(report.get(key)) is int for key in ["canonicalSentenceCount", "measuredSentenceCount", "unavailableSentenceCount"])
+            and report.get("canonicalSentenceCount") == len(timing["sentences"])
+            and report.get("measuredSentenceCount") == measured
+            and report.get("unavailableSentenceCount") == len(timing["sentences"]) - measured
+            and report.get("humanAlignmentApproval") == "not-claimed", "Technical alignment scope is inaccurate")
+    return True
+
+
+def validate_timing_map(track, recording, timing, *, require_approved=False, alignment_verification=None):
     """Validate final encoded-file identity, complete anchors, and reviewed gates."""
     require(isinstance(timing, dict) and isinstance(recording, dict), "Timing and recording must be JSON objects")
-    require(timing.get("schemaVersion") == 1 and timing.get("trackId") == recording.get("trackId") == track["id"],
+    schema = timing.get("schemaVersion")
+    require(type(schema) is int and schema in {1, 2} and timing.get("trackId") == recording.get("trackId") == track["id"],
             "Timing track identity differs")
     require(timing.get("manuscriptVersion") == track["manuscriptVersion"]
             and timing.get("textSha256") == track["textSha256"], "Timing canonical text hash differs")
@@ -501,21 +559,50 @@ def validate_timing_map(track, recording, timing, *, require_approved=False):
     previous_end = 0.0
     for cue in cues:
         start, end = cue.get("start"), cue.get("end")
+        if schema == 2 and cue.get("syncStatus") == "unavailable":
+            ids = cue.get("evidenceIds")
+            selected_ids = {clip.get("id") for clip in recording.get("selectedClips", [])}
+            require("start" in cue and "end" in cue and start is None and end is None
+                    and cue.get("reason") in SYNC_GAP_REASONS and isinstance(ids, list) and bool(ids)
+                    and all(isinstance(value, str) and value in selected_ids for value in ids)
+                    and len(set(ids)) == len(ids), "Unavailable timing gap has estimated times, invalid reason, or missing evidence")
+            continue
+        require(schema == 1 or cue.get("syncStatus") == "measured", "Schema2 sentence must be measured or explicitly unavailable")
         require(finite_number(start) and finite_number(end) and previous_end <= start < end <= duration,
                 "Timing cues overlap, are not finite, or exceed audio bounds")
         previous_end = end
+    measured = [cue for cue in cues if schema == 1 or cue.get("syncStatus") == "measured"]
+    if schema == 2:
+        for index, cue in enumerate(cues):
+            if cue["syncStatus"] != "unavailable":
+                continue
+            before = next((row for row in reversed(cues[:index]) if row["syncStatus"] == "measured"), None)
+            after = next((row for row in cues[index + 1:] if row["syncStatus"] == "measured"), None)
+            window = cue.get("recheckWindow")
+            require(isinstance(window, dict) and window.get("scope") == "neighbor-recheck-only"
+                    and finite_number(window.get("start")) and finite_number(window.get("end"))
+                    and 0 <= window["start"] <= window["end"] <= duration
+                    and window["start"] == (before["end"] if before else 0)
+                    and window["end"] == (after["start"] if after else duration)
+                    and window.get("beforeSentenceId") == (before["sentenceId"] if before else None)
+                    and window.get("afterSentenceId") == (after["sentenceId"] if after else None),
+                    "Unavailable gap recheck window differs from measured neighbors")
     coverage = timing.get("coverage", {})
     require(isinstance(coverage, dict) and finite_number(coverage.get("introEnd"))
-            and finite_number(coverage.get("tailStart")) and coverage["introEnd"] == cues[0]["start"]
-            and coverage["tailStart"] == cues[-1]["end"],
+            and finite_number(coverage.get("tailStart")) and coverage["introEnd"] == (measured[0]["start"] if measured else 0)
+            and coverage["tailStart"] == (measured[-1]["end"] if measured else duration),
             "Timing intro/tail coverage is missing or inconsistent")
     if require_approved:
         require(isinstance(timing.get("approvals"), dict), "Missing human approval records")
-        for kind in ["content", "alignment"]:
+        for kind in ["content"]:
             require(approval_valid(timing.get("approvals", {}).get(kind), recording, track),
                     f"Missing/stale human {kind} approval")
-        require(timing["approvals"]["alignment"].get("timingSha256") == timing_content_hash(timing),
-                "Missing/stale alignment timing content hash")
+        alignment = timing["approvals"].get("alignment", {})
+        if schema == 2 and isinstance(alignment, dict) and alignment.get("status") == "verified":
+            validate_technical_alignment(track, recording, timing, alignment_verification)
+        else:
+            require(approval_valid(alignment, recording, track), "Missing/stale human alignment approval")
+            require(alignment.get("timingSha256") == timing_content_hash(timing), "Missing/stale alignment timing content hash")
         require(recording.get("audioHashVerified") is True
                 and recording.get("audioVerificationSha256") == recording["sha256"],
                 "Final physical audio bytes are not hash verified for the current recording")
@@ -542,6 +629,8 @@ def resolve_scenes(track, recording, timing, scenes):
                 "Invalid scene identity, asset, or canonical trigger")
         seen.add(scene_id)
         start = cues[scene["sentenceId"]]["start"]
+        require(finite_number(start) and cues[scene["sentenceId"]].get("syncStatus") != "unavailable",
+                "Scene reveal requires a measured sentence; unavailable gaps have no reveal clock")
         require(start >= previous, "Canonical scene triggers are out of order")
         require("start" not in scene, "Shared scene must not contain a narrator timestamp")
         result.append(dict(scene, start=start))

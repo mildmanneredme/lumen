@@ -1,0 +1,711 @@
+"""Unchanged private web audio and independently measured narration clocks."""
+from __future__ import annotations
+
+import copy
+from functools import lru_cache
+import hashlib
+import itertools
+import json
+from pathlib import Path
+import shutil
+import subprocess
+import sys
+import tempfile
+import types
+import unittest
+from unittest import mock
+import wave
+
+ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / "web/scripts"))
+import prepare_book_audio as audio
+import book_content as content
+
+
+class WebAudioTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name)
+        self.track = content.make_track(1, "chapter", "The door opened. She left.", "v6")
+        self.recording = {"trackId": self.track["id"], "narratorId": "autonoe", "sha256": "a" * 64,
+                          "decodedDuration": 8.0, "sampleRate": 100, "decodedSamples": 800}
+        self.qa = {"assembly": {"internal_silence_removed": False, "source_samples": 700,
+                               "leading_source_samples_trimmed": 50, "trailing_source_samples_trimmed": 50,
+                               "body_samples": 600, "added_head_samples": 100, "added_tail_samples": 100},
+                   "coordinator_checks": {"sample_rate": 100, "expected_master_samples": 800,
+                       "chunk_timeline": [{"id": "take-a", "source_start_seconds": 0.0,
+                                           "source_end_seconds": 3.0, "master_start_seconds": 1.0,
+                                           "master_end_seconds": 3.5, "retained_samples": 250},
+                                          {"id": "take-b", "source_start_seconds": 3.0,
+                                           "source_end_seconds": 7.0, "master_start_seconds": 3.5,
+                                           "master_end_seconds": 7.0, "retained_samples": 350}]}}
+
+    def test_outer_trim_and_padding_translate_each_raw_clock(self):
+        self.assertEqual(audio.raw_to_master(self.qa, "take-a", .75), 1.25)
+        self.assertEqual(audio.raw_to_master(self.qa, "take-b", .25), 3.75)
+        for mutation in [lambda q: q["assembly"].update(internal_silence_removed=True),
+                         lambda q: q["assembly"].update(body_samples=601),
+                         lambda q: q["coordinator_checks"]["chunk_timeline"][1].update(master_start_seconds=4.0)]:
+            changed = copy.deepcopy(self.qa)
+            mutation(changed)
+            with self.assertRaises(content.ContentError):
+                audio.raw_to_master(changed, "take-a", 1.0)
+
+    def test_sentence_times_come_from_matched_words_and_keep_voice_hash(self):
+        words = [("The", 1.0, 1.2), ("door", 1.2, 1.6), ("opened.", 1.6, 2.1),
+                 ("She", 4.0, 4.3), ("left.", 4.3, 4.8)]
+        timing, report = audio.align_sentences(self.track, self.recording, words)
+        self.assertEqual([(c["start"], c["end"]) for c in timing["sentences"]], [(1.0, 2.1), (4.0, 4.8)])
+        self.assertEqual(timing["narratorId"], "autonoe")
+        self.assertEqual(timing["audioSha256"], "a" * 64)
+        self.assertNotIn("alignment", timing["approvals"])
+        self.assertEqual(report["matchedTokens"], 5)
+
+    def test_missing_sentence_has_no_invented_cue(self):
+        timing, report = audio.align_sentences(self.track, self.recording,
+                                             [("The", 1.0, 1.2), ("door", 1.2, 1.6), ("opened.", 1.6, 2.1)])
+        self.assertIsNone(timing)
+        self.assertEqual(report["unanchoredSentences"], [content.sentences(self.track)[1]["id"]])
+        self.assertEqual([cue["sentenceId"] for cue in report["measuredSentences"]],
+                         [content.sentences(self.track)[0]["id"]])
+
+    def test_partial_sentence_below_eighty_percent_is_not_a_measured_cue(self):
+        timing, report = audio.align_sentences(self.track, self.recording,
+                                             [("The", 1, 1.2), ("She", 4, 4.3), ("left.", 4.3, 4.8)])
+        first, second = content.sentences(self.track)
+        self.assertIsNone(timing)
+        self.assertEqual(report["lowConfidenceSentences"], [{"sentenceId": first["id"], "matchedFraction": .3333}])
+        self.assertEqual([cue["sentenceId"] for cue in report["measuredSentences"]], [second["id"]])
+
+    def test_eighty_percent_boundary_retains_actual_word_intervals(self):
+        track = content.make_track(1, "story", "Alpha bravo charlie delta echo.", "v6")
+        words = [(word, index + 1, index + 1.5) for index, word in enumerate(["Alpha", "bravo", "delta", "echo"])]
+        timing, report = audio.align_sentences(track, self.recording, words)
+        self.assertIsNotNone(timing)
+        self.assertEqual(timing["sentences"][0]["start"], 1)
+        self.assertEqual(timing["sentences"][0]["end"], 4.5)
+        self.assertEqual(report["lowConfidenceSentences"], [])
+        timing, report = audio.align_sentences(track, self.recording, words[:-1])
+        self.assertIsNone(timing)
+        self.assertEqual(report["measuredSentences"], [])
+        self.assertEqual(report["lowConfidenceSentences"][0]["matchedFraction"], .6)
+
+    def test_internal_matches_cannot_truncate_missing_sentence_edges_even_at_eighty_percent(self):
+        tokens = "Alpha bravo charlie delta echo foxtrot golf hotel india juliet".split()
+        track = content.make_track(1, "story", " ".join(tokens) + ".", "v6")
+        sentence_id = content.sentences(track)[0]["id"]
+        for omitted, fraction, edges in [
+            ({0, 9}, .8, ["start", "end"]),
+            ({0, 1}, .8, ["start"]),
+            ({8, 9}, .8, ["end"]),
+            ({0}, .9, ["start"]),
+            ({9}, .9, ["end"]),
+        ]:
+            words = [(word, 1 + index * .5, 1.25 + index * .5)
+                     for index, word in enumerate(tokens) if index not in omitted]
+            with self.subTest(omitted=omitted):
+                timing, report = audio.align_sentences(track, self.recording, words)
+                self.assertIsNone(timing)
+                self.assertEqual(report["measuredSentences"], [])
+                self.assertEqual(report["lowConfidenceSentences"],
+                                 [{"sentenceId": sentence_id, "matchedFraction": fraction}])
+                self.assertEqual(report["unanchoredSentenceEdges"],
+                                 [{"sentenceId": sentence_id, "missingEdges": edges}])
+
+    def test_eighty_percent_internal_omissions_keep_both_actual_boundary_anchors(self):
+        tokens = "Alpha bravo charlie delta echo foxtrot golf hotel india juliet".split()
+        track = content.make_track(1, "story", " ".join(tokens) + ".", "v6")
+        words = [(word, 1 + index * .5, 1.25 + index * .5)
+                 for index, word in enumerate(tokens) if index not in {3, 6}]
+        timing, report = audio.align_sentences(track, self.recording, words)
+        self.assertIsNotNone(timing)
+        self.assertEqual((timing["sentences"][0]["start"], timing["sentences"][0]["end"]), (1, 5.75))
+        self.assertEqual(report["matchedFraction"], .8)
+        self.assertEqual(report["unanchoredSentenceEdges"], [])
+
+    def test_unanchored_edges_still_contribute_observed_overlap_watermark(self):
+        tokens = "Alpha bravo charlie delta echo foxtrot golf hotel india juliet".split()
+        track = content.make_track(1, "story", " ".join(tokens) + ". After.", "v6")
+        words = [(word, 1 + index * .2, 1.15 + index * .2)
+                 for index, word in enumerate(tokens) if index not in {0, 9}]
+        words[-1] = (words[-1][0], words[-1][1], 5.0)
+        words.append(("After.", 4.5, 4.8))
+        timing, report = audio.align_sentences(track, self.recording, words)
+        first, second = content.sentences(track)
+        self.assertIsNone(timing)
+        self.assertEqual(report["lowConfidenceSentences"], [{"sentenceId": first["id"], "matchedFraction": .8}])
+        self.assertEqual(report["overlappingSentences"], [second["id"]])
+        self.assertEqual([cue["sentenceId"] for cue in report["measuredSentences"]], [second["id"]])
+
+    def test_exact_number_and_contraction_edges_keep_complete_raw_word_spans(self):
+        for manuscript, spoken, expected in [
+            ("26 guards waited.", [("Twenty", 1, 1.2), ("six", 1.2, 1.5), ("guards", 2, 2.2), ("waited.", 2.2, 2.5)], (1, 2.5)),
+            ("They counted 26.", [("They", 1, 1.2), ("counted", 1.2, 1.5), ("twenty", 2, 2.2), ("six.", 2.2, 2.5)], (1, 2.5)),
+            ("Don’t wait here.", [("Dont", 1, 1.2), ("wait", 1.2, 1.5), ("here.", 2, 2.5)], (1, 2.5)),
+            ("They knew he shouldn’t.", [("They", 1, 1.2), ("knew", 1.2, 1.5), ("he", 2, 2.2), ("shouldnt.", 2.2, 2.5)], (1, 2.5)),
+        ]:
+            with self.subTest(manuscript=manuscript):
+                track = content.make_track(1, "story", manuscript, "v6")
+                timing, report = audio.align_sentences(track, self.recording, spoken)
+                self.assertIsNotNone(timing)
+                self.assertEqual((timing["sentences"][0]["start"], timing["sentences"][0]["end"]), expected)
+                self.assertEqual(report["unanchoredSentenceEdges"], [])
+
+    def test_number_or_contraction_edge_without_supported_anchor_remains_a_gap(self):
+        for manuscript, spoken, edge in [
+            ("26 guards waited here tonight.", "guards waited here tonight", "start"),
+            ("They counted until exactly 26.", "They counted until exactly", "end"),
+            ("Don’t wait near this door.", "do not wait near this door", "start"),
+            ("They all knew he shouldn’t.", "They all knew he should not", "end"),
+        ]:
+            with self.subTest(manuscript=manuscript):
+                track = content.make_track(1, "story", manuscript, "v6")
+                words = [(word, 1 + index * .3, 1.2 + index * .3) for index, word in enumerate(spoken.split())]
+                timing, report = audio.align_sentences(track, self.recording, words)
+                sentence_id = content.sentences(track)[0]["id"]
+                self.assertIsNone(timing)
+                self.assertEqual(report["measuredSentences"], [])
+                self.assertEqual(report["lowConfidenceSentences"], [{"sentenceId": sentence_id, "matchedFraction": .8}])
+                self.assertEqual(report["unanchoredSentenceEdges"], [{"sentenceId": sentence_id, "missingEdges": [edge]}])
+
+    def test_context_supported_spelling_is_a_reliable_sentence_edge_anchor(self):
+        for manuscript, spoken, target, interval in [
+            ("Before now. NovaMind glows softly. Then silence.",
+             "Before now. Novamine glows softly. Then silence.", "novamind", (1.6, 2.4)),
+            ("Before now. Bright screens show NovaMind. Then silence.",
+             "Before now. Bright screens show Novamine. Then silence.", "novamind", (1.6, 2.7)),
+        ]:
+            with self.subTest(manuscript=manuscript):
+                track = content.make_track(1, "story", manuscript, "v6")
+                words = [(word, 1 + index * .3, 1.2 + index * .3) for index, word in enumerate(spoken.split())]
+                timing, report = audio.align_sentences(track, self.recording, words)
+                self.assertIsNotNone(timing)
+                cue = timing["sentences"][1]
+                self.assertEqual((cue["start"], cue["end"]), interval)
+                self.assertEqual(report["contextualSubstitutions"][0]["expected"], target)
+                self.assertEqual(report["unanchoredSentenceEdges"], [])
+
+    def test_edge_spelling_without_required_context_never_promotes_internal_matches(self):
+        for manuscript, spoken, edge in [
+            ("NovaMind glows softly through midnight.", "Novamine glows softly through midnight", "start"),
+            ("Bright screens show the NovaMind.", "Bright screens show the Novamine", "end"),
+        ]:
+            with self.subTest(manuscript=manuscript):
+                track = content.make_track(1, "story", manuscript, "v6")
+                words = [(word, 1 + index * .3, 1.2 + index * .3) for index, word in enumerate(spoken.split())]
+                timing, report = audio.align_sentences(track, self.recording, words)
+                self.assertIsNone(timing)
+                self.assertEqual(report["contextualSubstitutions"], [])
+                self.assertEqual(report["unanchoredSentenceEdges"][0]["missingEdges"], [edge])
+
+    def test_existing_finalizer_makes_unanchored_edges_explicit_null_gaps(self):
+        import finalize_release_timings as finalizer
+        track = content.make_track(1, "story", "Alpha bravo charlie delta echo. After.", "v6")
+        recording = dict(self.recording, selectedClips=[{"id": "take-a"}])
+        words = [("bravo", 1, 1.2), ("charlie", 1.2, 1.4), ("delta", 1.4, 1.6), ("echo.", 1.6, 1.8), ("After.", 2, 2.5)]
+        report = finalizer.report_from_words(track, recording, words, [{"id": "take-a"}], {})
+        timing = finalizer.gap_timing(track, recording, report, {})
+        gap, measured = timing["sentences"]
+        self.assertEqual(gap["syncStatus"], "unavailable")
+        self.assertEqual(gap["reason"], "low-confidence-ASR-anchor")
+        self.assertIsNone(gap["start"]); self.assertIsNone(gap["end"])
+        self.assertEqual(gap["recheckWindow"]["start"], 0)
+        self.assertEqual(gap["recheckWindow"]["end"], measured["start"])
+        self.assertEqual(measured["syncStatus"], "measured")
+
+    def test_one_heard_adrian_cannot_select_between_adjacent_canonical_occurrences(self):
+        track = content.make_track(1, "story",
+            '"Professor Marsh?"\n\n"Adrian."\n\n"Adrian." The boy hesitated. "Do you really think we can do this?"', "v6")
+        spoken = "Professor Marsh Adrian The boy hesitated Do you really think we can do this".split()
+        words = [(word, .5 + index * .3, .7 + index * .3) for index, word in enumerate(spoken)]
+        timing, report = audio.align_sentences(track, self.recording, words)
+        sentences = content.sentences(track)
+        duplicate_ids = {sentence["id"] for sentence in sentences if content.spoken_comparison(sentence["text"]).strip('". ') == "Adrian"}
+        self.assertEqual(len(duplicate_ids), 2)
+        self.assertIsNone(timing)
+        self.assertTrue(duplicate_ids.isdisjoint(cue["sentenceId"] for cue in report["measuredSentences"]))
+        self.assertEqual({row["sentenceId"] for row in report["ambiguousSentenceAnchors"]}, duplicate_ids)
+        self.assertEqual({cue["sentenceId"] for cue in report["measuredSentences"]},
+                         {sentence["id"] for sentence in sentences} - duplicate_ids)
+
+    def test_missing_repeated_multiword_prose_has_no_selected_duplicate_cue(self):
+        for copies, spoken_copies in [(2, 1), (3, 1), (3, 2)]:
+            with self.subTest(copies=copies, spoken_copies=spoken_copies):
+                track = content.make_track(1, "story", "He said no. " * copies + "Then silence.", "v6")
+                spoken = ("He said no " * spoken_copies + "Then silence").split()
+                words = [(word, .5 + index * .3, .7 + index * .3) for index, word in enumerate(spoken)]
+                timing, report = audio.align_sentences(track, self.recording, words)
+                sentences = content.sentences(track)
+                self.assertIsNone(timing)
+                self.assertEqual([cue["sentenceId"] for cue in report["measuredSentences"]], [sentences[-1]["id"]])
+                self.assertEqual({row["sentenceId"] for row in report["ambiguousSentenceAnchors"]},
+                                 {sentence["id"] for sentence in sentences[:-1]})
+
+    def test_fully_observed_repeated_prose_keeps_chronological_occurrences(self):
+        for manuscript, spoken in [
+            ("He said no. He said no. Then silence.", "He said no He said no Then silence"),
+            ("26 guards don't wait. Twenty-six guards don’t wait. Then silence.",
+             "twenty six guards dont wait twenty six guards dont wait Then silence"),
+            ("Alpha bravo charlie delta echo. Alpha bravo charlie delta echo. Then silence.",
+             "Alpha bravo delta echo Alpha charlie delta echo Then silence"),
+        ]:
+            with self.subTest(manuscript=manuscript):
+                track = content.make_track(1, "story", manuscript, "v6")
+                words = [(word, .5 + index * .3, .7 + index * .3) for index, word in enumerate(spoken.split())]
+                timing, report = audio.align_sentences(track, self.recording, words)
+                self.assertIsNotNone(timing)
+                self.assertEqual(len(timing["sentences"]), 3)
+                self.assertEqual(report["ambiguousSentenceAnchors"], [])
+                self.assertLess(timing["sentences"][0]["end"], timing["sentences"][1]["start"])
+
+    def test_measured_unique_context_resolves_a_repeated_occurrence(self):
+        track = content.make_track(1, "story", "Adrian. He opened the door. Adrian. The boy hesitated.", "v6")
+        first, context, second, after = content.sentences(track)
+        for spoken, measured_id, missing_id in [
+            ("He opened the door Adrian The boy hesitated", second["id"], first["id"]),
+            ("Adrian He opened the door The boy hesitated", first["id"], second["id"]),
+        ]:
+            with self.subTest(spoken=spoken):
+                words = [(word, .5 + index * .3, .7 + index * .3) for index, word in enumerate(spoken.split())]
+                timing, report = audio.align_sentences(track, self.recording, words)
+                self.assertIsNone(timing)
+                self.assertEqual(report["unanchoredSentences"], [missing_id])
+                self.assertEqual(report["ambiguousSentenceAnchors"], [])
+                self.assertEqual({cue["sentenceId"] for cue in report["measuredSentences"]},
+                                 {context["id"], measured_id, after["id"]})
+
+    def test_ambiguous_observed_prose_still_contributes_overlap_watermark(self):
+        track = content.make_track(1, "story", "Before. Adrian. Adrian. After.", "v6")
+        timing, report = audio.align_sentences(track, self.recording,
+            [("Before", 1, 1.2), ("Adrian", 2, 5), ("After", 4.5, 4.8)])
+        before, first, second, after = content.sentences(track)
+        self.assertIsNone(timing)
+        self.assertEqual(report["overlappingSentences"], [after["id"]])
+        self.assertTrue({first["id"], second["id"]}.isdisjoint(
+            cue["sentenceId"] for cue in report["measuredSentences"]))
+        self.assertIn(before["id"], [cue["sentenceId"] for cue in report["measuredSentences"]])
+
+    def test_existing_finalizer_keeps_every_ambiguous_duplicate_as_a_null_gap(self):
+        import finalize_release_timings as finalizer
+        track = content.make_track(1, "story", "Before. He said no. He said no. After.", "v6")
+        recording = dict(self.recording, selectedClips=[{"id": "take-a"}])
+        words = [(word, .5 + index * .3, .7 + index * .3)
+                 for index, word in enumerate("Before He said no After".split())]
+        report = finalizer.report_from_words(track, recording, words, [{"id": "take-a"}], {})
+        timing = finalizer.gap_timing(track, recording, report, {})
+        self.assertEqual(len(timing["sentences"]), 4)
+        before, first, second, after = timing["sentences"]
+        self.assertEqual((before["syncStatus"], after["syncStatus"]), ("measured", "measured"))
+        for row in [first, second]:
+            self.assertEqual(row["syncStatus"], "unavailable")
+            self.assertIsNone(row["start"]); self.assertIsNone(row["end"])
+            self.assertEqual(row["recheckWindow"], first["recheckWindow"])
+            self.assertEqual(row["recheckWindow"]["start"], before["end"])
+            self.assertEqual(row["recheckWindow"]["end"], after["start"])
+
+    def test_an_extra_heard_occurrence_cannot_choose_the_canonical_boundary(self):
+        track = content.make_track(1, "story", "Before. Adrian. After.", "v6")
+        words = [(word, .5 + index * .3, .7 + index * .3)
+                 for index, word in enumerate("Before Adrian Adrian After".split())]
+        timing, report = audio.align_sentences(track, self.recording, words)
+        before, middle, after = content.sentences(track)
+        self.assertIsNone(timing)
+        self.assertEqual([cue["sentenceId"] for cue in report["measuredSentences"]], [before["id"], after["id"]])
+        self.assertEqual([row["sentenceId"] for row in report["ambiguousSentenceAnchors"]], [middle["id"]])
+        self.assertEqual(report["ambiguousSentenceAnchors"][0]["edges"][0]["observedTokenIndexes"], [1, 2])
+
+    def test_repeated_phrase_in_different_sentences_cannot_borrow_another_boundary(self):
+        track = content.make_track(1, "story", "He said no. He said no softly. Then silence.", "v6")
+        words = [(word, .5 + index * .3, .7 + index * .3)
+                 for index, word in enumerate("He said no softly Then silence".split())]
+        timing, report = audio.align_sentences(track, self.recording, words)
+        first, second, last = content.sentences(track)
+        self.assertIsNone(timing)
+        self.assertEqual([cue["sentenceId"] for cue in report["measuredSentences"]], [last["id"]])
+        self.assertEqual({row["sentenceId"] for row in report["ambiguousSentenceAnchors"]}, {first["id"], second["id"]})
+
+    def test_context_supported_spellings_do_not_hide_repeated_occurrence_uncertainty(self):
+        track = content.make_track(1, "story", "Before now. NovaMind glows softly. NovaMind glows softly. Then silence.", "v6")
+        for spoken, complete in [
+            ("Before now Novamine glows softly Novamine glows softly Then silence", True),
+            ("Before now Novamine glows softly Then silence", False),
+        ]:
+            with self.subTest(complete=complete):
+                words = [(word, .5 + index * .3, .7 + index * .3) for index, word in enumerate(spoken.split())]
+                timing, report = audio.align_sentences(track, self.recording, words)
+                first, duplicate_a, duplicate_b, last = content.sentences(track)
+                if complete:
+                    self.assertIsNotNone(timing)
+                    self.assertEqual(len(report["contextualSubstitutions"]), 2)
+                    self.assertEqual(report["ambiguousSentenceAnchors"], [])
+                else:
+                    self.assertIsNone(timing)
+                    self.assertEqual([cue["sentenceId"] for cue in report["measuredSentences"]], [first["id"], last["id"]])
+                    self.assertEqual({row["sentenceId"] for row in report["ambiguousSentenceAnchors"]},
+                                     {duplicate_a["id"], duplicate_b["id"]})
+
+    def test_repeated_internal_phrase_does_not_hide_unique_measured_sentence_edges(self):
+        track = content.make_track(1, "story", "Before dawn he said no and then he said no after dusk at home tonight.", "v6")
+        words = [(word, .5 + index * .3, .7 + index * .3)
+                 for index, word in enumerate("Before dawn and then he said no after dusk at home tonight".split())]
+        timing, report = audio.align_sentences(track, self.recording, words)
+        self.assertIsNotNone(timing)
+        self.assertEqual(report["ambiguousSentenceAnchors"], [])
+        self.assertEqual((timing["sentences"][0]["start"], timing["sentences"][0]["end"]), (.5, 4.0))
+
+    def test_compact_occurrence_check_agrees_with_all_optimal_small_monotone_alignments(self):
+        # Enumerate real alternative monotone pairings independently of the
+        # compact bitset calculation, including deletions and repeated tokens.
+        sequences = [tuple(tokens) for length in range(1, 4)
+                     for tokens in itertools.product(("adrian", "no"), repeat=length)]
+        for expected in sequences:
+            for heard in sequences:
+                @lru_cache(None)
+                def alignments(left, right):
+                    if left == len(expected) or right == len(heard):
+                        return frozenset([()])
+                    options = set(alignments(left + 1, right)) | set(alignments(left, right + 1))
+                    if expected[left] == heard[right]:
+                        options.update(((left, right),) + suffix for suffix in alignments(left + 1, right + 1))
+                    longest = max(map(len, options))
+                    return frozenset(option for option in options if len(option) == longest)
+                optimal = alignments(0, 0)
+                possible = set(pair for option in optimal for pair in option)
+                selected = dict(min(optimal))
+                ambiguous = {left for left in range(len(expected))
+                    if len({right for first, right in possible if first == left}) > 1
+                    or any(len({first for first, second in possible if second == right}) > 1
+                           for first, right in possible if first == left)}
+                with self.subTest(expected=expected, heard=heard):
+                    result = audio.ambiguous_boundary_anchors(list(expected), list(heard),
+                        [(index, index + 1) for index in range(len(expected))], selected)
+                    self.assertEqual(set(result), ambiguous)
+
+    def test_missing_sentence_with_overlapping_measured_neighbors_has_only_a_recheck_region(self):
+        track = content.make_track(1, "chapter", "Before. Missing. After.", "v6")
+        timing, report = audio.align_sentences(track, self.recording,
+                                             [("Before.", 1.0, 2.0), ("After.", 1.8, 2.5)])
+        missing_id = content.sentences(track)[1]["id"]
+        self.assertIsNone(timing)
+        self.assertEqual(report["unanchoredSentences"], [missing_id])
+        region = report["unanchoredIntervals"][0]
+        self.assertEqual((region["start"], region["end"]), (1.8, 2.0))
+        self.assertEqual(region["neighboringMeasuredIntervals"], {"previousEnd": 2.0, "nextStart": 1.8})
+        self.assertEqual(region["reason"], "overlapping-measured-neighbors")
+        self.assertNotIn(missing_id, [cue["sentenceId"] for cue in report["measuredSentences"]])
+        self.assertEqual(audio.refinement_windows(self.qa, [region], context=0), {"take-a": [(1.3, 1.5)]})
+
+    def test_overlap_report_checks_against_all_preceding_measured_cues(self):
+        track = content.make_track(1, "chapter", "Before. Brief. After.", "v6")
+        timing, report = audio.align_sentences(track, self.recording,
+                                             [("Before.", 1.0, 5.0), ("Brief.", 2.0, 3.0), ("After.", 4.0, 4.5)])
+        self.assertIsNone(timing)
+        self.assertEqual(report["overlappingSentences"], [s["id"] for s in content.sentences(track)[1:]])
+
+    def test_spoken_numbers_brands_and_countdown_use_measured_word_spans(self):
+        track = content.make_track(1, "story", "Twenty-six. NovaMind. T-08:00", "v6")
+        words = [("26.", 1, 1.5), ("Nova", 2, 2.5), ("Mind.", 2.5, 3),
+                 ("Eight", 4, 4.5), ("hours", 4.5, 5), ("remaining.", 5, 5.5)]
+        timing, report = audio.align_sentences(track, self.recording, words)
+        self.assertIsNotNone(timing)
+        self.assertEqual([(cue["start"], cue["end"]) for cue in timing["sentences"]], [(1, 1.5), (2, 3), (4, 5.5)])
+        self.assertEqual(report["matchedFraction"], 1.0)
+
+    def test_contextual_asr_spelling_uses_actual_word_time_and_reports_substitution(self):
+        track = content.make_track(1, "story", "He saw it. NovaMind. He knew it.", "v6")
+        words = [("He", 1, 1.2), ("saw", 1.2, 1.5), ("it.", 1.5, 2),
+                 ("Novamine.", 3, 3.6), ("He", 4, 4.2), ("knew", 4.2, 4.4), ("it.", 4.4, 4.8)]
+        timing, report = audio.align_sentences(track, self.recording, words)
+        self.assertIsNotNone(timing)
+        self.assertEqual((timing["sentences"][1]["start"], timing["sentences"][1]["end"]), (3, 3.6))
+        self.assertEqual(report["contextualSubstitutions"][0]["expected"], "novamind")
+        self.assertEqual(report["contextualSubstitutions"][0]["heard"], "novamine")
+
+    def test_unanchored_gaps_use_neighbor_measurements_for_local_recheck_only(self):
+        track = content.make_track(1, "story", "The door opened. Quiet. She left.", "v6")
+        words = [("The", 1, 1.2), ("door", 1.2, 1.5), ("opened.", 1.5, 2),
+                 ("She", 4, 4.2), ("left.", 4.2, 4.8)]
+        timing, report = audio.align_sentences(track, self.recording, words)
+        self.assertIsNone(timing)
+        self.assertEqual(report["unanchoredIntervals"][0]["start"], 2)
+        self.assertEqual(report["unanchoredIntervals"][0]["end"], 4)
+        windows = audio.refinement_windows(self.qa, report["unanchoredIntervals"], context=.1)
+        self.assertEqual(windows["take-a"], [(1.4, 3.0)])
+        self.assertEqual(windows["take-b"], [(0.0, .6)])
+
+    def test_time_overlap_nonfinite_and_out_of_bounds_fail(self):
+        for words in [[("The", 2, 3), ("door", 1, 2), ("opened", 2, 3), ("She", 4, 5), ("left", 5, 6)],
+                      [("The", float("nan"), 3)], [("The", 8, 9)]]:
+            with self.assertRaises(content.ContentError):
+                audio.align_sentences(self.track, self.recording, words)
+
+    def test_asr_cache_requires_exact_selected_audio_request_and_text(self):
+        item = {"id": "take-a", "text": "The door opened.", "request_sha256": "b" * 64}
+        clip = {"id": "take-a", "rawAudioSha256": "c" * 64}
+        record = {"id": "take-a", "expected_inputtext": item["text"], "duration_seconds": 3.0,
+                  "cache_identity": {"audio_sha256": "c" * 64, "request_sha256": "b" * 64,
+                     "inputtext_sha256": hashlib.sha256(item["text"].encode()).hexdigest()},
+                  "segments": [{"words": [{"word": "The", "start": .75, "end": 1.0}]}]}
+        self.assertEqual(audio.cache_words(record, item, clip, self.qa)[0], ("The", 1.25, 1.5))
+        for key in ["audio_sha256", "request_sha256", "inputtext_sha256"]:
+            changed = copy.deepcopy(record)
+            changed["cache_identity"][key] = "d" * 64
+            with self.assertRaises(content.ContentError):
+                audio.cache_words(changed, item, clip, self.qa)
+        changed = copy.deepcopy(record)
+        changed["expected_inputtext"] += " Stale."
+        with self.assertRaises(content.ContentError):
+            audio.cache_words(changed, item, clip, self.qa)
+
+    def test_output_is_private_and_rejects_public_or_symlink_destinations(self):
+        good = self.root / "Audiobook/author-audit/web-release"
+        self.assertEqual(audio.private_destination(self.root, good), good.resolve())
+        with self.assertRaises(content.ContentError):
+            audio.private_destination(self.root, self.root / "web/dist")
+        outside = self.root / "public"
+        outside.mkdir()
+        good.rmdir()
+        good.parent.mkdir(parents=True, exist_ok=True)
+        good.symlink_to(outside, target_is_directory=True)
+        with self.assertRaises(content.ContentError):
+            audio.private_destination(self.root, good)
+
+    def test_author_approval_is_bound_once_and_never_follows_changed_audio(self):
+        destination = audio.private_destination(self.root, self.root / "Audiobook/author-audit/web-release")
+        registry = {"registrySha256": "e" * 64}
+        row = dict(self.recording, textSha256=self.track["textSha256"], selectionSha256="f" * 64)
+        with self.assertRaises(content.ContentError):
+            audio.author_approval(destination, registry, [row])
+        approval = audio.author_approval(destination, registry, [row], initialize=True)
+        self.assertEqual(approval["statements"][0], "Audio can go as is")
+        self.assertEqual(audio.author_approval(destination, registry, [row]), approval)
+        changed = dict(row, sha256="b" * 64)
+        with self.assertRaises(content.ContentError):
+            audio.author_approval(destination, registry, [changed], initialize=True)
+
+    def test_private_pointer_rejects_file_symlink_and_keeps_target_unchanged(self):
+        destination = audio.private_destination(self.root, self.root / "Audiobook/author-audit/web-release")
+        target = self.root / "target.json"
+        target.write_text("keep")
+        (destination / "pointer.json").symlink_to(target)
+        with self.assertRaises(content.ContentError):
+            audio.write_pointer(destination, "pointer.json", {"new": True})
+        self.assertEqual(target.read_text(), "keep")
+
+    def test_refinement_keeps_measured_words_outside_the_rechecked_window(self):
+        original = [{"word": "before", "start": 0, "end": .5},
+                    {"word": "bad", "start": 1, "end": 2},
+                    {"word": "after", "start": 3, "end": 4}]
+        refined = [{"word": "good", "start": 1.1, "end": 1.7}]
+        result = audio.merge_refinement_words(original, refined, [(1, 2)])
+        self.assertEqual([word["word"] for word in result], ["before", "good", "after"])
+        self.assertEqual(result[0], original[0])
+        self.assertEqual(result[-1], original[-1])
+
+    def private_alignment_fixture(self, root):
+        """Tiny local evidence; inference is stubbed and no real audio is read."""
+        destination = audio.private_destination(root, root / "Audiobook/author-audit/web-release")
+        raw = root / "Audiobook/v7/chunk-a.wav"
+        raw.parent.mkdir(parents=True)
+        raw.write_bytes(b"selected raw fixture")
+        item = {"id": "take-a", "text": self.track["paragraphs"][0]["text"], "request_sha256": "b" * 64}
+        (root / "Audiobook/v7/generation-manifest.json").write_text(json.dumps({"items": [item]}))
+        qa_path = root / "Audiobook/v7/mastered/chapter-001.qa.json"
+        qa_path.parent.mkdir()
+        qa_path.write_text(json.dumps(self.qa))
+        clip = {"id": "take-a", "rawAudioSha256": content.file_hash(raw),
+                "sourcePath": str(raw.relative_to(root))}
+        recording = dict(self.recording, productionEdition="v7", selectedClips=[clip],
+                         sourcePath="Audiobook/v7/mastered/chapter-001.mp3",
+                         sourceAudioPath="Audiobook/v7/mastered/chapter-001.mp3",
+                         sourceAudioSha256=self.recording["sha256"])
+        words = [{"word": word, "start": start, "end": end} for word, start, end in
+                 [("The", .75, 1.0), ("door", 1.0, 1.2), ("opened.", 1.2, 1.5),
+                  ("She", 2.0, 2.2), ("left.", 2.2, 2.5)]]
+        base = {"id": "take-a", "expected_inputtext": item["text"], "duration_seconds": 3.0,
+                "cache_identity": {"audio_sha256": clip["rawAudioSha256"],
+                   "request_sha256": item["request_sha256"],
+                   "inputtext_sha256": hashlib.sha256(item["text"].encode()).hexdigest()},
+                "segments": [{"words": words}]}
+        cache = root / "Audiobook/v7/local-checks/cache"
+        cache.mkdir(parents=True)
+        (cache / "take-a.base.json").write_text(json.dumps(base))
+        model = root / "Audiobook/v6/asr-model-medium"
+        model.mkdir(parents=True)
+        fake = types.SimpleNamespace(transcribe=mock.Mock(return_value={"segments": [{"words": words}]}))
+        return destination, recording, model, fake
+
+    def test_refinement_rejects_every_private_cache_ancestor_symlink(self):
+        for relative in ["alignment-cache", "alignment-cache/v7", "alignment-cache/v7/cache"]:
+            with self.subTest(relative=relative), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary).resolve()
+                destination, recording, model, fake = self.private_alignment_fixture(root)
+                public = root / "web/dist"
+                public.mkdir(parents=True)
+                link = destination / relative
+                link.parent.mkdir(parents=True, exist_ok=True)
+                link.symlink_to(public, target_is_directory=True)
+                reports = [{"trackId": recording["trackId"], "narratorId": recording["narratorId"],
+                            "unanchoredIntervals": [{"start": 1.5, "end": 2.0}]}]
+                with mock.patch.object(audio.COMPARISON, "model_identity", return_value={"files_sha256": {"weights.safetensors": "f" * 64}}), \
+                     mock.patch.dict(sys.modules, {"mlx_whisper": fake}):
+                    with self.assertRaises(content.ContentError):
+                        audio.refine_alignment_gaps(root, destination, {"recordings": [recording]}, reports, model)
+                self.assertEqual(list(public.iterdir()), [])
+
+    def test_timing_export_rejects_private_timings_symlink(self):
+        destination, recording, _, _ = self.private_alignment_fixture(self.root)
+        public = self.root / "web/dist"
+        public.mkdir(parents=True)
+        (destination / "timings").symlink_to(public, target_is_directory=True)
+        approval = {"reviewer": "fixture", "reviewedAt": "2026-10-10T00:00:00+00:00"}
+        with self.assertRaises(content.ContentError):
+            audio.build_timings(self.root.resolve(), destination, {"tracks": [self.track]}, [recording], approval)
+        self.assertEqual(list(public.iterdir()), [])
+
+    def test_timing_report_emits_null_low_confidence_gap_without_approving_partial_words(self):
+        destination, recording, _, _ = self.private_alignment_fixture(self.root)
+        cache = self.root / "Audiobook/v7/local-checks/cache/take-a.base.json"
+        record = content.read_json(cache)
+        record["segments"][0]["words"] = [word for word in record["segments"][0]["words"]
+                                           if word["word"] not in {"door", "opened."}]
+        cache.write_bytes(content.json_bytes(record))
+        approval = {"reviewer": "fixture", "reviewedAt": "2026-10-10T00:00:00+00:00"}
+        maps, reports = audio.build_timings(self.root.resolve(), destination, {"tracks": [self.track]}, [recording], approval)
+        self.assertEqual(maps, {})
+        self.assertEqual(reports[0]["status"], "pending")
+        gap = reports[0]["syncGaps"][0]
+        self.assertEqual(gap["sentenceId"], content.sentences(self.track)[0]["id"])
+        self.assertEqual(gap["reason"], "low-confidence-ASR-anchor")
+        self.assertEqual(gap["syncStatus"], "unavailable")
+        self.assertIsNone(gap["start"]); self.assertIsNone(gap["end"])
+        self.assertEqual(gap["evidenceIds"], ["take-a"])
+
+    def transcription_fixture(self):
+        destination = audio.private_destination(self.root, self.root / "Audiobook/author-audit/web-release")
+        checker = self.root / "Audiobook/v6/check_audio_local.py"
+        checker.parent.mkdir(parents=True)
+        shutil.copyfile(ROOT / "Audiobook/v6/check_audio_local.py", checker)
+        model = self.root / "Audiobook/v6/asr-model"
+        model.mkdir()
+        (model / "config.json").write_text("{}")
+        (model / "weights.safetensors").write_bytes(b"fixture")
+        raw = self.root / "Audiobook/v7/take-a.wav"
+        raw.parent.mkdir()
+        with wave.open(str(raw), "wb") as stream:
+            stream.setparams((1, 2, 8000, 0, "NONE", "not compressed"))
+            stream.writeframes(b"\0\0" * 8000)
+        item = {"id": "take-a", "text": "The door opened.", "request_sha256": "b" * 64}
+        raw.with_suffix(".json").write_text(json.dumps({"request_sha256": item["request_sha256"],
+                                                       "audio_sha256": content.file_hash(raw)}))
+        (raw.parent / "generation-manifest.json").write_text(json.dumps({"items": [item]}))
+        recording = {"trackId": "chapter-001", "narratorId": "autonoe", "productionEdition": "v7",
+                     "selectedClips": [{"id": "take-a", "sourcePath": str(raw.relative_to(self.root)),
+                                        "rawAudioSha256": content.file_hash(raw)}]}
+        return destination, recording, model
+
+    def test_missing_transcription_works_with_only_tracked_clean_checkout_sources(self):
+        destination, recording, model = self.transcription_fixture()
+        scripts = self.root / "web/scripts"
+        scripts.mkdir(parents=True)
+        for name in ["prepare_book_audio.py", "book_content.py"]:
+            shutil.copyfile(ROOT / "web/scripts" / name, scripts / name)
+        self.assertFalse((self.root / "Audiobook/v8/check_audio_local.py").exists())
+        code = """
+import json, pathlib, sys, types
+from unittest import mock
+root = pathlib.Path(sys.argv[1]).resolve()
+sys.path.insert(0, str(root / 'web/scripts'))
+import prepare_book_audio as audio
+fake = types.SimpleNamespace(transcribe=mock.Mock(return_value={'text':'The door opened.', 'segments':[]}))
+with mock.patch('importlib.metadata.version', return_value='fixture'), mock.patch.dict(sys.modules, {'mlx_whisper':fake}):
+    audio.transcribe_missing(root, root / 'Audiobook/author-audit/web-release', {},
+                             {'recordings':[json.loads(sys.argv[2])]}, root / 'Audiobook/v6/asr-model')
+fake.transcribe.assert_called_once()
+assert fake.transcribe.call_args.kwargs['path_or_hf_repo'] == str(root / 'Audiobook/v6/asr-model')
+assert pathlib.Path(audio.COMPARISON.__file__) == root / 'Audiobook/v6/check_audio_local.py'
+"""
+        result = subprocess.run([sys.executable, "-c", code, str(self.root), json.dumps(recording)],
+                                capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        cache = next((destination / "alignment-cache/v7/cache").glob("take-a.*.json"))
+        saved = content.read_json(cache)
+        self.assertEqual(saved["cache_identity"]["audio_sha256"], recording["selectedClips"][0]["rawAudioSha256"])
+        self.assertEqual(saved["expected_inputtext"], "The door opened.")
+
+    def test_transcription_rejects_changed_raw_selection_before_inference(self):
+        destination, recording, model = self.transcription_fixture()
+        recording["selectedClips"][0]["rawAudioSha256"] = "d" * 64
+        fake = types.SimpleNamespace(transcribe=mock.Mock(return_value={"text": "The door opened.", "segments": []}))
+        with mock.patch("importlib.metadata.version", return_value="fixture"), \
+             mock.patch.dict(sys.modules, {"mlx_whisper": fake}):
+            with self.assertRaises(content.ContentError):
+                audio.transcribe_missing(self.root, destination, {}, {"recordings": [recording]}, model)
+        fake.transcribe.assert_not_called()
+
+    def test_refinement_serializes_backend_float_scalars_before_strict_clock_checks(self):
+        class BackendFloat(float):
+            pass
+        destination, recording, model, fake = self.private_alignment_fixture(self.root)
+        for word in fake.transcribe.return_value["segments"][0]["words"]:
+            word["start"] = BackendFloat(word["start"])
+            word["end"] = BackendFloat(word["end"])
+        reports = [{"trackId": recording["trackId"], "narratorId": recording["narratorId"],
+                    "unanchoredIntervals": [{"start": 1.5, "end": 2.0}]}]
+        with mock.patch.object(audio.COMPARISON, "model_identity", return_value={"files_sha256": {"weights.safetensors": "f" * 64}}), \
+             mock.patch.dict(sys.modules, {"mlx_whisper": fake}):
+            audio.refine_alignment_gaps(self.root.resolve(), destination, {"recordings": [recording]}, reports, model)
+        manifest = content.read_json(self.root / "Audiobook/v7/generation-manifest.json")
+        _, cached = audio.find_cache(self.root.resolve(), destination, recording, manifest["items"][0])
+        self.assertTrue(cached.get("refinementAttempts"))
+        self.assertIs(type(cached["segments"][0]["words"][0]["start"]), float)
+
+    def test_refinement_preserves_baseline_for_invalid_window_and_continues_other_windows(self):
+        for start, end in [(float("nan"), .9), (.9, .7), (.7, 4.0)]:
+            with self.subTest(start=start, end=end), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary).resolve()
+                destination, recording, model, fake = self.private_alignment_fixture(root)
+                fake.transcribe.side_effect = [
+                    {"segments": [{"words": [{"word": "rejected", "start": start, "end": end}]}]},
+                    {"segments": [{"words": [{"word": "She", "start": 2.0, "end": 2.2},
+                                             {"word": "left.", "start": 2.2, "end": 2.5}]}]}]
+                reports = [{"trackId": recording["trackId"], "narratorId": recording["narratorId"],
+                            "unanchoredIntervals": [{"start": 1.5, "end": 2.0}]}]
+                with mock.patch.object(audio.COMPARISON, "model_identity", return_value={"files_sha256": {"weights.safetensors": "f" * 64}}), \
+                     mock.patch.object(audio, "refinement_windows", return_value={"take-a": [(0.0, 1.0), (2.0, 3.0)]}), \
+                     mock.patch.dict(sys.modules, {"mlx_whisper": fake}):
+                    audio.refine_alignment_gaps(root, destination, {"recordings": [recording]}, reports, model)
+                item = content.read_json(root / "Audiobook/v7/generation-manifest.json")["items"][0]
+                _, cached = audio.find_cache(root, destination, recording, item)
+                self.assertEqual(fake.transcribe.call_count, 2)
+                self.assertEqual([entry["status"] for entry in cached["refinementAttempts"]],
+                                 ["rejected-invalid-clock", "measured"])
+                self.assertEqual(cached["segments"][0]["words"][0], {"word": "The", "start": .75, "end": 1.0})
+                self.assertNotIn("rejected", cached["transcript"])
+                self.assertEqual(cached["cache_identity"]["refinement"]["rejectedWindows"][0]["reason"],
+                                 "invalid-raw-ASR-word-clock")
+
+    def test_only_one_local_gpu_alignment_worker_can_run(self):
+        destination = audio.private_destination(self.root, self.root / "Audiobook/author-audit/web-release")
+        with audio.gpu_worker_lock(destination):
+            with self.assertRaises(content.ContentError):
+                with audio.gpu_worker_lock(destination):
+                    self.fail("A second GPU worker must not enter")
+
+    @unittest.skipUnless(shutil.which("ffmpeg") and shutil.which("ffprobe"), "local ffmpeg is required")
+    def test_existing_192kbps_clock_is_measured_without_reencoding(self):
+        target = self.root / "existing.mp3"
+        subprocess.run(["ffmpeg", "-v", "error", "-f", "lavfi", "-i", "sine=frequency=440:duration=1.25",
+                        "-ar", "44100", "-c:a", "libmp3lame", "-b:a", "192k", str(target)], check=True)
+        digest = content.file_hash(target)
+        measured = audio.measure_audio(target)
+        self.assertEqual(measured["bitRate"], 192000)
+        self.assertEqual(measured["decodedSamples"], 55125)
+        self.assertAlmostEqual(measured["decodedDuration"], 1.25, places=6)
+        self.assertLess(measured["samplePeakDbfs"], 0)
+        self.assertEqual(content.file_hash(target), digest)
+
+
+if __name__ == "__main__":
+    unittest.main()
