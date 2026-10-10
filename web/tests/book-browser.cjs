@@ -5,6 +5,7 @@ const path = require('node:path');
 const http = require('node:http');
 const crypto = require('node:crypto');
 const {create:createLegacyProgress}=require('../dist/progress.js');
+const {create:createBook}=require('../dist/book.js');
 let playwrightModule = process.env.PLAYWRIGHT_MODULE;
 if (!playwrightModule) {
   try { playwrightModule = require.resolve('playwright'); }
@@ -659,6 +660,63 @@ let browser;
       state.lastPosition.completed===false && state.history['chapter-001'].completed===false && document.querySelector('#transition-start').hidden;
   }));
   await knownCompleted.context.close();
+  const capturedTailContext=async({completed=true,unknownSource=false,seed=true}={})=>{
+    const pilot=JSON.parse(JSON.stringify(payloads.get('/fixture/chapter-001-charon.json'))),index=JSON.parse(JSON.stringify(manifest));
+    pilot.id=pilot.readingExtentId='chapter-001-pilot';pilot.readingExtent='excerpt';pilot.schemaVersion=2;
+    const paragraph=pilot.paragraphs[0];paragraph.id='p001';paragraph.sentences.forEach((sentence,index)=>sentence.id='p001-s0'+(index+1));
+    Object.assign(paragraph.sentences[1],{start:null,end:null,syncStatus:'unavailable'});paragraph.end=paragraph.sentences[0].end;
+    index.legacyAliases['chapter-001-pilot']={trackId:'chapter-001',sentenceIds:{'p001-s01':'v6:chapter-001:p001-s01','p001-s02':'v6:chapter-001:p001-s02'},
+      completedExcerpt:{sentenceId:'v6:chapter-001:p001-s02',sentenceFraction:1,trackCompleted:false}};
+    const values=new Map(),storage={getItem:key=>values.get(key)||null,setItem:(key,value)=>values.set(key,value)};
+    const producer=createBook({manifest:index,pilot,storage,loadChapter:async()=>pilot});await producer.load('chapter-001','charon');
+    const bookmark=producer.save(completed?pilot.duration:pilot.duration-.5,{completed});
+    assert.equal(bookmark.anchorMeasured,false,'the real controller captures the unmeasured pilot tail');
+    assert.equal(bookmark.completed,completed,'the real controller captures excerpt completion separately');
+    const saved=JSON.parse(values.get('lumen-book-v2'));
+    if(unknownSource) {bookmark.audioSha256='e'.repeat(64);saved.lastPosition=bookmark;saved.history['chapter-001'].bookmark=bookmark;}
+    const target=JSON.parse(JSON.stringify(payloads.get('/fixture/chapter-001-autonoe.json')));
+    target.paragraphs[0].end=target.paragraphs[0].sentences[1].end=10;
+    const fixture=await fixtureContext({index,overrides:new Map([['/fixture/chapter-001-charon.json',pilot],['/fixture/chapter-001-autonoe.json',target]])});
+    if(seed)await fixture.context.addInitScript(({bookmark,saved})=>{
+      if(sessionStorage.getItem('fixture-completed-tail-seeded'))return;
+      sessionStorage.setItem('fixture-completed-tail-seeded','yes');
+      localStorage.setItem('lumen-reader-v1',JSON.stringify(bookmark));localStorage.setItem('lumen-book-v2',JSON.stringify(saved));
+    },{bookmark,saved});
+    await fixture.page.route('**/legacy-pilot.js*',route=>route.fulfill({contentType:'text/javascript',body:'window.LUMEN_PILOT_REFERENCE='+JSON.stringify(pilot)+';'}));
+    await fixture.page.goto(origin+'/?voice='+(seed?'autonoe':'charon'),{waitUntil:'domcontentloaded'});
+    await fixture.page.waitForFunction(()=>window.LUMEN_BOOK && (window.LUMEN_BOOK.getActive() || !document.querySelector('#transition-retry').hidden));
+    return {...fixture,bookmark,saved};
+  };
+  const tailMapped=page=>page.evaluate(()=>{
+    const audio=document.querySelector('#narration'),state=JSON.parse(localStorage.getItem('lumen-book-v2'));
+    return window.LUMEN_CHAPTER?.audio.narratorId==='autonoe' && audio.paused && Math.abs(audio.currentTime-10)<.04 &&
+      state.lastPosition.completed===false && state.history['chapter-001'].completed===false && document.querySelector('#transition-start').hidden;
+  });
+  const capturedTail=await capturedTailContext();
+  await capturedTail.page.waitForTimeout(150);
+  regression('a captured unmeasured completed excerpt resumes at the verified endpoint in another recording',await tailMapped(capturedTail.page));
+  await capturedTail.page.reload({waitUntil:'domcontentloaded'});
+  await capturedTail.page.waitForFunction(()=>window.LUMEN_BOOK && (window.LUMEN_BOOK.getActive() || !document.querySelector('#transition-retry').hidden));
+  await capturedTail.page.waitForTimeout(150);
+  regression('reload retains the migrated excerpt endpoint without marking the full chapter completed',await tailMapped(capturedTail.page));
+  await capturedTail.context.close();
+  const liveTail=await capturedTailContext({seed:false});await ready(liveTail.page);
+  await liveTail.page.locator('#seek').evaluate(el=>{el.value='8';el.dispatchEvent(new Event('input',{bubbles:true}));});
+  await liveTail.page.waitForFunction(()=>JSON.parse(localStorage.getItem('lumen-book-v2')).lastPosition.completed===true);
+  assert.equal(await liveTail.page.evaluate(()=>JSON.parse(localStorage.getItem('lumen-book-v2')).lastPosition.anchorMeasured),false);
+  await liveTail.page.locator('#settings-open').click();await liveTail.page.locator('#narrator').selectOption('autonoe');await liveTail.page.locator('#settings-close').click();
+  await liveTail.page.waitForFunction(()=>window.LUMEN_CHAPTER.audio.narratorId==='autonoe' || !document.querySelector('#transition-retry').hidden);
+  await liveTail.page.waitForTimeout(150);
+  regression('a narrator switch after native tail completion uses the verified excerpt endpoint',await tailMapped(liveTail.page));
+  await liveTail.context.close();
+  for(const options of [{completed:false},{unknownSource:true}]) {
+    const rejectedTail=await capturedTailContext(options);
+    regression(options.unknownSource?'an unknown completed source cannot promote an unmeasured tail':'an unfinished unmeasured excerpt cannot borrow its completion endpoint',await rejectedTail.page.evaluate(({bookmark,saved})=>
+      !window.LUMEN_BOOK.getActive() && JSON.stringify(JSON.parse(localStorage.getItem('lumen-reader-v1')))===JSON.stringify(bookmark) &&
+      JSON.stringify(JSON.parse(localStorage.getItem('lumen-book-v2')))===JSON.stringify(saved) && !document.querySelector('#transition-start').hidden,
+      {bookmark:rejectedTail.bookmark,saved:rejectedTail.saved}));
+    await rejectedTail.context.close();
+  }
   const sessionCompleted=await legacyPilotContext(sourcePilot.duration,{completed:true,unknownSource:true,chapterId:'chapter-002',voice:'autonoe'});await ready(sessionCompleted.page);
   await sessionCompleted.page.evaluate(({bookmark,other})=>{
     const state=JSON.parse(localStorage.getItem('lumen-book-v2'));

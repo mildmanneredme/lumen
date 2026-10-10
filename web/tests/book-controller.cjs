@@ -400,6 +400,52 @@ test('a known original legacy completion in its source tail uses the verified ex
   assert.deepEqual((await book.load(selection.trackId,selection.narratorId,{bookmark:selection.bookmark})).position,{time:50,completed:false,mapped:true});
   assert.equal(f.storage.getItem(LEGACY_BOOKMARK_KEY),raw);assert.equal(f.storage.getItem(BOOKMARK_KEY),null);
 });
+function pilotWithUnmeasuredTail(f) {
+  const paragraph=f.pilot.paragraphs[0];
+  f.pilot.schemaVersion=2;
+  Object.assign(paragraph.sentences[1],{start:null,end:null,syncStatus:'unavailable'});
+  paragraph.end=paragraph.sentences[0].end;
+  f.manifest.tracks[1].recordings.charon.audioSha256=f.pilot.audio.sha256;
+  f.payloads[f.manifest.tracks[1].recordings.charon.url]=clone(f.pilot);
+}
+test('verified excerpt completion maps its endpoint even when capture marks the source tail unmeasured',async()=>{
+  const f=fixture();pilotWithUnmeasuredTail(f);
+  const book=reader(f);await book.load('chapter-001','charon');
+  const saved=book.save(f.pilot.duration,{completed:true});
+  assert.equal(saved.anchorMeasured,false);assert.equal(saved.completed,true);
+  assert.equal(book.getHistory()['chapter-001'].completed,false);
+  const raw=f.storage.getItem(BOOKMARK_KEY),legacy=f.storage.getItem(LEGACY_BOOKMARK_KEY);
+  const mapped=await book.load('chapter-001','autonoe',{bookmark:saved});
+  assert.deepEqual(mapped.position,{time:50,completed:false,mapped:true});
+  assert.equal(f.storage.getItem(BOOKMARK_KEY),raw);assert.equal(f.storage.getItem(LEGACY_BOOKMARK_KEY),legacy);
+  const reopened=reader(f),selection=reopened.initialSelection({narratorId:'autonoe'});
+  assert.deepEqual((await reopened.load(selection.trackId,selection.narratorId,{bookmark:selection.bookmark})).position,mapped.position);
+  const migrated=reopened.save(mapped.position.time,{completed:mapped.position.completed});
+  assert.equal(migrated.anchorMeasured,true);assert.equal(migrated.completed,false);
+  assert.equal(reopened.getHistory()['chapter-001'].completed,false);
+});
+test('an unfinished known excerpt with an unmeasured tail cannot use the completion endpoint',async()=>{
+  const f=fixture();pilotWithUnmeasuredTail(f);
+  const book=reader(f);await book.load('chapter-001','charon');
+  const saved=book.save(f.pilot.duration-1),raw=f.storage.getItem(BOOKMARK_KEY),legacy=f.storage.getItem(LEGACY_BOOKMARK_KEY),active=book.getActive();
+  assert.equal(saved.anchorMeasured,false);assert.equal(saved.completed,false);
+  await assert.rejects(book.load('chapter-001','autonoe',{bookmark:saved}),error=>error.code==='MISSING_ANCHOR');
+  assert.equal(book.getActive(),active);assert.equal(f.storage.getItem(BOOKMARK_KEY),raw);assert.equal(f.storage.getItem(LEGACY_BOOKMARK_KEY),legacy);
+});
+test('unmeasured completion still requires the exact known source and alias extent',async t=>{
+  for(const [name,change] of [
+    ['unknown source',bookmark=>bookmark.audioSha256='c'.repeat(64)],
+    ['wrong alias extent',(_bookmark,f)=>f.pilot.readingExtentId='different-pilot']
+  ])await t.test(name,async()=>{
+    const f=fixture();pilotWithUnmeasuredTail(f);const producer=reader(f);await producer.load('chapter-001','charon');
+    const saved=producer.save(f.pilot.duration,{completed:true});change(saved,f);
+    const state=JSON.parse(f.storage.getItem(BOOKMARK_KEY));state.lastPosition=saved;state.history['chapter-001'].bookmark=saved;
+    f.storage.setItem(BOOKMARK_KEY,JSON.stringify(state));f.storage.setItem(LEGACY_BOOKMARK_KEY,JSON.stringify(saved));
+    const raw=f.storage.getItem(BOOKMARK_KEY),legacy=f.storage.getItem(LEGACY_BOOKMARK_KEY),book=reader(f);
+    await assert.rejects(book.load('chapter-001','autonoe',{bookmark:saved}),error=>error.code==='MISSING_ANCHOR');
+    assert.equal(book.getActive(),null);assert.equal(f.storage.getItem(BOOKMARK_KEY),raw);assert.equal(f.storage.getItem(LEGACY_BOOKMARK_KEY),legacy);
+  });
+});
 test('unknown completed alias cannot bypass source identity during an in-session load or via a measured flag',async()=>{
   const {f,book}=await opened();book.save(25);
   const legacy=createLegacyProgress(f.pilot,f.pilot.paragraphs.flatMap(p=>p.sentences),f.storage).save(f.pilot.duration,{completed:true});
