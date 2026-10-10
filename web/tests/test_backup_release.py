@@ -156,6 +156,44 @@ class BackupReleaseTests(unittest.TestCase):
             collected = backup.collect_release_fileset(self.root, "lumen-backup-fixture")
         self.assertTrue(set(paths).issubset(row["path"] for row in collected["files"]))
 
+    def test_apple_p8_keys_reject_explicit_and_production_sources_and_skip_generic_walks(self):
+        keys = ["web/AuthKey_ABC123.p8", "docs/signing.P8",
+                "Audiobook/author-audit/signing.p8", "Audiobook/v8/local-checks/AuthKey_ABC123.P8"]
+        innocent = ["web/AuthKey_example.md", "docs/Appendix-p8.md", "web/auth-keyboard.js"]
+        for name in keys + innocent:
+            source = self.root / name
+            source.parent.mkdir(parents=True, exist_ok=True)
+            source.write_bytes(b"disposable fixture")
+        for name in keys:
+            with self.subTest(explicit=name):
+                with self.assertRaisesRegex(backup.BackupError, "Excluded credential"):
+                    backup.prepare_fileset(self.root, [name], "lumen-backup-fixture")
+        sys.path.insert(0, str(SCRIPT.parent))
+        self.addCleanup(lambda: sys.path.remove(str(SCRIPT.parent)))
+        import book_content as content
+        with patch.object(content, "load_project_registry", return_value={}), \
+             patch.object(content, "load_recording_inventory", return_value={"recordings": []}):
+            collected = backup.collect_release_fileset(self.root, "lumen-backup-fixture")
+        names = {row["path"] for row in collected["files"]}
+        mp3 = self.root / self.paths[2]
+        lossless = mp3.with_suffix(".wav"); lossless.write_bytes(b"lossless fixture")
+        mp3.with_suffix(".checkpoint.json").write_text(json.dumps({
+            "output_sha256": {"lossless_wav": hashlib.sha256(lossless.read_bytes()).hexdigest()}}))
+        mp3.with_suffix(".qa.json").write_text('{"warnings":[]}')
+        for recording in [
+            {"sourcePath": keys[0], "sha256": "a" * 64, "selectedClips": []},
+            {"sourcePath": self.paths[2], "sha256": hashlib.sha256(mp3.read_bytes()).hexdigest(),
+             "selectedClips": [{"sourcePath": keys[-1], "rawAudioSha256": "a" * 64}]},
+        ]:
+            with self.subTest(selected_source=recording):
+                with patch.object(content, "load_project_registry", return_value={}), \
+                     patch.object(content, "load_recording_inventory", return_value={"recordings": [recording]}):
+                    with self.assertRaisesRegex(backup.BackupError, "Excluded credential"):
+                        backup.collect_release_fileset(self.root, "lumen-backup-fixture")
+        self.assertTrue(set(keys).isdisjoint(names))
+        self.assertTrue(set(innocent).issubset(names))
+        self.assertFalse(self.destination.exists())
+
     def test_changed_plan_source_clock_is_rejected_before_destination_creation(self):
         plan = self.plan()
         (self.root / self.paths[0]).write_text("source changed")

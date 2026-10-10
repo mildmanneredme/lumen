@@ -28,7 +28,7 @@ CHUNK_BYTES = 1024 * 1024
 SHA256 = re.compile(r"[a-f0-9]{64}\Z")
 BLOCKED_PARTS = {".git", ".vercel", ".aws", ".ssh", ".codex", ".agents", "receipts", "attempts",
                  "node_modules", "__pycache__", ".venv", "venv", "models-cache", "downloaded-models"}
-BLOCKED_SUFFIXES = {".pem", ".key", ".p12", ".pfx", ".jks", ".keystore", ".pyc", ".lock"}
+BLOCKED_SUFFIXES = {".pem", ".key", ".p8", ".p12", ".pfx", ".jks", ".keystore", ".pyc", ".lock"}
 BLOCKED_FILES = {".netrc", ".npmrc", ".pypirc", ".git-credentials", ".ds_store",
                  "id_rsa", "id_ed25519", "id_ecdsa", "id_dsa", "secret.json", "secrets.json"}
 GENERATED_DIRECTORIES = {"env", "venv", "models", "cache", "caches", "checkpoints",
