@@ -47,6 +47,7 @@ def url_base(value, name):
     if ":" in host:
         host = "[" + ipaddress.IPv6Address(host).compressed + "]"
     else:
+        content.require(len(host.removesuffix(".")) <= 253, "URL DNS host exceeds its maximum length")
         try:
             host = str(ipaddress.IPv4Address(host.rstrip(".")))
         except ipaddress.AddressValueError:
