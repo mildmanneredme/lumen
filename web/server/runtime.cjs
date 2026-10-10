@@ -22,6 +22,10 @@ function createIndexLoader({env=process.env,getBlob}) {
 let reader;
 async function getReader() {
   if(!reader) {
+    if(process.env.LUMEN_WORKER_ORIGIN) {
+      reader=require('./cloudflare-bridge.cjs').createCloudflareBridge();
+      return reader;
+    }
     const {get}=await import('@vercel/blob');
     reader=createPrivateReader({loadIndex:createIndexLoader({getBlob:get}),getBlob:get});
   }

@@ -4,11 +4,11 @@ const test=require('node:test');
 const {execFileSync,spawnSync}=require('node:child_process');
 const project=path.resolve(__dirname,'..');
 const privateShell=fs.readFileSync(path.join(project,'dist/index.html'),'utf8').includes('legacy-pilot.js');
-const allowed=['api/session.js','api/book.js','api/assets/[...path].js','server/private-access.cjs',
+const allowed=['api/session.js','api/book.js','api/assets/[...path].js','server/private-access.cjs','server/cloudflare-bridge.cjs',
   'server/runtime.cjs','server/node-handler.cjs','dist/index.html','dist/app.js','dist/styles.css','dist/sw.js',
   'dist/icons/icon-192.png','dist/assets/opening-room.webp','package.json','package-lock.json','vercel.json'];
 const blocked=['.env','.env.shared','.env.keys','server/.env','audit/index.html','art-direction/cast-bible.json',
-  'data/chapter-001.json','assets/source.png','scripts/audit_server.py','tests/private-access.cjs','node_modules/example.js'];
+  'data/chapter-001.json','assets/source.png','scripts/audit_server.py','tests/private-access.cjs','node_modules/example.js','cloudflare/worker.mjs'];
 const historical=['dist/data/chapter-001.js','dist/assets/chapter-001-pilot.mp3'];
 test('repository-root Git integration cannot automatically publish the project sources',()=>{
   const config=JSON.parse(fs.readFileSync(path.join(project,'../vercel.json'),'utf8'));

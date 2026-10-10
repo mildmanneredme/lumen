@@ -12,7 +12,7 @@ Author decisions recorded 10 October 2026.
 | Narrator labels | “Female narrator” and “Male narrator”; start new readers with the female edition and remember their subsequent choice. |
 | Images | Use generic placeholders now. Character approval is handled separately; generate story imagery only after finalization and review. |
 | Devices | Optimize for mobile phones, iPad, and desktop. Retain Android installation, home-screen support, and safe-area controls. |
-| Media | Prefer private Vercel Blob. Available account allowances and spending ceiling are still being confirmed. |
+| Media | Private Cloudflare R2 with a Worker delivery gateway. Preserve the Vercel reader address; keep Workers on the free plan during hosted verification. |
 | Backups | Existing private Lumen Google Drive folder; preserve sharing and the existing archive. Exclude secrets, local environments, and downloaded models. |
 | Secrets | Follow the machine’s dotenvx convention: encrypted owner-only ignored `.env` and `.env.shared`, with a separate owner-only ignored `.env.keys`. Load them through dotenvx from their matching directory. Server secrets stay outside browser code. |
 | Later scope | Offline audiobook downloads, cross-device sync, sleep timer, personal bookmarks, search, and download products remain later features. |
@@ -21,4 +21,4 @@ Returning readers still open paused at their saved chapter and passage. Both edi
 
 Engineering may complete the release while character and artwork decisions remain open. The launch presents placeholders honestly and does not expose internal casting documents, production files, credentials, or author audit notes.
 
-Source decisions: the author explicitly stated “Audio can go as is”, “No audio regen needed”, “Start with the female voice by default”, “Prefer Blob”, “Keep them in the Lumen google drive”, and “Ok to go full launch, this is essentially a private site”; the follow-ups select existing 192 kbps files and a memorable shared access code.
+Source decisions: the author accepted current narration, female narration by default, the existing private Lumen Drive folder and a full private launch. Follow-ups select existing 192 kbps files, a memorable shared access code and Cloudflare R2; the author signed into its CLI and enabled R2.
