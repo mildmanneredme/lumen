@@ -2,8 +2,10 @@
 from __future__ import annotations
 
 import copy
+from contextlib import redirect_stdout
 import hashlib
 import importlib.util
+import io
 import json
 import os
 from pathlib import Path
@@ -42,6 +44,23 @@ class BackupReleaseTests(unittest.TestCase):
     def run_copy(self, plan=None):
         return backup.copy_snapshot(self.root, self.destination, plan or self.plan(), minimum_free_bytes=0)
 
+    @staticmethod
+    def volume_info(available, unit=1):
+        return type("Volume", (), {"f_bavail": available // unit, "f_frsize": unit, "f_bsize": unit})()
+
+    @staticmethod
+    def allocated_fixture_bytes(destination):
+        paths = list(destination.rglob("*")) if destination.exists() else []
+        return sum(path.stat().st_size for path in paths if path.is_file()) + len(paths) + int(destination.exists())
+
+    @staticmethod
+    def restore_entry_count(paths):
+        entries = {""}
+        for path in paths:
+            parts = Path(path).parts
+            entries.update("/".join(parts[:index]) for index in range(1, len(parts) + 1))
+        return len(entries)
+
     def metadata_allocation_fixture(self, plan):
         # Observe real JSON payloads on an independent tiny copy rather than
         # assigning a guessed metadata allowance to exact-capacity fixtures.
@@ -52,6 +71,8 @@ class BackupReleaseTests(unittest.TestCase):
             clock.now.return_value = fixed_now
             backup.copy_snapshot(self.root, reference, plan, minimum_free_bytes=0)
         metadata_bytes = sum(path.stat().st_size for path in reference.glob("*.json"))
+        # Byte-boundary fixtures use one-byte units and one unit per tree entry.
+        metadata_bytes += 1 + sum(1 for _ in reference.rglob("*"))
         return metadata_bytes, fixed_now
 
     def test_plan_is_deterministic_and_keeps_large_file_hashing_for_copy(self):
@@ -60,6 +81,27 @@ class BackupReleaseTests(unittest.TestCase):
         self.assertEqual([row["path"] for row in first["files"]], sorted(self.paths))
         self.assertEqual(first["totalBytes"], sum((self.root / name).stat().st_size for name in self.paths))
         self.assertEqual(first["copyStatus"], "planned")
+
+    def test_plan_cli_reports_source_floor_and_requires_destination_preflight(self):
+        plan = self.plan()
+        private_plan = self.base / "reviewed-plans" / "fixture-plan.json"
+        output = io.StringIO()
+        reserve = 1
+        with patch.object(backup, "collect_release_fileset", return_value=plan), redirect_stdout(output):
+            self.assertEqual(backup.main(["--root", str(self.root), "--plan", str(private_plan),
+                                          "--backup-id", plan["backupId"], "--minimum-free-bytes", str(reserve)]), 0)
+        report = json.loads(output.getvalue())
+        self.assertNotIn("minimumFreeBytes", report)
+        self.assertEqual(report["sourceBytesPlusReserveFloor"], plan["totalBytes"] + reserve)
+        self.assertIs(report["destinationPreflightRequired"], True)
+        self.assertEqual(report["floorExcludes"], ["metadataPayloads", "filesystemAllocationRounding", "directoryEntryHeadroom"])
+        self.assertEqual(backup.read_json(private_plan), plan)
+        self.assertEqual(report["planSha256"], plan["planSha256"])
+        self.assertEqual(report["bytes"], plan["totalBytes"])
+        with patch.object(backup.os, "fstatvfs", return_value=self.volume_info(report["sourceBytesPlusReserveFloor"])):
+            with self.assertRaisesRegex(backup.BackupError, "space"):
+                backup.copy_snapshot(self.root, self.destination, plan, minimum_free_bytes=reserve)
+        self.assertFalse(self.destination.exists())
 
     def test_copy_hashes_bytes_preserves_sources_and_never_claims_remote_sync(self):
         before = {name: (self.root / name).read_bytes() for name in self.paths}
@@ -71,6 +113,141 @@ class BackupReleaseTests(unittest.TestCase):
             self.assertEqual((self.root / row["path"]).read_bytes(), before[row["path"]])
             self.assertEqual(row["sha256"], hashlib.sha256(before[row["path"]]).hexdigest())
         self.assertEqual(json.loads((self.destination / "backup-manifest.json").read_text()), manifest)
+
+    def test_snapshot_or_real_ancestor_replacement_receives_no_private_writes(self):
+        for replaced in ["snapshot", "ancestor"]:
+            for boundary in ["source-copy", "initial-metadata"]:
+                with self.subTest(replaced=replaced, boundary=boundary):
+                    parent = self.base / (replaced + "-" + boundary) / "Lumen"
+                    parent.mkdir(parents=True)
+                    destination = parent / "lumen-root-pin-fixture"
+                    plan = backup.prepare_fileset(self.root, self.paths, destination.name)
+                    original_copy, original_write = backup.copy_hashed, backup.write_json
+                    swaps = []
+                    def replace_destination():
+                        if swaps:
+                            return
+                        selected = destination if replaced == "snapshot" else parent
+                        displaced = selected.with_name(selected.name + "-displaced")
+                        selected.rename(displaced)
+                        destination.mkdir(parents=True, mode=0o700)
+                        (destination / "files").mkdir(mode=0o700)
+                        swaps.append(displaced if replaced == "snapshot" else displaced / destination.name)
+                    def swapped_copy(source, target, **kwargs):
+                        if boundary == "source-copy":
+                            replace_destination()
+                        return original_copy(source, target, **kwargs)
+                    def swapped_write(path, value, **kwargs):
+                        if boundary == "initial-metadata":
+                            replace_destination()
+                        return original_write(path, value, **kwargs)
+                    with patch.object(backup, "copy_hashed", side_effect=swapped_copy), \
+                         patch.object(backup, "write_json", side_effect=swapped_write):
+                        with self.assertRaises(backup.BackupError):
+                            backup.copy_snapshot(self.root, destination, plan, minimum_free_bytes=0)
+                    self.assertEqual(len(swaps), 1)
+                    self.assertEqual([path for path in destination.rglob("*") if path.is_file()], [])
+                    self.assertFalse((destination / "backup-manifest.json").exists())
+                    self.assertTrue(swaps[0].is_dir())
+                    self.assertTrue((swaps[0] / "files").is_dir())
+                    for path in swaps[0].rglob("*"):
+                        if path.is_file() and path.parent != swaps[0]:
+                            relative = path.relative_to(swaps[0] / "files").as_posix()
+                            self.assertIn(relative, self.paths)
+                            self.assertEqual(path.read_bytes(), (self.root / relative).read_bytes())
+
+    def test_restore_root_or_real_ancestor_replacement_receives_no_private_writes(self):
+        self.run_copy()
+        original_copy = backup.copy_hashed
+        for replaced in ["restore", "ancestor"]:
+            with self.subTest(replaced=replaced):
+                parent = self.base / ("restore-pinned-" + replaced)
+                parent.mkdir()
+                destination = parent / "sample"
+                swaps = []
+                def swapped_copy(source, target, **kwargs):
+                    if not swaps:
+                        selected = destination if replaced == "restore" else parent
+                        displaced = selected.with_name(selected.name + "-displaced")
+                        selected.rename(displaced)
+                        destination.mkdir(parents=True, mode=0o700)
+                        swaps.append(displaced if replaced == "restore" else displaced / destination.name)
+                    return original_copy(source, target, **kwargs)
+                with patch.object(backup, "copy_hashed", side_effect=swapped_copy):
+                    with self.assertRaises(backup.BackupError):
+                        backup.restore_sample(self.root, self.destination, destination, [self.paths[0]], minimum_free_bytes=0)
+                self.assertEqual(len(swaps), 1)
+                self.assertEqual([path for path in destination.rglob("*") if path.is_file()], [])
+                self.assertEqual((swaps[0] / self.paths[0]).read_bytes(), (self.root / self.paths[0]).read_bytes())
+
+    def test_replacement_before_held_root_open_receives_no_diagnostic_metadata(self):
+        original_open = backup.os.open
+        openings, displaced = [], self.destination.with_name(self.destination.name + "-retained")
+        def swap_before_held_open(name, flags, *args, **kwargs):
+            if name == self.destination.name and flags & os.O_DIRECTORY:
+                openings.append(True)
+                if len(openings) == 2:
+                    self.destination.rename(displaced)
+                    self.destination.mkdir(mode=0o700)
+            return original_open(name, flags, *args, **kwargs)
+        with patch.object(backup.os, "open", side_effect=swap_before_held_open):
+            with self.assertRaisesRegex(backup.BackupError, "created snapshot root identity changed"):
+                self.run_copy()
+        self.assertEqual(len(openings), 2)
+        self.assertEqual(list(self.destination.iterdir()), [])
+        self.assertTrue((displaced / "files").is_dir())
+        self.assertEqual([path for path in displaced.rglob("*") if path.is_file()], [])
+
+    def test_snapshot_root_descriptor_close_error_preserves_completion_contract(self):
+        original_capacity, original_open, original_close = backup.os.fstatvfs, backup.os.open, backup.os.close
+        capacity, roots, failures = [], [], []
+        marker = self.destination / "backup-manifest.json"
+        def record_capacity(descriptor):
+            if not capacity:
+                capacity.append(descriptor)
+            return original_capacity(descriptor)
+        def record_root(name, flags, *args, **kwargs):
+            descriptor = original_open(name, flags, *args, **kwargs)
+            if capacity and kwargs.get("dir_fd") == capacity[0] and name == self.destination.name and flags & os.O_DIRECTORY:
+                roots.append(descriptor)
+            return descriptor
+        def late_close(descriptor):
+            result = original_close(descriptor)
+            if roots and descriptor == roots[0] and marker.exists() and not failures:
+                failures.append(True)
+                raise OSError("fixture snapshot root close after publication")
+            return result
+        with patch.object(backup.os, "fstatvfs", side_effect=record_capacity), \
+             patch.object(backup.os, "open", side_effect=record_root), \
+             patch.object(backup.os, "close", side_effect=late_close):
+            result = self.run_copy()
+        self.assertEqual(len(roots), 1)
+        self.assertEqual(len(failures), 1)
+        self.assertEqual(result["copyStatus"], "complete")
+        self.assertEqual(result["completionPublication"], {"status": "exact-readback-after-write-error", "durabilityVerified": False})
+        self.assertNotIn("completionPublication", backup.read_json(marker))
+        self.assertEqual(backup.verify_snapshot(self.destination)["verifiedFiles"], len(self.paths))
+
+    def test_one_allocation_block_cannot_cover_tiny_copy_plus_nonaligned_reserve(self):
+        with patch.object(backup.os, "fstatvfs", return_value=self.volume_info(4096, 4096)):
+            with self.assertRaisesRegex(backup.BackupError, "space"):
+                backup.copy_snapshot(self.root, self.destination, self.plan(), minimum_free_bytes=1)
+        self.assertFalse(self.destination.exists())
+
+    def test_capacity_guard_rounds_reserve_and_charges_only_new_block_growth(self):
+        with patch.object(backup.os, "fstatvfs", return_value=self.volume_info(8192, 4096)):
+            with self.assertRaisesRegex(backup.BackupError, "space"):
+                backup.require_available_space(123, 1, 1, new_entries=1)
+            backup.require_available_space(123, 1, 1, current_bytes=1)
+            backup.require_available_space(123, 1, 1, current_bytes=4096)
+        with patch.object(backup.os, "fstatvfs", return_value=self.volume_info(12288, 4096)):
+            backup.require_available_space(123, 1, 1, new_entries=1)
+        with patch.object(backup.os, "fstatvfs", return_value=self.volume_info(0, 4096)):
+            backup.require_available_space(123, 0)
+        for budget in [-1, True, 1.5]:
+            with self.subTest(budget=budget):
+                with self.assertRaisesRegex(backup.BackupError, "Invalid capacity budget"):
+                    backup.require_available_space(123, budget)
 
     def test_backup_manifest_is_the_final_completion_metadata_write(self):
         original = backup.write_json
@@ -98,7 +275,7 @@ class BackupReleaseTests(unittest.TestCase):
         def tracked_write(path, value, **kwargs):
             writes.append((path.name, copy.deepcopy(value)))
             return original(path, value, **kwargs)
-        with patch.object(backup, "available_bytes", return_value=plan["totalBytes"] + reserve), \
+        with patch.object(backup.os, "fstatvfs", return_value=self.volume_info(plan["totalBytes"] + reserve + 2)), \
              patch.object(backup, "write_json", side_effect=tracked_write):
             with self.assertRaisesRegex(backup.BackupError, "space.*metadata"):
                 backup.copy_snapshot(self.root, self.destination, plan, minimum_free_bytes=reserve)
@@ -121,7 +298,7 @@ class BackupReleaseTests(unittest.TestCase):
         def tracked_write(path, value, **kwargs):
             writes.append((path.name, copy.deepcopy(value)))
             return original_write(path, value, **kwargs)
-        with patch.object(backup, "available_bytes", side_effect=lambda _: available[0]), \
+        with patch.object(backup.os, "fstatvfs", side_effect=lambda _: self.volume_info(available[0])), \
              patch.object(backup, "copy_hashed", side_effect=copy_then_reduce_capacity), \
              patch.object(backup, "write_json", side_effect=tracked_write):
             with self.assertRaisesRegex(backup.BackupError, "space.*metadata"):
@@ -153,7 +330,7 @@ class BackupReleaseTests(unittest.TestCase):
                         if (phase == "prepared" and last_progress) or (phase == "manifest" and value["copyStatus"] == "prepared"):
                             available[0] = reserve
                     return result
-                with patch.object(backup, "available_bytes", side_effect=lambda _: available[0]), \
+                with patch.object(backup.os, "fstatvfs", side_effect=lambda _: self.volume_info(available[0])), \
                      patch.object(backup, "write_json", side_effect=tracked_write):
                     with self.assertRaisesRegex(backup.BackupError, "space.*metadata"):
                         backup.copy_snapshot(self.root, destination, plan, minimum_free_bytes=reserve)
@@ -186,7 +363,7 @@ class BackupReleaseTests(unittest.TestCase):
                 required_payload.append(len(backup.encoded(next_state)))
                 available[0] = reserve + required_payload[0] - 1
             return result
-        with patch.object(backup, "available_bytes", side_effect=lambda _: available[0]), \
+        with patch.object(backup.os, "fstatvfs", side_effect=lambda _: self.volume_info(available[0])), \
              patch.object(backup, "write_json", side_effect=tracked_write):
             with self.assertRaisesRegex(backup.BackupError, "space.*metadata"):
                 backup.copy_snapshot(self.root, self.destination, plan, minimum_free_bytes=reserve)
@@ -208,7 +385,7 @@ class BackupReleaseTests(unittest.TestCase):
         def tracked_write(path, value, **kwargs):
             writes.append((path.name, copy.deepcopy(value)))
             return original_write(path, value, **kwargs)
-        with patch.object(backup, "available_bytes", side_effect=lambda _: available[0]), \
+        with patch.object(backup.os, "fstatvfs", side_effect=lambda _: self.volume_info(available[0])), \
              patch.object(backup, "copy_hashed", side_effect=fail_after_copy), \
              patch.object(backup, "write_json", side_effect=tracked_write):
             with self.assertRaisesRegex(backup.BackupError, "fixture primary copy failure") as caught:
@@ -871,7 +1048,7 @@ class BackupReleaseTests(unittest.TestCase):
         self.assertFalse(self.destination.exists())
 
     def test_insufficient_disk_space_keeps_drive_untouched(self):
-        with patch.object(backup, "available_bytes", return_value=10):
+        with patch.object(backup.os, "fstatvfs", return_value=self.volume_info(10)):
             with self.assertRaisesRegex(backup.BackupError, "space"):
                 backup.copy_snapshot(self.root, self.destination, self.plan(), minimum_free_bytes=3)
         self.assertFalse(self.destination.exists())
@@ -930,7 +1107,7 @@ class BackupReleaseTests(unittest.TestCase):
         self.assert_pinned_capacity_after_parent_swap("restore")
 
     def test_outer_capacity_close_error_reconciles_only_original_completed_copy(self):
-        original_available, original_close, original_stat = backup.available_bytes, backup.os.close, backup.os.stat
+        original_capacity, original_close, original_stat = backup.os.fstatvfs, backup.os.close, backup.os.stat
         for fault in ["transient", "replacement", "persistent-readback"]:
             with self.subTest(fault=fault):
                 destination = self.destination.parent / ("lumen-capacity-close-" + fault)
@@ -940,7 +1117,7 @@ class BackupReleaseTests(unittest.TestCase):
                 def record_capacity(descriptor):
                     if not capacity:
                         capacity.append(descriptor)
-                    return original_available(descriptor)
+                    return original_capacity(descriptor)
                 def late_close(descriptor):
                     result = original_close(descriptor)
                     if capacity and descriptor == capacity[0] and marker.exists() and not failed:
@@ -957,7 +1134,7 @@ class BackupReleaseTests(unittest.TestCase):
                         readback_failures.append(True)
                         raise OSError("secondary persistent completion readback failure")
                     return original_stat(name, *args, **kwargs)
-                with patch.object(backup, "available_bytes", side_effect=record_capacity), \
+                with patch.object(backup.os, "fstatvfs", side_effect=record_capacity), \
                      patch.object(backup.os, "close", side_effect=late_close), \
                      patch.object(backup.os, "stat", side_effect=fail_persistent_readback):
                     if fault == "transient":
@@ -1248,7 +1425,7 @@ class BackupReleaseTests(unittest.TestCase):
         restored = self.base / "restore-default-reserve"
         sample_bytes = (self.root / self.paths[0]).stat().st_size
         usage = type("Usage", (), {"free": sample_bytes + backup.DEFAULT_RESERVE_BYTES - 1})()
-        with patch.object(backup, "available_bytes", return_value=usage.free):
+        with patch.object(backup.os, "fstatvfs", return_value=self.volume_info(usage.free)):
             with self.assertRaisesRegex(backup.BackupError, "space"):
                 backup.restore_sample(self.root, self.destination, restored, [self.paths[0]])
         self.assertFalse(restored.exists())
@@ -1260,7 +1437,7 @@ class BackupReleaseTests(unittest.TestCase):
         total = sum((self.root / name).stat().st_size for name in selected)
         reserve = 17
         usage = type("Usage", (), {"free": total + reserve - 1})()
-        with patch.object(backup, "available_bytes", return_value=usage.free):
+        with patch.object(backup.os, "fstatvfs", return_value=self.volume_info(usage.free)):
             with self.assertRaisesRegex(backup.BackupError, "space"):
                 backup.restore_sample(self.root, self.destination, restored, selected,
                                       minimum_free_bytes=reserve)
@@ -1280,10 +1457,10 @@ class BackupReleaseTests(unittest.TestCase):
         self.run_copy()
         restored = self.base / "restore-cli-reserve"
         sample_bytes = (self.root / self.paths[0]).stat().st_size
-        usage = type("Usage", (), {"free": sample_bytes})()
+        usage = type("Usage", (), {"free": sample_bytes + 1})()
         arguments = ["--root", str(self.root), "--restore-sample", str(self.destination),
                      "--destination", str(restored), "--path", self.paths[0], "--minimum-free-bytes"]
-        with patch.object(backup, "available_bytes", return_value=usage.free):
+        with patch.object(backup.os, "fstatvfs", return_value=self.volume_info(usage.free)):
             with self.assertRaises(SystemExit) as failure:
                 backup.main(arguments + ["1"])
             self.assertEqual(failure.exception.code, 2)
@@ -1305,11 +1482,11 @@ class BackupReleaseTests(unittest.TestCase):
             completed.append(destination)
             return result
         def available(_):
-            free = sum(sizes) + reserve if not completed else sizes[1] + reserve - 1
+            free = sum(sizes) + reserve + self.restore_entry_count(selected) if not completed else sizes[1] + reserve - 1
             return type("Usage", (), {"free": free})()
-        with patch.object(backup, "available_bytes", side_effect=lambda descriptor: available(descriptor).free), \
+        with patch.object(backup.os, "fstatvfs", side_effect=lambda descriptor: self.volume_info(available(descriptor).free)), \
              patch.object(backup, "copy_hashed", side_effect=copy_then_lose_space):
-            with self.assertRaisesRegex(backup.BackupError, "space.*incomplete"):
+            with self.assertRaisesRegex(backup.BackupError, "incomplete.*space|space.*incomplete"):
                 backup.restore_sample(self.root, self.destination, restored, selected,
                                       minimum_free_bytes=reserve)
         self.assertEqual(completed, [restored / selected[0]])
@@ -1326,12 +1503,15 @@ class BackupReleaseTests(unittest.TestCase):
         reserve = 64
         restored = self.base / "restore-chunk-space"
         target = restored / selected[0]
+        entry_budget = self.restore_entry_count(selected)
         def available(_):
             written = target.stat().st_size if target.exists() else 0
-            unrelated_usage = 1 if written >= backup.CHUNK_BYTES else 0
-            return type("Usage", (), {"free": total + reserve - written - unrelated_usage})()
-        with patch.object(backup, "available_bytes", side_effect=lambda descriptor: available(descriptor).free):
-            with self.assertRaisesRegex(backup.BackupError, "space.*incomplete"):
+            created_entries = self.allocated_fixture_bytes(restored) - written
+            unrelated_usage = entry_budget - created_entries + 1 if written >= backup.CHUNK_BYTES else 0
+            return type("Usage", (), {"free": total + reserve + entry_budget
+                                      - written - created_entries - unrelated_usage})()
+        with patch.object(backup.os, "fstatvfs", side_effect=lambda descriptor: self.volume_info(available(descriptor).free)):
+            with self.assertRaisesRegex(backup.BackupError, "incomplete.*space|space.*incomplete"):
                 backup.restore_sample(self.root, self.destination, restored, selected,
                                       minimum_free_bytes=reserve)
         self.assertEqual(target.stat().st_size, backup.CHUNK_BYTES)
@@ -1344,10 +1524,11 @@ class BackupReleaseTests(unittest.TestCase):
         selected = [self.paths[0], self.paths[2]]
         total = sum((self.root / name).stat().st_size for name in selected)
         restored = self.base / "restore-exact-default-capacity"
+        entry_budget = self.restore_entry_count(selected)
         def available(_):
-            written = sum((restored / name).stat().st_size for name in selected if (restored / name).exists())
-            return type("Usage", (), {"free": total + backup.DEFAULT_RESERVE_BYTES - written})()
-        with patch.object(backup, "available_bytes", side_effect=lambda descriptor: available(descriptor).free):
+            written = self.allocated_fixture_bytes(restored)
+            return type("Usage", (), {"free": total + backup.DEFAULT_RESERVE_BYTES + entry_budget - written})()
+        with patch.object(backup.os, "fstatvfs", side_effect=lambda descriptor: self.volume_info(available(descriptor).free)):
             report = backup.restore_sample(self.root, self.destination, restored, selected)
             self.assertEqual(available(None).free, backup.DEFAULT_RESERVE_BYTES)
         self.assertEqual(report["verificationScope"], "local-restored-sample")
@@ -1502,11 +1683,11 @@ class BackupReleaseTests(unittest.TestCase):
             return GrowingReader(stream) if mode == "rb" and os.fstat(descriptor).st_ino == source_inode else stream
 
         def disk_space(_):
-            copied = sum(path.stat().st_size for path in self.destination.rglob("*") if path.is_file())
+            copied = self.allocated_fixture_bytes(self.destination)
             return type("Usage", (), {"free": initial_free - copied})()
 
         with patch.object(backup.os, "fdopen", side_effect=growing_fdopen), \
-             patch.object(backup, "available_bytes", side_effect=lambda descriptor: disk_space(descriptor).free):
+             patch.object(backup.os, "fstatvfs", side_effect=lambda descriptor: self.volume_info(disk_space(descriptor).free)):
             with self.assertRaisesRegex(backup.BackupError, "grew|byte count changed|identity changed"):
                 backup.copy_snapshot(self.root, self.destination, plan, minimum_free_bytes=reserve)
         target = self.destination / "files" / name
@@ -1536,8 +1717,8 @@ class BackupReleaseTests(unittest.TestCase):
             unrelated_usage = metadata_bytes - metadata_written + 1 if written >= backup.CHUNK_BYTES else 0
             return type("Usage", (), {"free": plan["totalBytes"] + reserve + metadata_bytes
                                       - written - metadata_written - unrelated_usage})()
-        with patch.object(backup, "available_bytes", side_effect=lambda descriptor: available(descriptor).free):
-            with self.assertRaisesRegex(backup.BackupError, "space.*incomplete"):
+        with patch.object(backup.os, "fstatvfs", side_effect=lambda descriptor: self.volume_info(available(descriptor).free)):
+            with self.assertRaisesRegex(backup.BackupError, "incomplete.*space|space.*incomplete"):
                 backup.copy_snapshot(self.root, self.destination, plan, minimum_free_bytes=reserve)
         self.assertEqual(target.stat().st_size, backup.CHUNK_BYTES)
         self.assertEqual(target.read_bytes(), b"x" * backup.CHUNK_BYTES)
@@ -1556,9 +1737,9 @@ class BackupReleaseTests(unittest.TestCase):
         reserve = 64
         metadata_bytes, fixed_now = self.metadata_allocation_fixture(plan)
         def available(_):
-            written = sum(path.stat().st_size for path in self.destination.rglob("*") if path.is_file())
+            written = self.allocated_fixture_bytes(self.destination)
             return type("Usage", (), {"free": plan["totalBytes"] + reserve + metadata_bytes - written})()
-        with patch.object(backup, "available_bytes", side_effect=lambda descriptor: available(descriptor).free), \
+        with patch.object(backup.os, "fstatvfs", side_effect=lambda descriptor: self.volume_info(available(descriptor).free)), \
              patch.object(backup, "datetime") as clock:
             clock.now.return_value = fixed_now
             manifest = backup.copy_snapshot(self.root, self.destination, plan, minimum_free_bytes=reserve)

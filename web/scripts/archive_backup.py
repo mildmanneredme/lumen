@@ -55,9 +55,9 @@ def open_source(root, row):
     backup.check_source_clock(root, row)
 
 
-def check_free(parent_descriptor, reserve, next_bytes=0):
-    backup.require(backup.available_bytes(parent_descriptor) >= reserve + next_bytes,
-                   "Insufficient local free space during archive; incomplete file retained")
+def check_free(parent_descriptor, reserve, next_bytes=0, *, current_bytes=0, new_entries=0):
+    backup.require_available_space(parent_descriptor, reserve, next_bytes,
+                                   current_bytes=current_bytes, new_entries=new_entries)
 
 
 class GuardedOutput:
@@ -69,7 +69,8 @@ class GuardedOutput:
     def write(self, data):
         end = self.stream.tell() + len(data)
         backup.require(max(self.high_water, end) <= self.maximum, "Compressed backup exceeded its explicit archive cap")
-        check_free(self.parent_descriptor, self.reserve, max(0, end - self.high_water))
+        check_free(self.parent_descriptor, self.reserve, max(0, end - self.high_water),
+                   current_bytes=self.high_water)
         written = self.stream.write(data)
         backup.require(written == len(data), "Incomplete compressed backup write")
         self.high_water = max(self.high_water, end)
@@ -235,8 +236,7 @@ def archive_snapshot(root, destination, plan, *, maximum_archive_bytes,
     publication = None
     try:
         with backup.opened_parent(destination) as (output_parent, name):
-            backup.require(backup.available_bytes(output_parent) >= maximum_archive_bytes + minimum_free_bytes,
-                           "Insufficient local free space for the explicit archive cap plus reserve")
+            check_free(output_parent, minimum_free_bytes, maximum_archive_bytes, new_entries=2)
             output_parent_info = os.fstat(output_parent)
             output_parent_identity = output_parent_info.st_dev, output_parent_info.st_ino
             descriptor = os.open(name, os.O_CREAT | os.O_EXCL | os.O_RDWR | os.O_NOFOLLOW, 0o600, dir_fd=output_parent)
@@ -288,7 +288,7 @@ def archive_snapshot(root, destination, plan, *, maximum_archive_bytes,
                        "archiveSha256": archive_hash, "archiveMd5": archive_md5,
                        "sourceBytes": plan["totalBytes"], "files": len(files), "copyStatus": "complete",
                        "remoteSyncStatus": "pending", "cloudDestinationFolderId": plan["cloudDestinationFolderId"]}
-            check_free(output_parent, minimum_free_bytes, len(backup.encoded(sidecar)))
+            check_free(output_parent, minimum_free_bytes, len(backup.encoded(sidecar)), new_entries=1)
             require_owned_path(destination, output_parent_identity, archive_identity, "Backup archive")
             publication = write_exclusive_json(checksum_path, sidecar)
             backup.require(publication["parentIdentity"] == output_parent_identity,
@@ -486,31 +486,47 @@ def restore_sample(root, path, destination, paths, *, minimum_free_bytes=backup.
         for row in rows:
             read_entry(archive, row)
         with backup.opened_parent(destination) as (snapshot_parent, snapshot_name):
-            backup.require(backup.available_bytes(snapshot_parent) >= sum(row["bytes"] for row in rows) + minimum_free_bytes,
-                           "Insufficient local free space for restored sample plus reserve")
-            backup.create_snapshot_directory(destination)
+            output_directories = {parent for row in rows for parent in Path(row["path"]).parents
+                                  if parent != Path(".")}
+            check_free(snapshot_parent, minimum_free_bytes, sum(row["bytes"] for row in rows),
+                       new_entries=len(rows) + len(output_directories) + 1)
+            snapshot_parent_identity, snapshot_identity = backup._create_snapshot_directory(destination)
             snapshot_parent_info = os.fstat(snapshot_parent)
             snapshot_info = os.stat(snapshot_name, dir_fd=snapshot_parent, follow_symlinks=False)
-            backup.require(stat.S_ISDIR(snapshot_info.st_mode), "Restore destination must be a real directory")
-            snapshot_parent_identity = snapshot_parent_info.st_dev, snapshot_parent_info.st_ino
-            snapshot_identity = snapshot_info.st_dev, snapshot_info.st_ino
-            restored_files = []
-            for row in rows:
-                with backup.opened_parent(destination / row["path"], create=True) as (output_parent, name):
-                    output_parent_info = os.fstat(output_parent)
-                    output_parent_identity = output_parent_info.st_dev, output_parent_info.st_ino
-                    descriptor = os.open(name, os.O_CREAT | os.O_EXCL | os.O_WRONLY | os.O_NOFOLLOW, 0o600, dir_fd=output_parent)
-                    with os.fdopen(descriptor, "wb") as outgoing:
-                        guarded = GuardedOutput(outgoing, output_parent, minimum_free_bytes, row["bytes"])
-                        read_entry(archive, row, guarded)
-                        outgoing.flush(); os.fsync(outgoing.fileno()); os.fsync(output_parent)
-                        output_identity = identity(os.fstat(outgoing.fileno()))
-                backup.require(backup.file_digest(destination / row["path"]) == row["sha256"], "Restored sample hash differs")
-                restored_files.append((destination / row["path"], output_parent_identity, output_identity))
+            backup.require((snapshot_parent_info.st_dev, snapshot_parent_info.st_ino) == snapshot_parent_identity and
+                           stat.S_ISDIR(snapshot_info.st_mode) and
+                           (snapshot_info.st_dev, snapshot_info.st_ino) == snapshot_identity,
+                           "Restore root creation identity changed before opening outputs")
             require_owned_directory(destination, snapshot_parent_identity, snapshot_identity)
-            for output, output_parent_identity, output_identity in restored_files:
-                require_owned_path(output, output_parent_identity, output_identity, "Restored sample")
-            report = verification_report(manifest, rows, "local-restored-archive-sample")
+            restore_root = os.open(snapshot_name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW,
+                                   dir_fd=snapshot_parent)
+            try:
+                root_info = os.fstat(restore_root)
+                backup.require((root_info.st_dev, root_info.st_ino) == snapshot_identity,
+                               "Restore root identity changed before opening outputs")
+                restored_files = []
+                for row in rows:
+                    with backup.opened_parent(destination / row["path"], create=True,
+                                              root_descriptor=restore_root, relative_path=row["path"],
+                                              before_create=lambda: check_free(restore_root, minimum_free_bytes,
+                                                                                new_entries=1)) as (output_parent, name):
+                        output_parent_info = os.fstat(output_parent)
+                        output_parent_identity = output_parent_info.st_dev, output_parent_info.st_ino
+                        check_free(output_parent, minimum_free_bytes, row["bytes"], new_entries=1)
+                        descriptor = os.open(name, os.O_CREAT | os.O_EXCL | os.O_WRONLY | os.O_NOFOLLOW, 0o600, dir_fd=output_parent)
+                        with os.fdopen(descriptor, "wb", buffering=0) as outgoing:
+                            guarded = GuardedOutput(outgoing, output_parent, minimum_free_bytes, row["bytes"])
+                            read_entry(archive, row, guarded)
+                            outgoing.flush(); os.fsync(outgoing.fileno()); os.fsync(output_parent)
+                            output_identity = identity(os.fstat(outgoing.fileno()))
+                    backup.require(backup.file_digest(destination / row["path"]) == row["sha256"], "Restored sample hash differs")
+                    restored_files.append((destination / row["path"], output_parent_identity, output_identity))
+                require_owned_directory(destination, snapshot_parent_identity, snapshot_identity)
+                for output, output_parent_identity, output_identity in restored_files:
+                    require_owned_path(output, output_parent_identity, output_identity, "Restored sample")
+                report = verification_report(manifest, rows, "local-restored-archive-sample")
+            finally:
+                backup.close_descriptors([restore_root])
     return report
 
 

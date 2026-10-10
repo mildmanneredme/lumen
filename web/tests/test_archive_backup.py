@@ -826,7 +826,7 @@ class ArchiveBackupTests(unittest.TestCase):
             archive.verify_archive(self.destination)
 
     def test_insufficient_space_for_explicit_cap_keeps_destination_untouched(self):
-        with patch.object(archive.backup, "available_bytes", return_value=100):
+        with patch.object(archive.os, "fstatvfs", return_value=type("Space", (), {"f_bavail": 100, "f_frsize": 1})()):
             with self.assertRaisesRegex(archive.backup.BackupError, "space"):
                 self.create()
         self.assertFalse(self.destination.exists())
@@ -842,8 +842,8 @@ class ArchiveBackupTests(unittest.TestCase):
         calls = []
         def free_space(_):
             calls.append(1)
-            return 2_000_000 if len(calls) < 5 else 0
-        with patch.object(archive.backup, "available_bytes", side_effect=free_space):
+            return type("Space", (), {"f_bavail": 2_000_000 if len(calls) < 5 else 0, "f_frsize": 1})()
+        with patch.object(archive.os, "fstatvfs", side_effect=free_space):
             with self.assertRaisesRegex(archive.backup.BackupError, "space"):
                 self.create()
         self.assertGreaterEqual(len(calls), 5)
@@ -936,19 +936,19 @@ class ArchiveBackupTests(unittest.TestCase):
         self.assertFalse(archive.sidecar_path(self.destination).exists())
 
     def test_late_capacity_descriptor_close_reconciles_only_complete_owned_archive(self):
-        original_available, original_close = archive.backup.available_bytes, archive.os.close
+        original_fstatvfs, original_close = archive.os.fstatvfs, archive.os.close
         capacity_descriptor, failures = [], []
         def track_capacity_descriptor(descriptor):
             if not capacity_descriptor:
                 capacity_descriptor.append(descriptor)
-            return original_available(descriptor)
+            return original_fstatvfs(descriptor)
         def close_then_fail(descriptor):
             result = original_close(descriptor)
             if capacity_descriptor and descriptor == capacity_descriptor[0] and not failures:
                 failures.append(True)
                 raise OSError("fixture completed archive capacity descriptor close failure")
             return result
-        with patch.object(archive.backup, "available_bytes", side_effect=track_capacity_descriptor), \
+        with patch.object(archive.os, "fstatvfs", side_effect=track_capacity_descriptor), \
              patch.object(archive.os, "close", side_effect=close_then_fail):
             report = self.create()
         self.assertEqual(len(failures), 1)
@@ -956,6 +956,127 @@ class ArchiveBackupTests(unittest.TestCase):
         self.assertFalse(report["completionPublication"]["durabilityVerified"])
         self.assertEqual(report["completionPublication"]["phase"], "output-parent-close")
         self.assertEqual(archive.verify_archive(self.destination)["manifestSha256"], report["manifestSha256"])
+
+    def test_sidecar_physical_allocation_preserves_a_nonaligned_reserve(self):
+        for available_blocks in [1, 3]:
+            with self.subTest(available_blocks=available_blocks):
+                self.destination = self.base / ("sidecar-blocks-" + str(available_blocks)) / "lumen-backup-fixture.zip"
+                self.destination.parent.mkdir()
+                original_hash = archive.hash_stream
+                finished = []
+                def finish_bulk_hash(stream):
+                    result = original_hash(stream)
+                    finished.append(True)
+                    return result
+                def block_space(descriptor):
+                    self.assertTrue(stat.S_ISDIR(os.fstat(descriptor).st_mode))
+                    return type("Space", (), {"f_bavail": available_blocks if finished else 512,
+                                               "f_frsize": 4096, "f_bsize": 4096})()
+                with patch.object(archive, "hash_stream", side_effect=finish_bulk_hash), \
+                     patch.object(archive.os, "fstatvfs", side_effect=block_space):
+                    if available_blocks == 1:
+                        with self.assertRaisesRegex(archive.backup.BackupError, "space"):
+                            archive.archive_snapshot(self.root, self.destination, self.plan(),
+                                maximum_archive_bytes=1_000_000, minimum_free_bytes=1)
+                    else:
+                        report = archive.archive_snapshot(self.root, self.destination, self.plan(),
+                            maximum_archive_bytes=1_000_000, minimum_free_bytes=1)
+                self.assertEqual(len(finished), 1)
+                self.assertTrue(self.destination.exists())
+                if available_blocks == 1:
+                    self.assertFalse(archive.sidecar_path(self.destination).exists())
+                else:
+                    self.assertEqual(archive.verify_archive(self.destination)["manifestSha256"], report["manifestSha256"])
+
+    def test_stream_growth_rounds_allocation_and_reserve_without_recharging_a_partial_block(self):
+        with archive.backup.opened_parent(self.destination) as (parent, _):
+            current_blocks = [1]
+            def block_space(descriptor):
+                self.assertEqual(descriptor, parent)
+                return type("Space", (), {"f_bavail": current_blocks[0], "f_frsize": 4096, "f_bsize": 4096})()
+            output = io.BytesIO()
+            guarded = archive.GuardedOutput(output, parent, 1, 4096)
+            with patch.object(archive.os, "fstatvfs", side_effect=block_space):
+                with self.assertRaisesRegex(archive.backup.BackupError, "space"):
+                    guarded.write(b"x")
+                self.assertEqual(output.getvalue(), b"")
+                current_blocks[0] = 2
+                self.assertEqual(guarded.write(b"x"), 1)
+                current_blocks[0] = 1
+                self.assertEqual(guarded.write(b"y"), 1,
+                                 "the allocated partial block has room without consuming the remaining reserve")
+                zero_reserve = archive.GuardedOutput(io.BytesIO(), parent, 0, 4096)
+                self.assertEqual(zero_reserve.write(b"z"), 1)
+            self.assertEqual(output.getvalue(), b"xy")
+
+    def test_restore_root_or_ancestor_replacement_cannot_receive_private_output_bytes(self):
+        self.create()
+        selected = sorted(self.paths)[:2]
+        original_opened_parent = archive.backup.opened_parent
+        for change in ["root", "ancestor"]:
+            with self.subTest(change=change):
+                ancestor = self.base / ("restore-route-" + change)
+                ancestor.mkdir()
+                restored = ancestor / "sample"
+                displaced = self.base / ("restore-route-" + change + "-retained")
+                changed = []
+                @contextmanager
+                def replace_before_second_output(path, **kwargs):
+                    if kwargs.get("create") and Path(path) == restored / selected[1] and not changed:
+                        if change == "root":
+                            restored.rename(displaced)
+                            restored.mkdir()
+                        else:
+                            ancestor.rename(displaced)
+                            ancestor.mkdir()
+                            restored.mkdir()
+                        changed.append(True)
+                    with original_opened_parent(path, **kwargs) as opened:
+                        yield opened
+                with patch.object(archive.backup, "opened_parent", side_effect=replace_before_second_output):
+                    with self.assertRaises(archive.backup.BackupError):
+                        archive.restore_sample(self.root, self.destination, restored, selected, minimum_free_bytes=0)
+                self.assertEqual(len(changed), 1)
+                self.assertEqual(list(restored.rglob("*")), [],
+                                 "the replacement destination must receive no private files or directories")
+                original_root = displaced if change == "root" else displaced / restored.name
+                self.assertEqual((original_root / selected[0]).read_bytes(), self.original[selected[0]])
+                for path in selected:
+                    preserved = original_root / path
+                    if preserved.exists():
+                        self.assertEqual(preserved.read_bytes(), self.original[path])
+
+    def test_restore_uses_the_original_creation_binding_before_accepting_a_root(self):
+        self.create()
+        original_create = archive.backup._create_snapshot_directory
+        for change in ["root", "ancestor"]:
+            with self.subTest(change=change):
+                ancestor = self.base / ("creation-route-" + change)
+                ancestor.mkdir()
+                restored = ancestor / "sample"
+                retained = self.base / ("creation-route-" + change + "-retained")
+                swapped = []
+                def replace_after_original_creation(destination, **kwargs):
+                    result = original_create(destination, **kwargs)
+                    if Path(destination) == restored:
+                        if change == "root":
+                            restored.rename(retained)
+                            restored.mkdir()
+                        else:
+                            ancestor.rename(retained)
+                            ancestor.mkdir()
+                            restored.mkdir()
+                        swapped.append(True)
+                    return result
+                with patch.object(archive.backup, "_create_snapshot_directory", side_effect=replace_after_original_creation):
+                    with self.assertRaises(archive.backup.BackupError):
+                        archive.restore_sample(self.root, self.destination, restored, [self.paths[0]], minimum_free_bytes=0)
+                self.assertEqual(len(swapped), 1)
+                self.assertEqual(list(restored.rglob("*")), [], "creation replacement must receive no private output")
+                original_root = retained if change == "root" else retained / restored.name
+                self.assertTrue(original_root.is_dir())
+                self.assertEqual(list(original_root.rglob("*")), [])
+        self.assertEqual(archive.verify_archive(self.destination)["verifiedFiles"], len(self.paths))
 
     def test_restore_syncs_the_containing_output_directory_after_the_file(self):
         self.create()
