@@ -8,30 +8,45 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Lumen">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="description" content="Listen to the opening of Lumen by Rob Xie, with synchronized prose and original painted illustrations.">
+  <meta name="description" content="A private read-along audiobook experience. Lumen, inspired by Rob Xie.">
+  <meta name="robots" content="noindex,nofollow,noarchive">
   <title>Lumen — Read & listen</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-lumen-32-v2.png">
   <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-lumen-16-v2.png">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-  <link rel="stylesheet" href="styles.css?v=20261009-mobile">
-  <link rel="stylesheet" href="mobile.css?v=20261009-mobile">
-  <link rel="preload" as="image" href="assets/opening-room.webp" fetchpriority="high">
-  <script src="data/chapter-001.js?v=20261009-mobile" defer></script>
+  <link rel="stylesheet" href="styles.css?v=20261010-book">
+  <link rel="stylesheet" href="mobile.css?v=20261010-book">
+  <script src="legacy-pilot.js?v=20261010-book" defer></script>
   <script src="progress.js?v=20261009-mobile" defer></script>
-  <script src="app.js?v=20261009-mobile" defer></script>
+  <script src="book.js?v=20261010-book" defer></script>
+  <script src="app.js?v=20261010-book" defer></script>
   <script src="install.js?v=20261009-mobile" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#prose">Skip to the book</a>
   <header class="masthead">
-    <div class="identity"><span class="wordmark">LUMEN</span><span class="byline">by Rob Xie</span></div>
+    <div class="identity"><span class="wordmark">LUMEN</span><span class="byline">Inspired by Rob Xie</span></div>
     <nav class="reader-tools" aria-label="Reader tools">
       <span class="reading-mode">Read & listen</span>
+      <button id="chapters-open" class="text-button" type="button" aria-label="Choose a chapter" aria-haspopup="dialog">Chapters</button>
       <button id="follow" class="text-button" type="button" aria-pressed="true">Follow text</button>
       <button id="settings-open" class="type-button" type="button" aria-label="Reading settings" aria-haspopup="dialog">Aa</button>
+      <button id="sign-out" class="text-button" type="button" hidden>Sign out</button>
     </nav>
   </header>
+  <section id="access-gate" class="access-gate" aria-labelledby="access-title">
+    <div class="access-mark" aria-hidden="true">L</div>
+    <p class="chapter-kicker">A private reading room</p>
+    <h1 id="access-title">Welcome to Lumen</h1>
+    <p>Open your invitation link to read and listen.</p>
+    <form id="invite-form">
+      <label for="invite-code">Invitation link or code</label>
+      <input id="invite-code" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" required>
+      <button id="invite-submit" class="continue-button" type="submit">Open the book</button>
+    </form>
+    <p id="access-status" role="status">Checking your invitation…</p>
+  </section>
   <aside id="resume-panel" class="resume-panel" aria-label="Your listening position" hidden>
     <p id="resume-message">Your place is saved on this browser.</p>
     <div class="resume-actions">
@@ -39,20 +54,31 @@
       <button id="start-over" class="text-button" type="button">Start over</button>
     </div>
   </aside>
+  <aside id="transition-panel" class="transition-panel" hidden>
+    <p id="transition-status" role="status"></p>
+    <button id="transition-retry" class="text-button" type="button" hidden>Retry</button>
+  </aside>
   <main class="experience">
     <figure class="scene-stage" id="scene-stage" data-scene="opening-room">
-      <img id="scene-image" class="scene-image" src="assets/opening-room.webp" fetchpriority="high" decoding="async" alt="Adrian sits in his Berkeley living room, watching a glass office tower on television; a cold coffee rests nearby.">
+      <div id="scene-placeholder" class="scene-placeholder" aria-label="Illustrations are in preparation"><span class="placeholder-mark" aria-hidden="true">L</span><span>LUMEN</span><small>Read & listen</small></div>
+      <img id="scene-image" class="scene-image" decoding="async" alt="">
       <img id="scene-incoming" class="scene-image incoming" alt="" aria-hidden="true">
       <figcaption class="scene-caption"><span id="scene-title">Berkeley · Monday evening</span><span class="scene-number" id="scene-number">01 / 08</span></figcaption>
     </figure>
     <section class="reading-pane" id="reading-pane" aria-label="Book text">
       <div class="reading-content">
-        <div class="chapter-kicker"><span>PART ONE · THE SURFACE</span><span class="fine-rule"></span></div>
-        <h1>Chapter 1</h1>
-        <p class="edition-label">Opening excerpt <span aria-hidden="true">·</span> <span id="excerpt-duration">5:20</span></p>
+        <div class="chapter-kicker"><span id="part-title">PART ONE · THE SURFACE</span><span class="fine-rule"></span></div>
+        <h1 id="chapter-title">Chapter 1</h1>
+        <p class="edition-label"><span id="edition-name">Opening excerpt</span> <span aria-hidden="true">·</span> <span id="excerpt-duration">5:20</span></p>
+        <div id="chapter-navigation" class="chapter-navigation" aria-label="Chapter navigation">
+          <button id="track-prev" class="text-button" type="button">Previous</button>
+          <span id="book-progress"></span>
+          <button id="track-next" class="text-button" type="button">Next</button>
+        </div>
         <article id="prose" aria-label="Chapter 1 prose"></article>
         <section class="excerpt-ending" id="excerpt-ending" aria-label="End of excerpt">
-          <div class="fine-rule"></div><p>End of the pilot</p>
+          <div class="fine-rule"></div><p id="ending-label">End of the pilot</p>
+          <button id="chapter-continue" class="text-button" type="button" hidden>Continue to next chapter</button>
           <button id="replay" class="text-button" type="button">Listen again</button>
         </section>
         <p class="narration-credit">Narration generated using Gemini. Illustrations created with GPT image generation.</p>
@@ -80,14 +106,22 @@
     <div class="dialog-heading"><h2 id="settings-title">Reading settings</h2><button id="settings-close" class="text-button" type="button" aria-label="Close reading settings">Close</button></div>
     <label class="size-label" for="text-size">Text size <output id="text-size-value">20 px</output></label>
     <input id="text-size" type="range" min="18" max="28" step="1" value="20">
+    <label class="narrator-label" for="narrator">Narrator</label>
+    <select id="narrator" aria-label="Narrator"></select>
+    <label class="auto-continue-label"><input id="auto-continue" type="checkbox"> Continue to the next chapter automatically</label>
     <p>Click a sentence to hear it. Scroll freely to read ahead, then select Follow text to return to the narration.</p>
     <section id="install-section" class="install-section" aria-labelledby="install-title">
       <h3 id="install-title">Lumen on your phone</h3>
       <button id="install-app" class="continue-button" type="button">How to install</button>
       <p id="install-status" role="status">Add Lumen to your Home screen to open it as an app.</p>
     </section>
+    <button id="sign-out-settings" class="text-button" type="button" hidden>Sign out</button>
   </dialog>
-  <audio id="narration" preload="metadata" crossorigin="anonymous" src="assets/chapter-001-pilot.mp3?v=e6b49db1dac5"></audio>
-  <noscript><p class="no-script">Enable JavaScript for synchronized text and paintings.</p><audio controls src="assets/chapter-001-pilot.mp3"></audio></noscript>
+  <dialog id="chapters" aria-labelledby="chapters-title">
+    <div class="dialog-heading"><h2 id="chapters-title">Chapters</h2><button id="chapters-close" class="text-button" type="button" aria-label="Close chapters">Close</button></div>
+    <nav id="chapter-list" aria-label="Book chapters"></nav>
+  </dialog>
+  <audio id="narration" preload="metadata" crossorigin="anonymous"></audio>
+  <noscript><p class="no-script">Enable JavaScript to use your invitation and open the book.</p></noscript>
 </body>
 </html>
