@@ -1,0 +1,17 @@
+{
+  "name": "lumen-private-media",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": "24.x"
+  },
+  "scripts": {
+    "build": "cf build",
+    "deploy:check": "cf deploy --dry-run --prebuilt"
+  },
+  "devDependencies": {
+    "cf": "1.0.0-beta.14",
+    "wrangler": "4.149.0"
+  }
+}

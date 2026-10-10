@@ -31,6 +31,10 @@ vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../dist/sw.js'),'utf8'),
     handlers.fetch({request:new Request('https://lumen.example'+url,{headers}),respondWith:()=>intercepted=true,waitUntil:()=>{}});
     assert.equal(intercepted,false,'private assets, paintings and Range requests bypass caching: '+url);
   }
+  let mediaIntercepted=false;
+  handlers.fetch({request:new Request('https://media.example.workers.dev/media/audio.mp3?grant=fixture'),
+    respondWith:()=>mediaIntercepted=true,waitUntil:()=>{}});
+  assert.equal(mediaIntercepted,false,'direct private Cloudflare media bypasses caching');
   async function painting(filename){
     let artwork,artworkWrites=[];
     handlers.fetch({request:new Request('https://lumen.example/assets/'+filename),

@@ -73,7 +73,12 @@ function signedSession(invite, config, now) {
   const payload = Buffer.from(JSON.stringify(claims)).toString('base64url');
   return {value:payload + '.' + sign(payload, config.secret), expires:claims.exp};
 }
-function authorize(request, config, now) {
+function claimsAllowed(claims, config, now) {
+  return object(claims) && Number.isSafeInteger(claims.exp) && claims.exp > now &&
+    claims.exp <= now + SESSION_SECONDS && config.invites.some(invite => invite.id === claims.i &&
+      invite.version === claims.v && !invite.revoked && invite.expiresAt >= claims.exp && invite.expiresAt > now);
+}
+function authorizeClaims(request, config, now) {
   const cookies = (request.headers.get('cookie') || '').split(';').map(value => value.trim());
   const matching = cookies.filter(value => value.startsWith(SESSION_COOKIE + '='));
   if (matching.length !== 1) return false;
@@ -83,11 +88,10 @@ function authorize(request, config, now) {
   if (!equal(signature, sign(payload, config.secret))) return false;
   try {
     const claims = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
-    return object(claims) && Number.isSafeInteger(claims.exp) && claims.exp > now &&
-      claims.exp <= now + SESSION_SECONDS && config.invites.some(invite => invite.id === claims.i &&
-        invite.version === claims.v && !invite.revoked && invite.expiresAt >= claims.exp && invite.expiresAt > now);
+    return claimsAllowed(claims,config,now) ? claims : false;
   } catch (_) { return false; }
 }
+function authorize(request, config, now) { return Boolean(authorizeClaims(request,config,now)); }
 function headers(extra = {}) {
   return new Headers({'Cache-Control':'private, no-store','Vary':'Cookie',
     'X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer',
@@ -185,8 +189,9 @@ function exactStream(stream, expected) {
     flush() { if (count !== expected) throw new Error('Private asset length mismatch'); }
   }));
 }
-function createPrivateReader({env = process.env, now = Date.now, loadIndex, getBlob}) {
+function createPrivateReader({env = process.env, now = Date.now, loadIndex, getBlob, assetResponse}) {
   requireValue(typeof loadIndex === 'function' && typeof getBlob === 'function');
+  requireValue(assetResponse === undefined || typeof assetResponse === 'function');
   return async function privateReader(request) {
     let config;
     try { config = readConfig(env); } catch (_) { return failure(503); }
@@ -219,7 +224,8 @@ function createPrivateReader({env = process.env, now = Date.now, loadIndex, getB
       const signed = signedSession(invite,config,clock);
       return json({authenticated:true},200,{'Set-Cookie':`${SESSION_COOKIE}=${signed.value}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${signed.expires-clock}`});
     }
-    if (!authorize(request,config,clock)) return failure(401);
+    const claims=authorizeClaims(request,config,clock);
+    if (!claims) return failure(401);
     try {
       const index = await loadIndex(request.signal);
       const assets = validateIndex(index,config.origin);
@@ -227,6 +233,10 @@ function createPrivateReader({env = process.env, now = Date.now, loadIndex, getB
       if (!validPath(path)) return failure(400);
       const asset = assets.get(path);
       if (!asset) return failure(404);
+      if (assetResponse) {
+        const delivered=await assetResponse({request,index,asset,claims,config});
+        if (delivered) { requireValue(delivered instanceof Response); return delivered; }
+      }
       const etag = `"sha256-${asset.sha256}"`;
       const responseHeaders = headers({'Content-Type':asset.contentType,'Content-Length':String(asset.bytes),'Accept-Ranges':'bytes','ETag':etag});
       if ((request.headers.get('if-none-match') || '').split(',').map(value=>value.trim()).some(value=>value === etag || value === 'W/'+etag || value === '*')) {
@@ -265,4 +275,5 @@ function createPrivateReader({env = process.env, now = Date.now, loadIndex, getB
     } catch (_) { return failure(503); }
   };
 }
-module.exports={createPrivateReader,buildServerIndex,parseRange,validateIndex,sha256,boundedBytes,trustedRequestOrigin};
+module.exports={createPrivateReader,buildServerIndex,parseRange,validateIndex,sha256,boundedBytes,trustedRequestOrigin,
+  readConfig,authorizeClaims,claimsAllowed};

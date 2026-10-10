@@ -2,6 +2,8 @@
 
 The first full-book release uses the stable Lumen Vercel project, both unchanged 192 kbps editions, female narration by default, generic illustration placeholders, and one shared access code for approximately 50 readers. Character and artwork review continues separately. This guide records the operational plan; it does not claim a deployment, paid provisioning, physical-phone acceptance, or exercised production rollback.
 
+The author has now selected and enabled Cloudflare R2. Its private bucket and Worker gateway replace the proposed Blob delivery. See [Cloudflare delivery](cloudflare-delivery.md) for the sole access authority, direct media streaming, upload verification and candidate promotion procedure. Keep Workers on its free plan while measuring hosted behavior.
+
 ## Ownership and feedback
 
 Rob Xie owns the private audience, support, hosting budget, release decisions and incident response. The welcome screen directs readers to the person who shared their access code for help or feedback. No email campaign, feedback database or additional analytics service is required for this release.
