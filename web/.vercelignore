@@ -1,4 +1,15 @@
-# Upload the reader runtime and its deployment configuration.
-/*
-!dist
-!vercel.json
+# Server source and the empty reader shell are the deployment deliverable.
+.env
+.env.*
+/audit/
+/art-direction/
+/data/
+/scripts/
+/tests/
+/qa/
+/assets/
+node_modules/
+server/README.md
+
+# The next private-reader change removes legacy prose/audio from deployment.
+# Retain the existing pilot until that shell migration lands.
