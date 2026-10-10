@@ -343,6 +343,7 @@ def copy_snapshot(root, destination, plan, *, minimum_free_bytes=DEFAULT_RESERVE
              "totalBytes": plan["totalBytes"], "copiedBytes": 0}
     write_json(destination / "backup-state.json", state)
     remaining = plan["totalBytes"]
+    manifest = None
     def check_capacity(copied=0):
         require(shutil.disk_usage(parent).free >= remaining - copied + minimum_free_bytes,
                 "Insufficient local free space during backup; incomplete copy retained")
@@ -370,12 +371,23 @@ def copy_snapshot(root, destination, plan, *, minimum_free_bytes=DEFAULT_RESERVE
                            "cloudDestinationFolderId": plan["cloudDestinationFolderId"],
                            "copyStatus": "complete", "remoteSyncStatus": "pending",
                            "files": copied, "totalBytes": plan["totalBytes"]}, "manifestSha256")
-        write_json(destination / "backup-manifest.json", manifest)
         state["copyStatus"] = "complete"
         state["manifestSha256"] = manifest["manifestSha256"]
         write_json(destination / "backup-state.json", state)
+        # Publish the immutable completion marker after every fallible state write.
+        write_json(destination / "backup-manifest.json", manifest)
         return manifest
     except (OSError, BackupError) as exc:
+        if manifest is not None:
+            try:
+                published = read_json(owned_file(destination, "backup-manifest.json"))
+            except (OSError, BackupError):
+                published = None
+            # A cleanup error after atomic publication cannot undo that commit.
+            if published == manifest:
+                return manifest
+        state["copyStatus"] = "incomplete"
+        state.pop("manifestSha256", None)
         state["error"] = str(exc)
         write_json(destination / "backup-state.json", state)
         raise BackupError(f"Backup remains incomplete: {exc}") from exc
