@@ -279,7 +279,7 @@ def align_sentences(track, recording, words):
             substitutions.append({"expected": expected[a], "heard": heard[c], "expectedTokenIndex": a,
                                   "start": times[c][0], "end": times[c][1],
                                   "scope": "Measured ASR interval with adjacent exact context; spelling agreement is approximate"})
-    cues, missing, missing_intervals, overlap, low = [], [], [], [], []
+    cues, missing, missing_intervals, overlap, low, edge_gaps = [], [], [], [], [], []
     previous_end = 0.0
     for sentence, (first, last) in zip(sentences, offsets):
         anchors = [matched[index] for index in range(first, last) if index in matched]
@@ -306,7 +306,13 @@ def align_sentences(track, recording, words):
         # overlap watermark; dropping it must not promote a later overlapping cue.
         previous_end = max(previous_end, end)
         fraction = len(anchors) / max(1, last - first)
-        if fraction < .8:
+        missing_edges = [edge for edge, index in [("start", first), ("end", last - 1)] if index not in matched]
+        if missing_edges:
+            edge_gaps.append({"sentenceId": sentence["id"], "missingEdges": missing_edges})
+        # Interior agreement cannot locate omitted sentence boundaries. Exact
+        # normalized tokens and the contextual substitutions above are the only
+        # supported measured edge anchors; never infer their missing seconds.
+        if fraction < .8 or missing_edges:
             low.append({"sentenceId": sentence["id"], "matchedFraction": round(fraction, 4)})
             continue
         cues.append({"sentenceId": sentence["id"], "start": round(start, 6), "end": round(end, 6)})
@@ -316,6 +322,7 @@ def align_sentences(track, recording, words):
               "audioSha256": recording["sha256"], "textSha256": track["textSha256"],
               "decodedDuration": recording["decodedDuration"],
               "unanchoredSentences": missing, "overlappingSentences": overlap, "lowConfidenceSentences": low,
+              "unanchoredSentenceEdges": edge_gaps,
               "unanchoredIntervals": missing_intervals, "contextualSubstitutions": substitutions,
               "humanAlignmentApproval": "pending", "sentenceCount": len(sentences)}
     if missing or overlap or low:
