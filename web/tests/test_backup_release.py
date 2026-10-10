@@ -63,9 +63,9 @@ class BackupReleaseTests(unittest.TestCase):
     def test_backup_manifest_is_the_final_completion_metadata_write(self):
         original = backup.write_json
         writes = []
-        def tracked_write(path, value):
+        def tracked_write(path, value, **kwargs):
             writes.append((path.name, copy.deepcopy(value)))
-            return original(path, value)
+            return original(path, value, **kwargs)
         with patch.object(backup, "write_json", side_effect=tracked_write):
             manifest = self.run_copy()
         self.assertEqual(writes[-1][0], "backup-manifest.json")
@@ -89,11 +89,11 @@ class BackupReleaseTests(unittest.TestCase):
                 destination = self.destination.parent / ("lumen-failed-" + failed_name.replace(".json", ""))
                 plan = backup.prepare_fileset(self.root, self.paths, destination.name)
                 failed = []
-                def failing_write(path, value):
+                def failing_write(path, value, **kwargs):
                     if path.name == failed_name and value.get("copyStatus") in {"prepared", "complete"}:
                         failed.append(True)
                         raise OSError("injected final metadata failure")
-                    return original(path, value)
+                    return original(path, value, **kwargs)
                 with patch.object(backup, "write_json", side_effect=failing_write):
                     with self.assertRaisesRegex(backup.BackupError, "incomplete.*injected final metadata failure"):
                         backup.copy_snapshot(self.root, destination, plan, minimum_free_bytes=0)
@@ -113,8 +113,8 @@ class BackupReleaseTests(unittest.TestCase):
     def test_error_after_manifest_publication_never_downgrades_a_completed_backup(self):
         original = backup.write_json
         published = []
-        def published_then_error(path, value):
-            result = original(path, value)
+        def published_then_error(path, value, **kwargs):
+            result = original(path, value, **kwargs)
             if path.name == "backup-manifest.json":
                 published.append(True)
                 raise OSError("injected post-publication cleanup failure")
@@ -141,7 +141,7 @@ class BackupReleaseTests(unittest.TestCase):
                 primary = "primary " + phase + " completion write failure"
                 failed = []
                 diagnostic_failures = []
-                def persistent_failure(path, value):
+                def persistent_failure(path, value, **kwargs):
                     if failed and path.name == "backup-state.json":
                         diagnostic_failures.append(True)
                         raise OSError("secondary diagnostic write failure")
@@ -150,7 +150,7 @@ class BackupReleaseTests(unittest.TestCase):
                             or (phase == "manifest" and path.name == "backup-manifest.json")):
                         failed.append(True)
                         raise OSError(primary)
-                    return original(path, value)
+                    return original(path, value, **kwargs)
                 with patch.object(backup, "write_json", side_effect=persistent_failure):
                     with self.assertRaisesRegex(backup.BackupError, primary) as failure:
                         backup.copy_snapshot(self.root, destination, plan, minimum_free_bytes=0)
@@ -167,6 +167,315 @@ class BackupReleaseTests(unittest.TestCase):
                     self.assertEqual((destination / "files" / name).read_bytes(), (self.root / name).read_bytes())
                 self.assertEqual({p.relative_to(earlier).as_posix(): p.read_bytes() for p in earlier.rglob("*") if p.is_file()}, prior)
                 self.assertEqual(backup.verify_snapshot(earlier)["verifiedFiles"], len(self.paths))
+
+    def test_mutable_json_publication_flushes_the_owned_parent_directory(self):
+        target = self.base / "state.json"
+        original = backup.os.fsync
+        flushed = []
+        def tracked_fsync(descriptor):
+            info = os.fstat(descriptor)
+            flushed.append((info.st_dev, info.st_ino))
+            return original(descriptor)
+        with patch.object(backup.os, "fsync", side_effect=tracked_fsync):
+            backup.write_json(target, {"status": "prepared"})
+        parent = self.base.stat()
+        self.assertIn((parent.st_dev, parent.st_ino), flushed)
+
+    def test_normal_manifest_publication_rejects_changed_expected_payload(self):
+        original = backup.write_json
+        changed = []
+        def change_published_payload(path, value, **kwargs):
+            result = original(path, value, **kwargs)
+            if path.name == "backup-manifest.json":
+                altered = dict(value, backupId="different-backup")
+                path.write_bytes(backup.encoded(backup.signed(altered, "manifestSha256")))
+                changed.append(True)
+            return result
+        with patch.object(backup, "write_json", side_effect=change_published_payload):
+            with self.assertRaisesRegex(backup.BackupError, "incomplete|identity|payload|changed"):
+                self.run_copy()
+        self.assertTrue(changed)
+        self.assertEqual(json.loads((self.destination / "backup-state.json").read_text())["copyStatus"], "incomplete")
+        self.assertEqual(json.loads((self.destination / "backup-manifest.json").read_text())["backupId"], "different-backup")
+        for name in self.paths:
+            self.assertEqual((self.destination / "files" / name).read_bytes(), (self.root / name).read_bytes())
+
+    def test_manifest_directory_fsync_error_reconciles_exact_owned_bytes_with_diagnostic(self):
+        original = backup.os.fsync
+        failed = []
+        def fail_marker_parent_fsync(descriptor):
+            info = os.fstat(descriptor)
+            if self.destination.exists():
+                parent = self.destination.stat()
+                if ((info.st_dev, info.st_ino) == (parent.st_dev, parent.st_ino)
+                        and (self.destination / "backup-manifest.json").exists() and not failed):
+                    failed.append(True)
+                    raise OSError("injected manifest parent fsync failure")
+            return original(descriptor)
+        with patch.object(backup.os, "fsync", side_effect=fail_marker_parent_fsync):
+            result = self.run_copy()
+        self.assertTrue(failed)
+        self.assertEqual(result["copyStatus"], "complete")
+        self.assertEqual(result.get("completionPublication"),
+                         {"status": "exact-readback-after-write-error", "durabilityVerified": False})
+        stored = json.loads((self.destination / "backup-manifest.json").read_text())
+        self.assertNotIn("completionPublication", stored)
+        self.assertEqual(backup.verify_snapshot(self.destination)["manifestSha256"], stored["manifestSha256"])
+        self.assertEqual(json.loads((self.destination / "backup-state.json").read_text())["copyStatus"], "prepared")
+
+    def test_written_marker_flush_file_fsync_and_close_errors_reconcile_owned_bytes(self):
+        original_fdopen, original_fsync = backup.os.fdopen, backup.os.fsync
+        for phase in ["flush", "file-fsync", "close"]:
+            with self.subTest(phase=phase):
+                destination = self.destination.parent / ("lumen-late-marker-" + phase)
+                plan = backup.prepare_fileset(self.root, self.paths, destination.name)
+                marker = destination / "backup-manifest.json"
+                failed = []
+                def marker_descriptor(descriptor):
+                    return marker.exists() and os.fstat(descriptor).st_ino == marker.stat().st_ino
+                class LateWriter:
+                    def __init__(self, stream):
+                        self.stream = stream
+                    def __enter__(self):
+                        self.stream.__enter__()
+                        return self
+                    def __exit__(self, *args):
+                        result = self.stream.__exit__(*args)
+                        if phase == "close" and not failed:
+                            failed.append(True)
+                            raise OSError("injected completed marker close failure")
+                        return result
+                    def __getattr__(self, name):
+                        return getattr(self.stream, name)
+                    def flush(self):
+                        result = self.stream.flush()
+                        if phase == "flush" and not failed:
+                            failed.append(True)
+                            raise OSError("injected completed marker flush failure")
+                        return result
+                def wrapped_writer(descriptor, mode, *args, **kwargs):
+                    stream = original_fdopen(descriptor, mode, *args, **kwargs)
+                    return LateWriter(stream) if mode == "wb" and marker_descriptor(descriptor) else stream
+                def failing_fsync(descriptor):
+                    if phase == "file-fsync" and marker_descriptor(descriptor) and not failed:
+                        failed.append(True)
+                        raise OSError("injected completed marker file fsync failure")
+                    return original_fsync(descriptor)
+                with patch.object(backup.os, "fdopen", side_effect=wrapped_writer), \
+                     patch.object(backup.os, "fsync", side_effect=failing_fsync):
+                    result = backup.copy_snapshot(self.root, destination, plan, minimum_free_bytes=0)
+                self.assertTrue(failed)
+                self.assertEqual(result.get("completionPublication"),
+                                 {"status": "exact-readback-after-write-error", "durabilityVerified": False})
+                stored = json.loads(marker.read_text())
+                self.assertNotIn("completionPublication", stored)
+                self.assertEqual(backup.verify_snapshot(destination)["manifestSha256"], stored["manifestSha256"])
+
+    def test_short_completion_marker_write_keeps_partial_bytes_without_success(self):
+        original_fdopen = backup.os.fdopen
+        marker = self.destination / "backup-manifest.json"
+        partial = []
+        class ShortWriter:
+            def __init__(self, stream):
+                self.stream = stream
+            def __enter__(self):
+                self.stream.__enter__()
+                return self
+            def __exit__(self, *args):
+                return self.stream.__exit__(*args)
+            def __getattr__(self, name):
+                return getattr(self.stream, name)
+            def write(self, payload):
+                partial.append(payload[:len(payload) // 2])
+                return self.stream.write(partial[-1])
+        def wrapped_writer(descriptor, mode, *args, **kwargs):
+            stream = original_fdopen(descriptor, mode, *args, **kwargs)
+            is_marker = marker.exists() and os.fstat(descriptor).st_ino == marker.stat().st_ino
+            return ShortWriter(stream) if mode == "wb" and is_marker else stream
+        with patch.object(backup.os, "fdopen", side_effect=wrapped_writer):
+            with self.assertRaisesRegex(backup.BackupError, "Incomplete.*metadata write"):
+                self.run_copy()
+        self.assertEqual(marker.read_bytes(), partial[0])
+        self.assertEqual(json.loads((self.destination / "backup-state.json").read_text())["copyStatus"], "incomplete")
+        with self.assertRaises(backup.BackupError):
+            backup.verify_snapshot(self.destination)
+
+    def test_copy_rejects_output_mutation_during_successful_file_fsync(self):
+        selected = sorted(self.paths)[0]
+        output = self.destination / "files" / selected
+        original = backup.os.fsync
+        changed = []
+        def mutate_during_fsync(descriptor):
+            result = original(descriptor)
+            if output.exists() and os.fstat(descriptor).st_ino == output.stat().st_ino and not changed:
+                before = output.stat()
+                output.write_bytes(b"x" * before.st_size)
+                os.utime(output, ns=(before.st_atime_ns, before.st_mtime_ns))
+                changed.append(True)
+            return result
+        with patch.object(backup.os, "fsync", side_effect=mutate_during_fsync):
+            with self.assertRaisesRegex(backup.BackupError, "identity|changed"):
+                self.run_copy()
+        self.assertTrue(changed)
+        self.assertFalse((self.destination / "backup-manifest.json").exists())
+        self.assertEqual(json.loads((self.destination / "backup-state.json").read_text())["copyStatus"], "incomplete")
+
+    def test_copy_rejects_output_mutation_during_successful_flush(self):
+        selected = sorted(self.paths)[0]
+        output = self.destination / "files" / selected
+        original_fdopen = backup.os.fdopen
+        changed = []
+        class MutatingWriter:
+            def __init__(self, stream):
+                self.stream = stream
+            def __enter__(self):
+                self.stream.__enter__()
+                return self
+            def __exit__(self, *args):
+                return self.stream.__exit__(*args)
+            def __getattr__(self, name):
+                return getattr(self.stream, name)
+            def flush(self):
+                result = self.stream.flush()
+                if output.stat().st_size and not changed:
+                    before = output.stat()
+                    output.write_bytes(b"x" * before.st_size)
+                    os.utime(output, ns=(before.st_atime_ns, before.st_mtime_ns))
+                    changed.append(True)
+                return result
+        def wrapped_writer(descriptor, mode, *args, **kwargs):
+            stream = original_fdopen(descriptor, mode, *args, **kwargs)
+            matches = output.exists() and os.fstat(descriptor).st_ino == output.stat().st_ino
+            return MutatingWriter(stream) if mode == "wb" and matches else stream
+        with patch.object(backup.os, "fdopen", side_effect=wrapped_writer):
+            with self.assertRaisesRegex(backup.BackupError, "identity|changed"):
+                self.run_copy()
+        self.assertTrue(changed)
+        self.assertFalse((self.destination / "backup-manifest.json").exists())
+
+    def test_copy_rejects_short_destination_write_before_manifest_publication(self):
+        selected = sorted(self.paths)[0]
+        output = self.destination / "files" / selected
+        original_fdopen = backup.os.fdopen
+        written = []
+        class ShortWriter:
+            def __init__(self, stream):
+                self.stream = stream
+            def __enter__(self):
+                self.stream.__enter__()
+                return self
+            def __exit__(self, *args):
+                return self.stream.__exit__(*args)
+            def __getattr__(self, name):
+                return getattr(self.stream, name)
+            def write(self, payload):
+                written.append(payload[:-1])
+                return self.stream.write(written[-1])
+        def wrapped_writer(descriptor, mode, *args, **kwargs):
+            stream = original_fdopen(descriptor, mode, *args, **kwargs)
+            matches = output.exists() and os.fstat(descriptor).st_ino == output.stat().st_ino
+            return ShortWriter(stream) if mode == "wb" and matches else stream
+        with patch.object(backup.os, "fdopen", side_effect=wrapped_writer):
+            with self.assertRaisesRegex(backup.BackupError, "Incomplete.*write"):
+                self.run_copy()
+        self.assertEqual(output.read_bytes(), written[0])
+        self.assertFalse((self.destination / "backup-manifest.json").exists())
+
+    def test_unexpected_preexisting_completion_marker_is_never_overwritten_or_rescued(self):
+        original = backup.write_json
+        older = b"retained pre-existing marker\n"
+        inserted = []
+        def insert_before_manifest(path, value, **kwargs):
+            if path.name == "backup-manifest.json":
+                path.write_bytes(older)
+                inserted.append(True)
+            return original(path, value, **kwargs)
+        with patch.object(backup, "write_json", side_effect=insert_before_manifest):
+            with self.assertRaisesRegex(backup.BackupError, "incomplete|exists"):
+                self.run_copy()
+        self.assertTrue(inserted)
+        self.assertEqual((self.destination / "backup-manifest.json").read_bytes(), older)
+        self.assertEqual(json.loads((self.destination / "backup-state.json").read_text())["copyStatus"], "incomplete")
+
+    def test_late_manifest_error_cannot_rescue_identical_replacement_identity(self):
+        original = backup.write_json
+        changed = []
+        def replace_then_fail(path, value, **kwargs):
+            result = original(path, value, **kwargs)
+            if path.name == "backup-manifest.json":
+                raw = path.read_bytes()
+                path.rename(path.with_name("retained-owned-marker.json"))
+                path.write_bytes(raw)
+                changed.append(True)
+                raise OSError("primary publication cleanup failure")
+            return result
+        with patch.object(backup, "write_json", side_effect=replace_then_fail):
+            with self.assertRaisesRegex(backup.BackupError, "primary publication cleanup failure") as failure:
+                self.run_copy()
+        self.assertTrue(changed)
+        self.assertEqual(str(failure.exception.__cause__), "primary publication cleanup failure")
+        self.assertEqual((self.destination / "backup-manifest.json").read_bytes(),
+                         (self.destination / "retained-owned-marker.json").read_bytes())
+
+    def test_manifest_publication_rejects_displaced_destination_on_normal_and_error_routes(self):
+        for late_error in [False, True]:
+            with self.subTest(late_error=late_error):
+                destination = self.destination.parent / ("lumen-publication-race-" + str(late_error))
+                displaced = self.destination.parent / (destination.name + "-retained")
+                plan = backup.prepare_fileset(self.root, self.paths, destination.name)
+                original = backup.write_json
+                def move_after_manifest(path, value, **kwargs):
+                    result = original(path, value, **kwargs)
+                    if path.name == "backup-manifest.json":
+                        destination.rename(displaced)
+                        destination.mkdir(mode=0o700)
+                        (destination / "backup-manifest.json").write_bytes(backup.encoded(value))
+                        if late_error:
+                            raise OSError("primary directory move publication failure")
+                    return result
+                with patch.object(backup, "write_json", side_effect=move_after_manifest):
+                    with self.assertRaises(backup.BackupError):
+                        backup.copy_snapshot(self.root, destination, plan, minimum_free_bytes=0)
+                self.assertFalse((destination / "files").exists())
+                self.assertEqual(backup.verify_snapshot(displaced)["verifiedFiles"], len(self.paths))
+                for name in self.paths:
+                    self.assertEqual((displaced / "files" / name).read_bytes(), (self.root / name).read_bytes())
+
+    def test_postpublication_wrapped_stat_io_reconciles_only_transient_owned_marker(self):
+        original_stat = backup.os.stat
+        for fault in ["transient", "persistent", "replacement"]:
+            with self.subTest(fault=fault):
+                destination = self.destination.parent / ("lumen-marker-stat-" + fault)
+                plan = backup.prepare_fileset(self.root, self.paths, destination.name)
+                marker = destination / "backup-manifest.json"
+                failures = []
+                def failing_named_stat(name, *args, **kwargs):
+                    if kwargs.get("dir_fd") is not None and name == "backup-manifest.json" \
+                            and (not failures or fault == "persistent"):
+                        failures.append(True)
+                        if fault == "replacement":
+                            raw = marker.read_bytes()
+                            marker.rename(marker.with_name("retained-owned-marker.json"))
+                            marker.write_bytes(raw)
+                        raise OSError("injected fully published marker stat IO failure")
+                    return original_stat(name, *args, **kwargs)
+                with patch.object(backup.os, "stat", side_effect=failing_named_stat):
+                    if fault == "transient":
+                        result = backup.copy_snapshot(self.root, destination, plan, minimum_free_bytes=0)
+                        self.assertEqual(result["copyStatus"], "complete")
+                        self.assertEqual(result.get("completionPublication"),
+                                         {"status": "exact-readback-after-write-error", "durabilityVerified": False})
+                        self.assertEqual(len(failures), 1)
+                    else:
+                        with self.assertRaisesRegex(backup.BackupError, "fully published marker stat IO failure"):
+                            backup.copy_snapshot(self.root, destination, plan, minimum_free_bytes=0)
+                self.assertEqual(len(failures), 2 if fault == "persistent" else 1)
+                state = backup.read_json(destination / "backup-state.json")
+                self.assertEqual(state["copyStatus"], "prepared" if fault == "transient" else "incomplete")
+                self.assertNotIn("completionPublication", backup.read_json(marker))
+                self.assertEqual(backup.verify_snapshot(destination)["verifiedFiles"], len(self.paths))
+                if fault == "replacement":
+                    self.assertEqual(marker.read_bytes(), (destination / "retained-owned-marker.json").read_bytes())
 
     def test_expected_production_hash_is_checked_during_copy(self):
         plan = self.plan(expected_hashes={self.paths[1]: "a" * 64})
@@ -444,6 +753,229 @@ class BackupReleaseTests(unittest.TestCase):
         self.assertEqual(report["verificationScope"], "local-restored-sample")
         for name in [self.paths[0], self.paths[2]]:
             self.assertEqual((restored / name).read_bytes(), (self.root / name).read_bytes())
+
+    def test_verification_rejects_marker_identity_changes_during_file_hashes(self):
+        manifest = self.run_copy()
+        marker = self.destination / "backup-manifest.json"
+        original = backup.file_digest
+        for change in ["invalid-replacement", "identical-replacement", "same-mtime-in-place"]:
+            with self.subTest(change=change):
+                backup.write_json(marker, manifest)
+                changed = []
+                def mutate_marker(path):
+                    result = original(path)
+                    if not changed:
+                        before, raw = marker.stat(), marker.read_bytes()
+                        if change.endswith("replacement"):
+                            retained = marker.with_name("retained-" + change + ".json")
+                            marker.rename(retained)
+                            marker.write_bytes(raw if change.startswith("identical") else b'{"invalid":true}\n')
+                        else:
+                            marker.write_bytes(raw)
+                            os.utime(marker, ns=(before.st_atime_ns, before.st_mtime_ns))
+                        changed.append(True)
+                    return result
+                with patch.object(backup, "file_digest", side_effect=mutate_marker):
+                    with self.assertRaisesRegex(backup.BackupError, "manifest|metadata|identity|changed"):
+                        backup.verify_snapshot(self.destination)
+                self.assertTrue(changed)
+                for name in self.paths:
+                    self.assertEqual((self.destination / "files" / name).read_bytes(), (self.root / name).read_bytes())
+
+    def test_verification_rechecks_earlier_hashed_file_identity_before_success(self):
+        manifest = self.run_copy()
+        first = self.destination / "files" / manifest["files"][0]["path"]
+        last = self.destination / "files" / manifest["files"][-1]["path"]
+        original = backup.file_digest
+        changed = []
+        def mutate_previous(path):
+            result = original(path)
+            if path == last and not changed:
+                before = first.stat()
+                first.write_bytes(b"x" * before.st_size)
+                os.utime(first, ns=(before.st_atime_ns, before.st_mtime_ns))
+                changed.append(True)
+            return result
+        with patch.object(backup, "file_digest", side_effect=mutate_previous):
+            with self.assertRaisesRegex(backup.BackupError, "identity|changed"):
+                backup.verify_snapshot(self.destination)
+        self.assertTrue(changed)
+
+    def test_restore_pins_manifest_through_output_copy_and_hash(self):
+        manifest = self.run_copy()
+        marker = self.destination / "backup-manifest.json"
+        original = backup.file_digest
+        for phase in ["copy", "hash"]:
+            with self.subTest(phase=phase):
+                backup.write_json(marker, manifest)
+                restored = self.base / ("restore-marker-" + phase)
+                changed = []
+                def replace_marker():
+                    raw = marker.read_bytes()
+                    marker.rename(marker.with_name("retained-restore-" + phase + ".json"))
+                    marker.write_bytes(raw)
+                    changed.append(True)
+                original_copy = backup.copy_hashed
+                def copy_then_replace(source, destination, **kwargs):
+                    result = original_copy(source, destination, **kwargs)
+                    replace_marker()
+                    return result
+                def hash_then_replace(path):
+                    result = original(path)
+                    if restored in Path(path).parents and not changed:
+                        replace_marker()
+                    return result
+                with patch.object(backup, "copy_hashed", side_effect=copy_then_replace if phase == "copy" else original_copy), \
+                     patch.object(backup, "file_digest", side_effect=hash_then_replace):
+                    with self.assertRaisesRegex(backup.BackupError, "manifest|metadata|identity|changed"):
+                        backup.restore_sample(self.root, self.destination, restored, [self.paths[0]], minimum_free_bytes=0)
+                self.assertTrue(changed)
+                self.assertEqual((restored / self.paths[0]).read_bytes(), (self.root / self.paths[0]).read_bytes())
+
+    def test_restore_rejects_displaced_logical_root_after_final_output_hash(self):
+        self.run_copy()
+        restored = self.base / "restore-root-race"
+        displaced = self.base / "retained-restore-root"
+        original = backup.file_digest
+        moved = []
+        def move_after_hash(path):
+            result = original(path)
+            if restored in Path(path).parents and not moved:
+                restored.rename(displaced)
+                restored.mkdir(mode=0o700)
+                moved.append(True)
+            return result
+        with patch.object(backup, "file_digest", side_effect=move_after_hash):
+            with self.assertRaisesRegex(backup.BackupError, "Restore|restore|identity|changed"):
+                backup.restore_sample(self.root, self.destination, restored, [self.paths[0]], minimum_free_bytes=0)
+        self.assertTrue(moved)
+        self.assertEqual(list(restored.iterdir()), [])
+        self.assertEqual((displaced / self.paths[0]).read_bytes(), (self.root / self.paths[0]).read_bytes())
+
+    def test_restore_rejects_output_replacement_after_hash_even_with_identical_bytes(self):
+        self.run_copy()
+        restored = self.base / "restore-output-race"
+        original = backup.file_digest
+        replaced = []
+        def replace_after_hash(path):
+            result = original(path)
+            if restored in Path(path).parents and not replaced:
+                raw = path.read_bytes()
+                path.rename(path.with_name("retained-original.md"))
+                path.write_bytes(raw)
+                replaced.append(True)
+            return result
+        with patch.object(backup, "file_digest", side_effect=replace_after_hash):
+            with self.assertRaisesRegex(backup.BackupError, "identity|changed"):
+                backup.restore_sample(self.root, self.destination, restored, [self.paths[0]], minimum_free_bytes=0)
+        self.assertTrue(replaced)
+        self.assertEqual((restored / self.paths[0]).read_bytes(), (self.root / self.paths[0]).read_bytes())
+
+    def test_restore_rechecks_earlier_outputs_after_later_hash(self):
+        self.run_copy()
+        restored = self.base / "restore-earlier-output-race"
+        selected = [self.paths[0], self.paths[2]]
+        original = backup.file_digest
+        changed = []
+        def mutate_previous_output(path):
+            result = original(path)
+            if path == restored / selected[-1] and not changed:
+                earlier = restored / selected[0]
+                before = earlier.stat()
+                earlier.write_bytes(b"x" * before.st_size)
+                os.utime(earlier, ns=(before.st_atime_ns, before.st_mtime_ns))
+                changed.append(True)
+            return result
+        with patch.object(backup, "file_digest", side_effect=mutate_previous_output):
+            with self.assertRaisesRegex(backup.BackupError, "identity|changed"):
+                backup.restore_sample(self.root, self.destination, restored, selected, minimum_free_bytes=0)
+        self.assertTrue(changed)
+
+    def test_restore_primary_copy_error_survives_concurrent_manifest_change(self):
+        self.run_copy()
+        restored = self.base / "restore-primary-failure"
+        marker = self.destination / "backup-manifest.json"
+        original = backup.copy_hashed
+        def copy_then_fail(source, destination, **kwargs):
+            original(source, destination, **kwargs)
+            raw = marker.read_bytes()
+            marker.rename(marker.with_name("retained-original-manifest.json"))
+            marker.write_bytes(raw)
+            raise OSError("primary injected copy failure")
+        with patch.object(backup, "copy_hashed", side_effect=copy_then_fail):
+            with self.assertRaisesRegex(backup.BackupError, "primary injected copy failure") as failure:
+                backup.restore_sample(self.root, self.destination, restored, [self.paths[0]], minimum_free_bytes=0)
+        self.assertEqual(str(failure.exception.__cause__), "primary injected copy failure")
+        self.assertEqual((restored / self.paths[0]).read_bytes(), (self.root / self.paths[0]).read_bytes())
+
+    def test_restore_primary_error_survives_pinned_marker_close_error(self):
+        self.run_copy()
+        restored = self.base / "restore-primary-close-failure"
+        marker = self.destination / "backup-manifest.json"
+        original_fdopen = backup.os.fdopen
+        copy_failed = []
+        class ClosingReader:
+            def __init__(self, stream):
+                self.stream = stream
+            def __enter__(self):
+                self.stream.__enter__()
+                return self
+            def __exit__(self, *args):
+                self.stream.__exit__(*args)
+                if copy_failed:
+                    raise OSError("secondary pinned marker close failure")
+            def __getattr__(self, name):
+                return getattr(self.stream, name)
+        def wrapped_reader(descriptor, mode, *args, **kwargs):
+            stream = original_fdopen(descriptor, mode, *args, **kwargs)
+            return ClosingReader(stream) if mode == "rb" and os.fstat(descriptor).st_ino == marker.stat().st_ino else stream
+        def fail_copy(*args, **kwargs):
+            copy_failed.append(True)
+            raise OSError("primary restore copy failure")
+        with patch.object(backup.os, "fdopen", side_effect=wrapped_reader), \
+             patch.object(backup, "copy_hashed", side_effect=fail_copy):
+            with self.assertRaisesRegex(backup.BackupError, "primary restore copy failure") as failure:
+                backup.restore_sample(self.root, self.destination, restored, [self.paths[0]], minimum_free_bytes=0)
+        self.assertEqual(str(failure.exception.__cause__), "primary restore copy failure")
+
+    def test_primary_partial_marker_write_error_survives_stream_and_parent_close_errors(self):
+        original_fdopen, original_close = backup.os.fdopen, backup.os.close
+        marker = self.destination / "backup-manifest.json"
+        partial, parent_failed = [], []
+        class FailingWriter:
+            def __init__(self, stream):
+                self.stream = stream
+            def __enter__(self):
+                self.stream.__enter__()
+                return self
+            def __exit__(self, *args):
+                self.stream.__exit__(*args)
+                raise OSError("secondary marker stream close failure")
+            def __getattr__(self, name):
+                return getattr(self.stream, name)
+            def write(self, payload):
+                partial.append(payload[:len(payload) // 2])
+                self.stream.write(partial[-1])
+                raise OSError("primary partial marker write failure")
+        def wrapped_writer(descriptor, mode, *args, **kwargs):
+            stream = original_fdopen(descriptor, mode, *args, **kwargs)
+            matches = marker.exists() and os.fstat(descriptor).st_ino == marker.stat().st_ino
+            return FailingWriter(stream) if mode == "wb" and matches else stream
+        def failing_parent_close(descriptor):
+            info = os.fstat(descriptor)
+            is_parent = self.destination.exists() and info.st_ino == self.destination.stat().st_ino
+            result = original_close(descriptor)
+            if partial and is_parent and not parent_failed:
+                parent_failed.append(True)
+                raise OSError("secondary marker parent close failure")
+            return result
+        with patch.object(backup.os, "fdopen", side_effect=wrapped_writer), \
+             patch.object(backup.os, "close", side_effect=failing_parent_close):
+            with self.assertRaisesRegex(backup.BackupError, "primary partial marker write failure") as failure:
+                self.run_copy()
+        self.assertTrue(parent_failed)
+        self.assertEqual(str(failure.exception.__cause__), "primary partial marker write failure")
+        self.assertEqual(marker.read_bytes(), partial[0])
 
     def test_restore_cannot_use_replacement_manifest_after_verifying_another_manifest(self):
         manifest = self.run_copy()

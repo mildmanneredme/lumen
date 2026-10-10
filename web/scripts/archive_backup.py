@@ -117,6 +117,16 @@ def require_owned_path(path, parent_identity, file_identity, label):
                        f"{label} logical file changed during publication")
 
 
+def require_owned_directory(path, parent_identity, directory_identity):
+    with backup.opened_parent(path) as (parent, name):
+        parent_info = os.fstat(parent)
+        current = os.stat(name, dir_fd=parent, follow_symlinks=False)
+        backup.require((parent_info.st_dev, parent_info.st_ino) == parent_identity and
+                       stat.S_ISDIR(current.st_mode) and
+                       (current.st_dev, current.st_ino) == directory_identity,
+                       "Restore destination directory changed during verification")
+
+
 def readback_owned_json(path, payload, parent_identity, owned_file, expected_identity=None):
     """Perform one bounded exact-byte read, retaining owned logical bindings."""
     with backup.opened_parent(path) as (parent, name):
@@ -165,9 +175,12 @@ def write_exclusive_json(path, value):
             with outgoing:
                 backup.require(outgoing.write(payload) == len(payload), "Incomplete completion sidecar write")
                 outgoing.flush()
-                os.fsync(outgoing.fileno())
                 final_identity = identity(os.fstat(outgoing.fileno()))
-        require_owned_path(path, owned_parent, final_identity, "Completion sidecar")
+                os.fsync(outgoing.fileno())
+            # The archive was already synced and shares this owned directory.
+            # Sync its two new directory entries before claiming durability.
+            os.fsync(parent)
+        final_identity = readback_owned_json(path, payload, owned_parent, owned_file, final_identity)
     except OSError as error:
         if owned_file is None:
             raise
@@ -261,10 +274,15 @@ def archive_snapshot(root, destination, plan, *, maximum_archive_bytes,
                     manifest_bytes = backup.encoded(manifest)
                     backup.require(len(manifest_bytes) <= MANIFEST_LIMIT, "Backup manifest is too large")
                     archive.writestr(info_for(MANIFEST_NAME), manifest_bytes)
-                outgoing.flush(); os.fsync(outgoing.fileno())
-                archive_bytes, archive_hash, archive_md5 = hash_stream(outgoing)
-                assert_sources_unchanged(root, rows, states)
+                outgoing.flush()
                 archive_identity = identity(os.fstat(outgoing.fileno()))
+                os.fsync(outgoing.fileno())
+                backup.require(identity(os.fstat(outgoing.fileno())) == archive_identity,
+                               "Backup archive changed during file sync")
+                archive_bytes, archive_hash, archive_md5 = hash_stream(outgoing)
+                backup.require(identity(os.fstat(outgoing.fileno())) == archive_identity,
+                               "Backup archive changed during checksum calculation")
+                assert_sources_unchanged(root, rows, states)
         sidecar = {"schemaVersion": 1, "backupId": plan["backupId"], "planSha256": plan["planSha256"],
                    "manifestSha256": manifest["manifestSha256"], "archiveBytes": archive_bytes,
                    "archiveSha256": archive_hash, "archiveMd5": archive_md5,
@@ -299,16 +317,32 @@ def archive_snapshot(root, destination, plan, *, maximum_archive_bytes,
         raise backup.BackupError(f"Archive remains incomplete without a completion sidecar: {exc}") from exc
 
 
-def read_small_json(path, maximum):
+@contextmanager
+def checked_small_json(path, maximum):
+    """Keep bounded metadata and its original logical file pinned through use."""
     with backup.opened_parent(path) as (parent, name):
+        parent_info = os.fstat(parent)
+        parent_identity = parent_info.st_dev, parent_info.st_ino
         descriptor = os.open(name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=parent)
         with os.fdopen(descriptor, "rb") as incoming:
-            backup.require(stat.S_ISREG(os.fstat(incoming.fileno()).st_mode), "Backup metadata must be a regular file")
-            value = incoming.read(maximum + 1)
-    backup.require(len(value) <= maximum, "Backup metadata is too large")
-    result = json.loads(value)
-    backup.require(isinstance(result, dict), "Backup metadata must be an object")
-    return result
+            before = os.fstat(incoming.fileno())
+            backup.require(stat.S_ISREG(before.st_mode), "Backup metadata must be a regular file")
+            backup.require(before.st_size <= maximum, "Backup metadata is too large")
+            value = incoming.read(before.st_size + 1)
+            backup.require(len(value) == before.st_size and identity(os.fstat(incoming.fileno())) == identity(before),
+                           "Backup metadata changed during read")
+            result = json.loads(value)
+            backup.require(isinstance(result, dict), "Backup metadata must be an object")
+            require_owned_path(path, parent_identity, identity(before), "Backup metadata")
+            yield result
+            backup.require(identity(os.fstat(incoming.fileno())) == identity(before),
+                           "Backup metadata changed during verification")
+    require_owned_path(path, parent_identity, identity(before), "Backup metadata")
+
+
+def read_small_json(path, maximum):
+    with checked_small_json(path, maximum) as value:
+        return value
 
 
 def validate_manifest(manifest, sidecar):
@@ -342,47 +376,50 @@ def checked_archive(path):
     path = Path(path).absolute()
     backup.existing_directory(path.parent)
     try:
-        sidecar = read_small_json(sidecar_path(path), 64 * 1024)
-        backup.require(type(sidecar.get("schemaVersion")) is int and sidecar["schemaVersion"] == 1
-                       and sidecar.get("copyStatus") == "complete",
-                       "Archive completion sidecar is missing or incomplete")
-        backup.require(isinstance(sidecar.get("backupId"), str) and
-                       re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{1,120}", sidecar["backupId"]), "Invalid archive backup ID")
-        for key in ["archiveSha256", "manifestSha256", "planSha256"]:
-            backup.require(isinstance(sidecar.get(key), str) and backup.SHA256.fullmatch(sidecar[key]), "Invalid archive hash")
-        backup.require(isinstance(sidecar.get("archiveMd5"), str) and MD5.fullmatch(sidecar["archiveMd5"]), "Invalid archive MD5")
-        backup.require(type(sidecar.get("archiveBytes")) is int and sidecar["archiveBytes"] > 0
-                       and type(sidecar.get("sourceBytes")) is int and sidecar["sourceBytes"] >= 0
-                       and type(sidecar.get("files")) is int and sidecar["files"] > 0, "Invalid archive size/count")
-        with backup.opened_parent(path) as (parent, name):
-            descriptor = os.open(name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=parent)
-            with os.fdopen(descriptor, "rb") as incoming:
-                before = os.fstat(incoming.fileno())
-                backup.require(stat.S_ISREG(before.st_mode), "Backup archive must be a regular file")
-                count, sha, md5 = hash_stream(incoming)
-                backup.require(count == sidecar["archiveBytes"] and sha == sidecar["archiveSha256"]
-                               and md5 == sidecar["archiveMd5"], "Backup archive current-byte hash/size differs")
-                incoming.seek(0)
-                with zipfile.ZipFile(incoming) as archive:
-                    entries = archive.infolist()
-                    names = [info.filename for info in entries]
-                    backup.require(len(names) == len(set(names)) and MANIFEST_NAME in names,
-                                   "Archive contains duplicate paths or lacks its manifest")
-                    for info in entries:
-                        backup.safe_relative(info.filename)
-                        mode = info.external_attr >> 16
-                        backup.require(not info.is_dir() and not stat.S_ISLNK(mode) and
-                                       (stat.S_IFMT(mode) in (0, stat.S_IFREG)) and not info.flag_bits & 1,
-                                       "Archive entries must be unencrypted regular files without symlinks")
-                    manifest_info = archive.getinfo(MANIFEST_NAME)
-                    backup.require(manifest_info.file_size <= MANIFEST_LIMIT, "Archive manifest is too large")
-                    manifest = json.loads(archive.read(manifest_info))
-                    index = validate_manifest(manifest, sidecar)
-                    backup.require(set(names) == set(index) | {MANIFEST_NAME}, "Archive contains unexpected or missing files")
-                    for name, row in index.items():
-                        backup.require(archive.getinfo(name).file_size == row["bytes"], f"Archive entry byte count differs: {name}")
-                    yield archive, manifest, index, sidecar
-                backup.require(identity(os.fstat(incoming.fileno())) == identity(before), "Backup archive changed during verification")
+        with checked_small_json(sidecar_path(path), 64 * 1024) as sidecar:
+            backup.require(type(sidecar.get("schemaVersion")) is int and sidecar["schemaVersion"] == 1
+                           and sidecar.get("copyStatus") == "complete",
+                           "Archive completion sidecar is missing or incomplete")
+            backup.require(isinstance(sidecar.get("backupId"), str) and
+                           re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{1,120}", sidecar["backupId"]), "Invalid archive backup ID")
+            for key in ["archiveSha256", "manifestSha256", "planSha256"]:
+                backup.require(isinstance(sidecar.get(key), str) and backup.SHA256.fullmatch(sidecar[key]), "Invalid archive hash")
+            backup.require(isinstance(sidecar.get("archiveMd5"), str) and MD5.fullmatch(sidecar["archiveMd5"]), "Invalid archive MD5")
+            backup.require(type(sidecar.get("archiveBytes")) is int and sidecar["archiveBytes"] > 0
+                           and type(sidecar.get("sourceBytes")) is int and sidecar["sourceBytes"] >= 0
+                           and type(sidecar.get("files")) is int and sidecar["files"] > 0, "Invalid archive size/count")
+            with backup.opened_parent(path) as (parent, name):
+                parent_info = os.fstat(parent)
+                parent_identity = parent_info.st_dev, parent_info.st_ino
+                descriptor = os.open(name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=parent)
+                with os.fdopen(descriptor, "rb") as incoming:
+                    before = os.fstat(incoming.fileno())
+                    backup.require(stat.S_ISREG(before.st_mode), "Backup archive must be a regular file")
+                    count, sha, md5 = hash_stream(incoming)
+                    backup.require(count == sidecar["archiveBytes"] and sha == sidecar["archiveSha256"]
+                                   and md5 == sidecar["archiveMd5"], "Backup archive current-byte hash/size differs")
+                    incoming.seek(0)
+                    with zipfile.ZipFile(incoming) as archive:
+                        entries = archive.infolist()
+                        names = [info.filename for info in entries]
+                        backup.require(len(names) == len(set(names)) and MANIFEST_NAME in names,
+                                       "Archive contains duplicate paths or lacks its manifest")
+                        for info in entries:
+                            backup.safe_relative(info.filename)
+                            mode = info.external_attr >> 16
+                            backup.require(not info.is_dir() and not stat.S_ISLNK(mode) and
+                                           (stat.S_IFMT(mode) in (0, stat.S_IFREG)) and not info.flag_bits & 1,
+                                           "Archive entries must be unencrypted regular files without symlinks")
+                        manifest_info = archive.getinfo(MANIFEST_NAME)
+                        backup.require(manifest_info.file_size <= MANIFEST_LIMIT, "Archive manifest is too large")
+                        manifest = json.loads(archive.read(manifest_info))
+                        index = validate_manifest(manifest, sidecar)
+                        backup.require(set(names) == set(index) | {MANIFEST_NAME}, "Archive contains unexpected or missing files")
+                        for name, row in index.items():
+                            backup.require(archive.getinfo(name).file_size == row["bytes"], f"Archive entry byte count differs: {name}")
+                        yield archive, manifest, index, sidecar
+                    backup.require(identity(os.fstat(incoming.fileno())) == identity(before), "Backup archive changed during verification")
+            require_owned_path(path, parent_identity, identity(before), "Backup archive")
     except (OSError, ValueError, KeyError, TypeError, zipfile.BadZipFile, RuntimeError, zlib.error) as exc:
         if isinstance(exc, backup.BackupError):
             raise
@@ -435,14 +472,28 @@ def restore_sample(root, path, destination, paths, *, minimum_free_bytes=backup.
         backup.require(shutil.disk_usage(parent).free >= sum(row["bytes"] for row in rows) + minimum_free_bytes,
                        "Insufficient local free space for restored sample plus reserve")
         backup.create_snapshot_directory(destination)
+        with backup.opened_parent(destination) as (snapshot_parent, snapshot_name):
+            snapshot_parent_info = os.fstat(snapshot_parent)
+            snapshot_info = os.stat(snapshot_name, dir_fd=snapshot_parent, follow_symlinks=False)
+            backup.require(stat.S_ISDIR(snapshot_info.st_mode), "Restore destination must be a real directory")
+            snapshot_parent_identity = snapshot_parent_info.st_dev, snapshot_parent_info.st_ino
+            snapshot_identity = snapshot_info.st_dev, snapshot_info.st_ino
+        restored_files = []
         for row in rows:
             with backup.opened_parent(destination / row["path"], create=True) as (output_parent, name):
+                output_parent_info = os.fstat(output_parent)
+                output_parent_identity = output_parent_info.st_dev, output_parent_info.st_ino
                 descriptor = os.open(name, os.O_CREAT | os.O_EXCL | os.O_WRONLY | os.O_NOFOLLOW, 0o600, dir_fd=output_parent)
                 with os.fdopen(descriptor, "wb") as outgoing:
                     guarded = GuardedOutput(outgoing, parent, minimum_free_bytes, row["bytes"])
                     read_entry(archive, row, guarded)
                     outgoing.flush(); os.fsync(outgoing.fileno())
+                    output_identity = identity(os.fstat(outgoing.fileno()))
             backup.require(backup.file_digest(destination / row["path"]) == row["sha256"], "Restored sample hash differs")
+            restored_files.append((destination / row["path"], output_parent_identity, output_identity))
+        require_owned_directory(destination, snapshot_parent_identity, snapshot_identity)
+        for output, output_parent_identity, output_identity in restored_files:
+            require_owned_path(output, output_parent_identity, output_identity, "Restored sample")
         report = verification_report(manifest, rows, "local-restored-archive-sample")
     return report
 

@@ -141,7 +141,262 @@ class ArchiveBackupTests(unittest.TestCase):
                 self.assertEqual(report["completionPublication"]["status"], "exact-readback-after-write-error")
                 self.assertEqual(archive.verify_archive(self.destination)["manifestSha256"], report["manifestSha256"])
 
-    def test_transient_post_publication_stat_failure_reconciles_complete_owned_bytes_once(self):
+    def test_normal_publication_syncs_the_shared_owned_directory_after_both_files(self):
+        original_fsync = archive.os.fsync
+        calls = []
+        def track_fsync(descriptor):
+            info = os.fstat(descriptor)
+            calls.append((stat.S_ISDIR(info.st_mode), info.st_dev, info.st_ino))
+            return original_fsync(descriptor)
+        with patch.object(archive.os, "fsync", side_effect=track_fsync):
+            report = self.create()
+        parent = self.destination.parent.stat()
+        self.assertEqual(calls[-1], (True, parent.st_dev, parent.st_ino))
+        self.assertEqual(sum(call[0] for call in calls), 1)
+        self.assertEqual([call[2] for call in calls[:-1]],
+                         [self.destination.stat().st_ino, archive.sidecar_path(self.destination).stat().st_ino])
+        self.assertNotIn("completionPublication", report)
+
+    def test_directory_sync_failure_returns_exact_readback_with_unverified_durability(self):
+        older_report = self.create()
+        older = self.destination
+        previous = older.read_bytes(), archive.sidecar_path(older).read_bytes()
+        self.destination = self.base / "directory-sync-error" / older.name
+        self.destination.parent.mkdir()
+        original_fsync, original_fdopen = archive.os.fsync, archive.os.fdopen
+        failed, readbacks = [], []
+        def fail_directory_sync(descriptor):
+            if stat.S_ISDIR(os.fstat(descriptor).st_mode):
+                failed.append(True)
+                raise OSError("fixture owned-directory sync failure")
+            return original_fsync(descriptor)
+        def track_readback(descriptor, mode, *args, **kwargs):
+            marker = archive.sidecar_path(self.destination)
+            if mode == "rb" and marker.exists() and os.fstat(descriptor).st_ino == marker.stat().st_ino:
+                readbacks.append(True)
+            return original_fdopen(descriptor, mode, *args, **kwargs)
+        with patch.object(archive.os, "fsync", side_effect=fail_directory_sync), \
+             patch.object(archive.os, "fdopen", side_effect=track_readback):
+            report = self.create()
+        self.assertEqual(len(failed), 1)
+        self.assertEqual(len(readbacks), 1)
+        self.assertFalse(report["completionPublication"]["durabilityVerified"])
+        self.assertEqual(report["completionPublication"]["status"], "exact-readback-after-write-error")
+        self.assertEqual(archive.verify_archive(self.destination)["manifestSha256"], report["manifestSha256"])
+        self.assertEqual((older.read_bytes(), archive.sidecar_path(older).read_bytes()), previous)
+        self.assertEqual(archive.verify_archive(older)["manifestSha256"], older_report["manifestSha256"])
+
+    def test_marker_changes_during_full_verification_cannot_return_stale_completion(self):
+        original_hash, original_entry = archive.hash_stream, archive.read_entry
+        for phase in ["archive-hash", "entry-read"]:
+            for change in ["remove", "replace-exact", "in-place"]:
+                with self.subTest(phase=phase, change=change):
+                    self.destination = self.base / (phase + "-" + change) / "lumen-backup-fixture.zip"
+                    self.destination.parent.mkdir()
+                    self.create()
+                    marker = archive.sidecar_path(self.destination)
+                    marker_bytes, marker_info = marker.read_bytes(), marker.stat()
+                    changed = []
+                    def mutate_marker():
+                        if changed:
+                            return
+                        changed.append(True)
+                        if change == "remove":
+                            marker.unlink()
+                        elif change == "replace-exact":
+                            replacement = marker.with_name(marker.name + ".replacement")
+                            replacement.write_bytes(marker_bytes)
+                            os.utime(replacement, ns=(marker_info.st_atime_ns, marker_info.st_mtime_ns))
+                            os.replace(replacement, marker)
+                        else:
+                            value = json.loads(marker_bytes)
+                            value["copyStatus"] = "invalid!"
+                            altered = archive.backup.encoded(value)
+                            self.assertEqual(len(altered), len(marker_bytes))
+                            marker.write_bytes(altered)
+                            os.utime(marker, ns=(marker_info.st_atime_ns, marker_info.st_mtime_ns))
+                    def hash_and_mutate(stream):
+                        result = original_hash(stream)
+                        if phase == "archive-hash":
+                            mutate_marker()
+                        return result
+                    def entry_and_mutate(handle, row, outgoing=None):
+                        result = original_entry(handle, row, outgoing)
+                        if phase == "entry-read":
+                            mutate_marker()
+                        return result
+                    with patch.object(archive, "hash_stream", side_effect=hash_and_mutate), \
+                         patch.object(archive, "read_entry", side_effect=entry_and_mutate):
+                        with self.assertRaises(archive.backup.BackupError):
+                            archive.verify_archive(self.destination)
+                    self.assertEqual(len(changed), 1)
+                    for name in self.paths:
+                        self.assertEqual((self.root / name).read_bytes(), self.original[name])
+
+    def test_marker_removal_during_restore_precheck_or_copy_cannot_report_success(self):
+        original_entry = archive.read_entry
+        for phase in ["precheck", "copy"]:
+            with self.subTest(phase=phase):
+                self.destination = self.base / ("restore-marker-" + phase) / "lumen-backup-fixture.zip"
+                self.destination.parent.mkdir()
+                self.create()
+                restored = self.base / ("restored-marker-" + phase)
+                removed = []
+                def entry_and_remove(handle, row, outgoing=None):
+                    result = original_entry(handle, row, outgoing)
+                    if not removed and (outgoing is not None) == (phase == "copy"):
+                        archive.sidecar_path(self.destination).unlink()
+                        removed.append(True)
+                    return result
+                with patch.object(archive, "read_entry", side_effect=entry_and_remove):
+                    with self.assertRaises(archive.backup.BackupError):
+                        archive.restore_sample(self.root, self.destination, restored, [self.paths[0]],
+                                               minimum_free_bytes=0)
+                self.assertEqual(len(removed), 1)
+                self.assertTrue(self.destination.exists())
+                if restored.exists():
+                    self.assertEqual((restored / self.paths[0]).read_bytes(), self.original[self.paths[0]])
+
+    def test_logical_zip_replacement_during_verification_rejects_even_with_identical_bytes(self):
+        original_entry = archive.read_entry
+        for change in ["replace-exact", "parent-swap"]:
+            with self.subTest(change=change):
+                self.destination = self.base / ("logical-verify-" + change) / "lumen-backup-fixture.zip"
+                self.destination.parent.mkdir()
+                self.create()
+                source_bytes = self.destination.read_bytes()
+                changed = []
+                def entry_and_replace(handle, row, outgoing=None):
+                    result = original_entry(handle, row, outgoing)
+                    if not changed:
+                        changed.append(True)
+                        if change == "replace-exact":
+                            saved = self.destination.stat()
+                            replacement = self.destination.with_name("replacement.zip")
+                            replacement.write_bytes(source_bytes)
+                            os.utime(replacement, ns=(saved.st_atime_ns, saved.st_mtime_ns))
+                            os.replace(replacement, self.destination)
+                        else:
+                            previous = self.destination.parent.with_name(self.destination.parent.name + "-displaced")
+                            self.destination.parent.rename(previous)
+                            self.destination.parent.mkdir()
+                    return result
+                with patch.object(archive, "read_entry", side_effect=entry_and_replace):
+                    with self.assertRaises(archive.backup.BackupError):
+                        archive.verify_archive(self.destination)
+                self.assertEqual(len(changed), 1)
+
+    def test_restore_directory_replacement_during_final_hash_cannot_report_verified(self):
+        self.create()
+        restored = self.base / "restored-final-hash"
+        moved = self.base / "restored-displaced"
+        original_fdopen = archive.os.fdopen
+        renamed = []
+        class MovingReader:
+            def __init__(self, stream):
+                self.stream = stream
+            def __enter__(self):
+                self.stream.__enter__()
+                return self
+            def __exit__(self, *args):
+                return self.stream.__exit__(*args)
+            def __getattr__(self, name):
+                return getattr(self.stream, name)
+            def read(self, *args):
+                data = self.stream.read(*args)
+                if data and not renamed:
+                    restored.rename(moved)
+                    renamed.append(True)
+                return data
+        def move_during_restored_hash(descriptor, mode, *args, **kwargs):
+            stream = original_fdopen(descriptor, mode, *args, **kwargs)
+            output = restored / self.paths[0]
+            if mode == "rb" and output.exists() and os.fstat(descriptor).st_ino == output.stat().st_ino:
+                return MovingReader(stream)
+            return stream
+        with patch.object(archive.os, "fdopen", side_effect=move_during_restored_hash):
+            with self.assertRaises(archive.backup.BackupError):
+                archive.restore_sample(self.root, self.destination, restored, [self.paths[0]], minimum_free_bytes=0)
+        self.assertEqual(len(renamed), 1)
+        self.assertFalse(restored.exists())
+        self.assertEqual((moved / self.paths[0]).read_bytes(), self.original[self.paths[0]])
+        self.assertEqual(archive.verify_archive(self.destination)["verifiedFiles"], len(self.paths))
+
+    def test_output_mutation_during_archive_checksum_cannot_publish_completion(self):
+        original_hash = archive.hash_stream
+        mutated = []
+        class MutatingArchiveReader:
+            def __init__(self, stream):
+                self.stream = stream
+            def __getattr__(self, name):
+                return getattr(self.stream, name)
+            def read(self, *args):
+                block = self.stream.read(*args)
+                if block and not mutated:
+                    previous = self_destination.stat()
+                    with self_destination.open("r+b") as changed:
+                        changed.seek(60)
+                        byte = changed.read(1)
+                        changed.seek(60)
+                        changed.write(bytes([byte[0] ^ 1]))
+                    os.utime(self_destination, ns=(previous.st_atime_ns, previous.st_mtime_ns))
+                    mutated.append(True)
+                return block
+        self_destination = self.destination
+        with patch.object(archive, "hash_stream", side_effect=lambda stream: original_hash(MutatingArchiveReader(stream))):
+            with self.assertRaises(archive.backup.BackupError):
+                self.create()
+        self.assertEqual(len(mutated), 1)
+        self.assertTrue(self.destination.exists())
+        self.assertFalse(archive.sidecar_path(self.destination).exists())
+        for name in self.paths:
+            self.assertEqual((self.root / name).read_bytes(), self.original[name])
+
+    def test_normal_marker_mutation_during_sync_cannot_publish_wrong_completion(self):
+        original_fsync = archive.os.fsync
+        marker = archive.sidecar_path(self.destination)
+        mutated = []
+        def sync_and_mutate(descriptor):
+            result = original_fsync(descriptor)
+            if not mutated and marker.exists() and os.fstat(descriptor).st_ino == marker.stat().st_ino:
+                before = marker.stat()
+                value = json.loads(marker.read_bytes())
+                value["planSha256"] = ("a" if value["planSha256"][0] != "a" else "b") + value["planSha256"][1:]
+                marker.write_bytes(archive.backup.encoded(value))
+                os.utime(marker, ns=(before.st_atime_ns, before.st_mtime_ns))
+                mutated.append(True)
+            return result
+        with patch.object(archive.os, "fsync", side_effect=sync_and_mutate):
+            with self.assertRaises(archive.backup.BackupError):
+                self.create()
+        self.assertEqual(len(mutated), 1)
+        self.assertTrue(self.destination.exists()); self.assertTrue(marker.exists())
+        with self.assertRaises(archive.backup.BackupError):
+            archive.verify_archive(self.destination)
+
+    def test_archive_mutation_during_successful_sync_cannot_publish_completion(self):
+        original_fsync = archive.os.fsync
+        mutated = []
+        def sync_and_mutate(descriptor):
+            result = original_fsync(descriptor)
+            if not mutated and self.destination.exists() and os.fstat(descriptor).st_ino == self.destination.stat().st_ino:
+                before = self.destination.stat()
+                with self.destination.open("r+b") as changed:
+                    changed.seek(60)
+                    byte = changed.read(1)
+                    changed.seek(60)
+                    changed.write(bytes([byte[0] ^ 1]))
+                os.utime(self.destination, ns=(before.st_atime_ns, before.st_mtime_ns))
+                mutated.append(True)
+            return result
+        with patch.object(archive.os, "fsync", side_effect=sync_and_mutate):
+            with self.assertRaises(archive.backup.BackupError):
+                self.create()
+        self.assertEqual(len(mutated), 1)
+        self.assertTrue(self.destination.exists())
+        self.assertFalse(archive.sidecar_path(self.destination).exists())
+
+    def test_transient_post_publication_stat_failure_uses_one_bounded_error_readback(self):
         for phase in ["writer-final-marker", "snapshot-final-archive", "snapshot-final-marker"]:
             with self.subTest(phase=phase):
                 self.destination = self.base / phase / "lumen-backup-fixture.zip"
@@ -153,7 +408,7 @@ class ArchiveBackupTests(unittest.TestCase):
                     if kwargs.get("dir_fd") is not None and name == checksum.name:
                         marker_checks.append(True)
                         selected = (phase == "writer-final-marker" and len(marker_checks) == 1) or \
-                                   (phase == "snapshot-final-marker" and len(marker_checks) == 2)
+                                   (phase == "snapshot-final-marker" and len(marker_checks) == 3)
                     else:
                         selected = kwargs.get("dir_fd") is not None and name == self.destination.name and \
                                    phase == "snapshot-final-archive" and checksum.exists()
@@ -175,7 +430,7 @@ class ArchiveBackupTests(unittest.TestCase):
                 proof = archive.verify_archive(self.destination)
                 self.assertEqual(len(faults), 1)
                 self.assertIsNone(error, "the complete owned marker already passes current-byte verification")
-                self.assertEqual(len(readbacks), 1, "exact marker reconciliation is bounded to one readback")
+                self.assertEqual(len(readbacks), 2, "one normal payload check plus one bounded error reconciliation")
                 self.assertEqual(report["copyStatus"], "complete")
                 self.assertEqual(report["manifestSha256"], proof["manifestSha256"])
                 self.assertEqual(report["completionPublication"]["status"], "exact-readback-after-write-error")
