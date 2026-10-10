@@ -374,6 +374,40 @@ test('completed pilot maps through verified aliases to its endpoint without fini
   book.save(result.position.time);
   assert.equal(book.getHistory()['chapter-001'].completed, false);
 });
+test('completed original legacy aliases require the exact known source identity before migration', async t=>{
+  for(const [name,change] of [
+    ['unknown hash',(_source,bookmark)=>bookmark.audioSha256='c'.repeat(64)],
+    ['wrong source book',source=>source.bookId='another-book'],
+    ['wrong source manuscript',source=>source.manuscriptVersion='v5'],
+    ['wrong source chapter',source=>source.chapterId='chapter-002'],
+    ['wrong source extent',source=>source.readingExtentId='different-pilot']
+  ])await t.test(name,async()=>{
+    const f=fixture(),legacy=createLegacyProgress(f.pilot,f.pilot.paragraphs.flatMap(p=>p.sentences),f.storage).save(f.pilot.duration,{completed:true});
+    assert.equal(Object.hasOwn(legacy,'anchorMeasured'),false);
+    change(f.pilot,legacy);f.storage.setItem(LEGACY_BOOKMARK_KEY,JSON.stringify(legacy));
+    const raw=f.storage.getItem(LEGACY_BOOKMARK_KEY),book=reader(f),selection=book.initialSelection();
+    await assert.rejects(book.load(selection.trackId,selection.narratorId,{bookmark:selection.bookmark}),error=>error.code==='MISSING_ANCHOR');
+    assert.equal(book.getActive(),null);assert.equal(f.storage.getItem(LEGACY_BOOKMARK_KEY),raw);assert.equal(f.storage.getItem(BOOKMARK_KEY),null);
+    const recovered=await book.load(selection.trackId,selection.narratorId,{startFromBeginning:true});
+    assert.deepEqual(recovered.position,{time:0,completed:false,mapped:false});
+    assert.equal(f.storage.getItem(LEGACY_BOOKMARK_KEY),raw);
+  });
+});
+test('a known original legacy completion in its source tail uses the verified excerpt endpoint',async()=>{
+  const f=fixture(),legacy=createLegacyProgress(f.pilot,f.pilot.paragraphs.flatMap(p=>p.sentences),f.storage).save(f.pilot.duration,{completed:true});
+  assert.ok(legacy.audioTime>f.pilot.paragraphs[0].sentences.at(-1).end);
+  const raw=f.storage.getItem(LEGACY_BOOKMARK_KEY),book=reader(f),selection=book.initialSelection({narratorId:'autonoe'});
+  assert.deepEqual((await book.load(selection.trackId,selection.narratorId,{bookmark:selection.bookmark})).position,{time:50,completed:false,mapped:true});
+  assert.equal(f.storage.getItem(LEGACY_BOOKMARK_KEY),raw);assert.equal(f.storage.getItem(BOOKMARK_KEY),null);
+});
+test('unknown completed alias cannot bypass source identity during an in-session load or via a measured flag',async()=>{
+  const {f,book}=await opened();book.save(25);
+  const legacy=createLegacyProgress(f.pilot,f.pilot.paragraphs.flatMap(p=>p.sentences),f.storage).save(f.pilot.duration,{completed:true});
+  legacy.audioSha256='c'.repeat(64);legacy.anchorMeasured=true;f.storage.setItem(LEGACY_BOOKMARK_KEY,JSON.stringify(legacy));
+  const raw=f.storage.getItem(LEGACY_BOOKMARK_KEY),state=f.storage.getItem(BOOKMARK_KEY),active=book.getActive();
+  await assert.rejects(book.load('chapter-001','autonoe',{bookmark:legacy}),error=>error.code==='MISSING_ANCHOR');
+  assert.equal(book.getActive(),active);assert.equal(f.storage.getItem(LEGACY_BOOKMARK_KEY),raw);assert.equal(f.storage.getItem(BOOKMARK_KEY),state);
+});
 
 test('completed full extents stay completed at the changed recording endpoint without a sentence anchor', async () => {
   const { f, book } = await opened(), bookmark = book.save(40, { completed:true });
