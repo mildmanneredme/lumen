@@ -5,6 +5,7 @@ import copy
 import hashlib
 import importlib.util
 import json
+import os
 from pathlib import Path
 import tempfile
 import sys
@@ -182,7 +183,7 @@ class BackupReleaseTests(unittest.TestCase):
         plan = self.plan()
         original = backup.copy_hashed
         redirected = []
-        def redirect_source_after_clock_check(source, destination):
+        def redirect_source_after_clock_check(source, destination, **kwargs):
             if not redirected:
                 outside = self.base / "unselected-private"
                 outside.mkdir()
@@ -190,7 +191,7 @@ class BackupReleaseTests(unittest.TestCase):
                 source.parent.rename(source.parent.with_name(source.parent.name + "-saved"))
                 source.parent.symlink_to(outside, target_is_directory=True)
                 redirected.append(destination)
-            return original(source, destination)
+            return original(source, destination, **kwargs)
         with patch.object(backup, "copy_hashed", side_effect=redirect_source_after_clock_check):
             with self.assertRaises(backup.BackupError):
                 self.run_copy(plan)
@@ -231,8 +232,8 @@ class BackupReleaseTests(unittest.TestCase):
         plan = self.plan()
         original = backup.copy_hashed
         calls = []
-        def changing_source(source, destination):
-            result = original(source, destination)
+        def changing_source(source, destination, **kwargs):
+            result = original(source, destination, **kwargs)
             calls.append(source)
             if len(calls) == 2:
                 calls[0].write_bytes(b"x" * calls[0].stat().st_size)
@@ -243,6 +244,79 @@ class BackupReleaseTests(unittest.TestCase):
         self.assertFalse((self.destination / "backup-manifest.json").exists())
         state = json.loads((self.destination / "backup-state.json").read_text())
         self.assertEqual(state["copyStatus"], "incomplete")
+
+    def test_growing_source_never_writes_past_planned_bytes_or_consumes_reserve(self):
+        name = sorted(self.paths)[0]
+        source = self.root / name
+        original_bytes = b"a" * (backup.CHUNK_BYTES * 2 + 17)
+        source.write_bytes(original_bytes)
+        plan = self.plan()
+        planned_bytes = next(row["bytes"] for row in plan["files"] if row["path"] == name)
+        reserve = backup.CHUNK_BYTES // 2
+        initial_free = plan["totalBytes"] + reserve
+        original_fdopen = backup.os.fdopen
+        source_inode = source.stat().st_ino
+        growth = b"g" * (backup.CHUNK_BYTES * 3)
+        appended = []
+
+        class GrowingReader:
+            def __init__(self, stream):
+                self.stream = stream
+            def __enter__(self):
+                self.stream.__enter__()
+                return self
+            def __exit__(self, *args):
+                return self.stream.__exit__(*args)
+            def __getattr__(self, name):
+                return getattr(self.stream, name)
+            def read(self, size):
+                block = self.stream.read(size)
+                if not appended:
+                    with source.open("ab") as output:
+                        output.write(growth)
+                    appended.append(True)
+                return block
+
+        def growing_fdopen(descriptor, mode, *args, **kwargs):
+            stream = original_fdopen(descriptor, mode, *args, **kwargs)
+            return GrowingReader(stream) if mode == "rb" and os.fstat(descriptor).st_ino == source_inode else stream
+
+        def disk_space(_):
+            copied = sum(path.stat().st_size for path in (self.destination / "files").rglob("*") if path.is_file())
+            return type("Usage", (), {"free": initial_free - copied})()
+
+        with patch.object(backup.os, "fdopen", side_effect=growing_fdopen), \
+             patch.object(backup.shutil, "disk_usage", side_effect=disk_space):
+            with self.assertRaisesRegex(backup.BackupError, "grew|byte count changed"):
+                backup.copy_snapshot(self.root, self.destination, plan, minimum_free_bytes=reserve)
+        target = self.destination / "files" / name
+        self.assertTrue(appended)
+        self.assertLessEqual(target.stat().st_size, planned_bytes)
+        self.assertEqual(target.read_bytes(), original_bytes)
+        self.assertGreaterEqual(disk_space(self.destination).free, reserve)
+        self.assertEqual(source.stat().st_size, planned_bytes + len(growth))
+        self.assertFalse((self.destination / "backup-manifest.json").exists())
+        state = json.loads((self.destination / "backup-state.json").read_text())
+        self.assertEqual(state["copyStatus"], "incomplete")
+        self.assertEqual(state["copiedBytes"], 0)
+
+    def test_empty_planned_source_growth_is_detected_without_writing_extra_bytes(self):
+        name = sorted(self.paths)[0]
+        source = self.root / name
+        source.write_bytes(b"")
+        plan = self.plan()
+        original = backup.copy_hashed
+        def grow_before_copy(incoming, destination, **kwargs):
+            if incoming == source:
+                incoming.write_bytes(b"unexpected growth")
+            return original(incoming, destination, **kwargs)
+        with patch.object(backup, "copy_hashed", side_effect=grow_before_copy):
+            with self.assertRaisesRegex(backup.BackupError, "grew|byte count changed"):
+                self.run_copy(plan)
+        target = self.destination / "files" / name
+        self.assertLessEqual(target.stat().st_size, 0)
+        self.assertFalse((self.destination / "backup-manifest.json").exists())
+        self.assertEqual(json.loads((self.destination / "backup-state.json").read_text())["copyStatus"], "incomplete")
 
     def test_direct_file_copy_does_not_follow_a_last_moment_source_symlink(self):
         source = self.root / "last-moment-link.md"

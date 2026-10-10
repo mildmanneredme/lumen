@@ -219,18 +219,24 @@ def file_digest(path):
     return result.hexdigest()
 
 
-def copy_hashed(source, destination):
-    """Create only a new file and calculate the exact copied byte digest."""
+def copy_hashed(source, destination, *, maximum_bytes=None):
+    """Copy at most the approved byte count; reject growth before writing it."""
+    require(maximum_bytes is None or type(maximum_bytes) is int and maximum_bytes >= 0,
+            "Invalid backup copy byte limit")
     result, count = hashlib.sha256(), 0
     with opened_parent(source) as (parent, name):
         source_fd = os.open(name, os.O_RDONLY | os.O_NOFOLLOW, dir_fd=parent)
         with os.fdopen(source_fd, "rb") as incoming:
+            limit = os.fstat(incoming.fileno()).st_size if maximum_bytes is None else maximum_bytes
             with opened_parent(destination, create=True) as (outgoing_parent, outgoing_name):
                 destination_fd = os.open(outgoing_name, os.O_CREAT | os.O_EXCL | os.O_WRONLY | os.O_NOFOLLOW,
                                          0o600, dir_fd=outgoing_parent)
                 with os.fdopen(destination_fd, "wb") as outgoing:
-                    for block in iter(lambda: incoming.read(CHUNK_BYTES), b""):
+                    while count < limit:
+                        block = incoming.read(min(CHUNK_BYTES, limit - count))
+                        require(bool(block), "Backup source byte count changed during copy")
                         outgoing.write(block); result.update(block); count += len(block)
+                    require(not incoming.read(1), "Backup source grew beyond its approved byte count")
                     outgoing.flush(); os.fsync(outgoing.fileno())
     return count, result.hexdigest()
 
@@ -268,7 +274,7 @@ def copy_snapshot(root, destination, plan, *, minimum_free_bytes=DEFAULT_RESERVE
             require(shutil.disk_usage(parent).free >= row["bytes"] + minimum_free_bytes,
                     "Insufficient local free space during backup; incomplete copy retained")
             source = check_source_clock(root, row)
-            count, source_hash = copy_hashed(source, destination / "files" / row["path"])
+            count, source_hash = copy_hashed(source, destination / "files" / row["path"], maximum_bytes=row["bytes"])
             require(count == row["bytes"], f"Backup source byte count changed: {row['path']}")
             check_source_clock(root, row)
             require(row.get("expectedSha256", source_hash) == source_hash, f"Backup production hash differs: {row['path']}")
@@ -344,7 +350,7 @@ def restore_sample(root, snapshot, destination, paths):
     create_snapshot_directory(destination)
     for row in rows:
         source = owned_file(snapshot, "files/" + row["path"])
-        count, source_hash = copy_hashed(source, destination / row["path"])
+        count, source_hash = copy_hashed(source, destination / row["path"], maximum_bytes=row["bytes"])
         require(count == row["bytes"] and source_hash == row["sha256"], f"Restore source changed during copy: {row['path']}")
         restored = owned_file(destination, row["path"])
         require(file_digest(restored) == row["sha256"], f"Restored byte hash differs: {row['path']}")
