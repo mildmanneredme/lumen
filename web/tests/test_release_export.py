@@ -198,6 +198,22 @@ class ReleaseExportTests(unittest.TestCase):
                     self.build(plan=dict(self.plan, **change))
                 self.assertFalse(self.staging.exists())
 
+    def test_https_default_port_normalizes_for_private_delivery(self):
+        plan = dict(self.plan, appDataURLbase="https://READER.example:443/api/assets/",
+                    mediaURLbase="https://media.example:00443/lumen/")
+        result = self.build(plan=plan)
+        self.assertEqual(result["uploadInventory"]["appOrigin"], "https://reader.example")
+        self.assertEqual(result["uploadInventory"]["mediaOrigins"],
+                         ["https://reader.example", "https://media.example"])
+        self.assertTrue(all(":443" not in row["url"] and ":00443" not in row["url"]
+                            for row in result["uploadInventory"]["assets"]))
+        self.assertEqual(release.url_base("https://[::1]:443/assets/", "fixture"),
+                         ("https://[::1]/assets/", "https://[::1]"))
+        self.assertEqual(release.url_base("https://[0:0:0:0:0:0:0:1]:00443/assets/", "fixture"),
+                         ("https://[::1]/assets/", "https://[::1]"))
+        self.assertEqual(release.url_base("https://reader.example:8443/assets/", "fixture"),
+                         ("https://reader.example:8443/assets/", "https://reader.example:8443"))
+
     def test_url_bases_require_absolute_secure_stable_urls(self):
         for url in ["/media/", "http://media.example/", "https://user:secret@media.example/",
                     "https://media.example/?token=secret", "https://media.example/#fragment", "https://media.example/a/../b/"]:

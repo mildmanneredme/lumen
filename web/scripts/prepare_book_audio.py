@@ -302,11 +302,14 @@ def align_sentences(track, recording, words):
         start, end = times[anchors[0]][0], times[anchors[-1]][1]
         if start < previous_end:
             overlap.append(sentence["id"])
+        # An uncertain observed interval still contributes to the conservative
+        # overlap watermark; dropping it must not promote a later overlapping cue.
+        previous_end = max(previous_end, end)
         fraction = len(anchors) / max(1, last - first)
         if fraction < .8:
             low.append({"sentenceId": sentence["id"], "matchedFraction": round(fraction, 4)})
+            continue
         cues.append({"sentenceId": sentence["id"], "start": round(start, 6), "end": round(end, 6)})
-        previous_end = max(previous_end, end)
     report = {"method": "independent-local-asr-matched-word-intervals", "expectedTokens": len(expected),
               "matchedTokens": exact_matches, "matchedFraction": round(exact_matches / max(1, len(expected)), 6),
               "anchoredTokens": len(matched), "measuredSentences": cues,
@@ -315,7 +318,7 @@ def align_sentences(track, recording, words):
               "unanchoredSentences": missing, "overlappingSentences": overlap, "lowConfidenceSentences": low,
               "unanchoredIntervals": missing_intervals, "contextualSubstitutions": substitutions,
               "humanAlignmentApproval": "pending", "sentenceCount": len(sentences)}
-    if missing or overlap:
+    if missing or overlap or low:
         return None, report
     timing = {"schemaVersion": 1, "trackId": track["id"], "manuscriptVersion": track["manuscriptVersion"],
               "textSha256": track["textSha256"], "narratorId": recording["narratorId"], "audioSha256": recording["sha256"],
@@ -427,11 +430,9 @@ def transcribe_missing(root, destination, registry, inventory, model):
     model = Path(model).resolve()
     content.require(model == (root / "Audiobook/v6/asr-model").resolve() or model == (root / "Audiobook/v6/asr-model-medium").resolve(),
                     "Alignment accepts only an existing project-local offline model")
-    checker_path = content.project_file(root, root / "Audiobook/v8/check_audio_local.py")
-    spec = importlib.util.spec_from_file_location("lumen_local_alignment_checker", checker_path)
-    checker = importlib.util.module_from_spec(spec)
-    sys.modules[spec.name] = checker
-    spec.loader.exec_module(checker)
+    # Reuse the tracked checker loaded beside this tool. Private production
+    # editions and a selected --root never supply executable checker code.
+    checker = COMPARISON
     identity = checker.model_identity(model)
     os.environ["HF_HUB_OFFLINE"] = "1"
     os.environ["TRANSFORMERS_OFFLINE"] = "1"
@@ -584,13 +585,17 @@ def build_timings(root, destination, registry, recordings, approval):
                 "generationManifestSha256": recording.get("generationManifestSha256"),
                 "sourceQaSha256": content.project_file_hash(root, Path(recording["sourceAudioPath"]).with_suffix(".qa.json"))}
             gap_windows = {gap["sentenceId"]: gap for gap in report["unanchoredIntervals"]}
+            low_ids = {row["sentenceId"] for row in report["lowConfidenceSentences"]}
             report["syncGaps"] = [{"sentenceId": sentence_id, "syncStatus": "unavailable", "start": None, "end": None,
                 "reason": "no-positive-duration-ASR-anchor", "recheckWindow": gap_windows[sentence_id],
                 "evidenceIds": list(refinement_windows(qa, [gap_windows[sentence_id]]))}
                 for sentence_id in report["unanchoredSentences"]]
             report["syncGaps"].extend({"sentenceId": sentence_id, "syncStatus": "unavailable", "start": None, "end": None,
                 "reason": "overlapping-ASR-interval", "evidenceIds": [entry["id"] for entry in evidence]}
-                for sentence_id in report["overlappingSentences"])
+                for sentence_id in report["overlappingSentences"] if sentence_id not in low_ids)
+            report["syncGaps"].extend({"sentenceId": row["sentenceId"], "syncStatus": "unavailable", "start": None, "end": None,
+                "reason": "low-confidence-ASR-anchor", "evidenceIds": [entry["id"] for entry in evidence]}
+                for row in report["lowConfidenceSentences"])
             if timing:
                 timing["approvals"]["content"] = {"status": "approved", "reviewer": approval["reviewer"], "reviewedAt": approval["reviewedAt"],
                    "audioSha256": recording["sha256"], "textSha256": tracks[track_id]["textSha256"],

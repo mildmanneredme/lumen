@@ -6,6 +6,7 @@ import argparse
 import copy
 from datetime import datetime
 import hashlib
+import ipaddress
 import json
 from pathlib import Path
 import re
@@ -40,8 +41,11 @@ def url_base(value, name):
                     and "?" not in value and "#" not in value
                     and all(segment not in {".", ".."} for segment in parsed.path.split("/")),
                     f"{name} requires an absolute HTTPS URL without credentials, query, fragment, or traversal")
-    content.require(not port or 0 < port < 65536, f"Invalid {name} port")
-    origin = "https://" + parsed.netloc.lower()
+    content.require(port is None or 0 < port < 65536, f"Invalid {name} port")
+    host = parsed.hostname.lower()
+    if ":" in host:
+        host = "[" + ipaddress.IPv6Address(host).compressed + "]"
+    origin = "https://" + host + (":" + str(port) if port is not None and port != 443 else "")
     return origin + parsed.path.rstrip("/") + "/", origin
 
 

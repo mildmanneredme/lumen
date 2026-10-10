@@ -68,6 +68,27 @@ class WebAudioTests(unittest.TestCase):
         self.assertEqual([cue["sentenceId"] for cue in report["measuredSentences"]],
                          [content.sentences(self.track)[0]["id"]])
 
+    def test_partial_sentence_below_eighty_percent_is_not_a_measured_cue(self):
+        timing, report = audio.align_sentences(self.track, self.recording,
+                                             [("The", 1, 1.2), ("She", 4, 4.3), ("left.", 4.3, 4.8)])
+        first, second = content.sentences(self.track)
+        self.assertIsNone(timing)
+        self.assertEqual(report["lowConfidenceSentences"], [{"sentenceId": first["id"], "matchedFraction": .3333}])
+        self.assertEqual([cue["sentenceId"] for cue in report["measuredSentences"]], [second["id"]])
+
+    def test_eighty_percent_boundary_retains_actual_word_intervals(self):
+        track = content.make_track(1, "story", "Alpha bravo charlie delta echo.", "v6")
+        words = [(word, index + 1, index + 1.5) for index, word in enumerate(["Alpha", "bravo", "charlie", "delta"])]
+        timing, report = audio.align_sentences(track, self.recording, words)
+        self.assertIsNotNone(timing)
+        self.assertEqual(timing["sentences"][0]["start"], 1)
+        self.assertEqual(timing["sentences"][0]["end"], 4.5)
+        self.assertEqual(report["lowConfidenceSentences"], [])
+        timing, report = audio.align_sentences(track, self.recording, words[:-1])
+        self.assertIsNone(timing)
+        self.assertEqual(report["measuredSentences"], [])
+        self.assertEqual(report["lowConfidenceSentences"][0]["matchedFraction"], .6)
+
     def test_missing_sentence_with_overlapping_measured_neighbors_has_only_a_recheck_region(self):
         track = content.make_track(1, "chapter", "Before. Missing. After.", "v6")
         timing, report = audio.align_sentences(track, self.recording,
@@ -250,17 +271,35 @@ class WebAudioTests(unittest.TestCase):
             audio.build_timings(self.root.resolve(), destination, {"tracks": [self.track]}, [recording], approval)
         self.assertEqual(list(public.iterdir()), [])
 
-    def test_transcription_rejects_changed_raw_selection_before_inference(self):
+    def test_timing_report_emits_null_low_confidence_gap_without_approving_partial_words(self):
+        destination, recording, _, _ = self.private_alignment_fixture(self.root)
+        cache = self.root / "Audiobook/v7/local-checks/cache/take-a.base.json"
+        record = content.read_json(cache)
+        record["segments"][0]["words"] = [word for word in record["segments"][0]["words"]
+                                           if word["word"] not in {"door", "opened."}]
+        cache.write_bytes(content.json_bytes(record))
+        approval = {"reviewer": "fixture", "reviewedAt": "2026-10-10T00:00:00+00:00"}
+        maps, reports = audio.build_timings(self.root.resolve(), destination, {"tracks": [self.track]}, [recording], approval)
+        self.assertEqual(maps, {})
+        self.assertEqual(reports[0]["status"], "pending")
+        gap = reports[0]["syncGaps"][0]
+        self.assertEqual(gap["sentenceId"], content.sentences(self.track)[0]["id"])
+        self.assertEqual(gap["reason"], "low-confidence-ASR-anchor")
+        self.assertEqual(gap["syncStatus"], "unavailable")
+        self.assertIsNone(gap["start"]); self.assertIsNone(gap["end"])
+        self.assertEqual(gap["evidenceIds"], ["take-a"])
+
+    def transcription_fixture(self):
         destination = audio.private_destination(self.root, self.root / "Audiobook/author-audit/web-release")
-        checker = self.root / "Audiobook/v8/check_audio_local.py"
+        checker = self.root / "Audiobook/v6/check_audio_local.py"
         checker.parent.mkdir(parents=True)
-        shutil.copyfile(ROOT / "Audiobook/v8/check_audio_local.py", checker)
+        shutil.copyfile(ROOT / "Audiobook/v6/check_audio_local.py", checker)
         model = self.root / "Audiobook/v6/asr-model"
-        model.mkdir(parents=True)
+        model.mkdir()
         (model / "config.json").write_text("{}")
         (model / "weights.safetensors").write_bytes(b"fixture")
         raw = self.root / "Audiobook/v7/take-a.wav"
-        raw.parent.mkdir(parents=True)
+        raw.parent.mkdir()
         with wave.open(str(raw), "wb") as stream:
             stream.setparams((1, 2, 8000, 0, "NONE", "not compressed"))
             stream.writeframes(b"\0\0" * 8000)
@@ -270,7 +309,41 @@ class WebAudioTests(unittest.TestCase):
         (raw.parent / "generation-manifest.json").write_text(json.dumps({"items": [item]}))
         recording = {"trackId": "chapter-001", "narratorId": "autonoe", "productionEdition": "v7",
                      "selectedClips": [{"id": "take-a", "sourcePath": str(raw.relative_to(self.root)),
-                                        "rawAudioSha256": "d" * 64}]}
+                                        "rawAudioSha256": content.file_hash(raw)}]}
+        return destination, recording, model
+
+    def test_missing_transcription_works_with_only_tracked_clean_checkout_sources(self):
+        destination, recording, model = self.transcription_fixture()
+        scripts = self.root / "web/scripts"
+        scripts.mkdir(parents=True)
+        for name in ["prepare_book_audio.py", "book_content.py"]:
+            shutil.copyfile(ROOT / "web/scripts" / name, scripts / name)
+        self.assertFalse((self.root / "Audiobook/v8/check_audio_local.py").exists())
+        code = """
+import json, pathlib, sys, types
+from unittest import mock
+root = pathlib.Path(sys.argv[1]).resolve()
+sys.path.insert(0, str(root / 'web/scripts'))
+import prepare_book_audio as audio
+fake = types.SimpleNamespace(transcribe=mock.Mock(return_value={'text':'The door opened.', 'segments':[]}))
+with mock.patch('importlib.metadata.version', return_value='fixture'), mock.patch.dict(sys.modules, {'mlx_whisper':fake}):
+    audio.transcribe_missing(root, root / 'Audiobook/author-audit/web-release', {},
+                             {'recordings':[json.loads(sys.argv[2])]}, root / 'Audiobook/v6/asr-model')
+fake.transcribe.assert_called_once()
+assert fake.transcribe.call_args.kwargs['path_or_hf_repo'] == str(root / 'Audiobook/v6/asr-model')
+assert pathlib.Path(audio.COMPARISON.__file__) == root / 'Audiobook/v6/check_audio_local.py'
+"""
+        result = subprocess.run([sys.executable, "-c", code, str(self.root), json.dumps(recording)],
+                                capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        cache = next((destination / "alignment-cache/v7/cache").glob("take-a.*.json"))
+        saved = content.read_json(cache)
+        self.assertEqual(saved["cache_identity"]["audio_sha256"], recording["selectedClips"][0]["rawAudioSha256"])
+        self.assertEqual(saved["expected_inputtext"], "The door opened.")
+
+    def test_transcription_rejects_changed_raw_selection_before_inference(self):
+        destination, recording, model = self.transcription_fixture()
+        recording["selectedClips"][0]["rawAudioSha256"] = "d" * 64
         fake = types.SimpleNamespace(transcribe=mock.Mock(return_value={"text": "The door opened.", "segments": []}))
         with mock.patch("importlib.metadata.version", return_value="fixture"), \
              mock.patch.dict(sys.modules, {"mlx_whisper": fake}):

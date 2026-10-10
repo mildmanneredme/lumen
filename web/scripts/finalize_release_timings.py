@@ -49,13 +49,20 @@ def gap_timing(track, recording, report, content_approval):
     content.require(len(gap_by_id) == len(gaps) and all(key in ids for key in gap_by_id), "Unknown or duplicate sync gap")
     missing = set(report.get("unanchoredSentences", []))
     overlaps = set(report.get("overlappingSentences", []))
-    content.require(missing.issubset(ids) and overlaps.issubset(ids)
-                    and set(by_id) | missing == set(ids), "ASR sentence coverage is incomplete")
+    low_rows = report.get("lowConfidenceSentences", [])
+    content.require(isinstance(low_rows, list) and all(isinstance(row, dict) for row in low_rows),
+                    "Malformed low-confidence ASR sentence evidence")
+    low = {row.get("sentenceId") for row in low_rows}
+    content.require(len(low) == len(low_rows) and low.issubset(ids)
+                    and missing.issubset(ids) and overlaps.issubset(ids)
+                    and set(by_id) | missing | low == set(ids), "ASR sentence coverage is incomplete")
     cues, previous = [], 0.0
     for sentence_id in ids:
         observed = by_id.get(sentence_id)
         reason = gap_by_id.get(sentence_id, {}).get("reason")
-        if sentence_id in overlaps:
+        if sentence_id in low:
+            reason = "low-confidence-ASR-anchor"
+        elif sentence_id in overlaps:
             reason = "overlapping-ASR-interval"
         elif sentence_id in missing:
             reason = "no-positive-duration-ASR-anchor"
@@ -164,9 +171,13 @@ def report_from_words(track, recording, words, evidence, source_bindings):
     report["syncGaps"] = [{"sentenceId": sentence_id, "reason": "no-positive-duration-ASR-anchor",
                           "evidenceIds": [row["id"] for row in evidence]}
                          for sentence_id in report["unanchoredSentences"]]
+    low_ids = {row["sentenceId"] for row in report["lowConfidenceSentences"]}
     report["syncGaps"].extend({"sentenceId": sentence_id, "reason": "overlapping-ASR-interval",
                              "evidenceIds": [row["id"] for row in evidence]}
-                            for sentence_id in report["overlappingSentences"])
+                            for sentence_id in report["overlappingSentences"] if sentence_id not in low_ids)
+    report["syncGaps"].extend({"sentenceId": row["sentenceId"], "reason": "low-confidence-ASR-anchor",
+                             "evidenceIds": [entry["id"] for entry in evidence]}
+                            for row in report["lowConfidenceSentences"])
     return report
 
 
