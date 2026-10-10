@@ -1,19 +1,20 @@
 (() => {
   'use strict';
-  const chapter = window.LUMEN_CHAPTER;
+  const pilot = window.LUMEN_CHAPTER || window.LUMEN_PILOT_REFERENCE;
+  let chapter = {title:'Lumen',duration:pilot?.duration || 1,paragraphs:[],audio:{narratorId:'autonoe'},scenes:[]};
   const $ = id => document.getElementById(id);
   const audio = $('narration'), pane = $('reading-pane'), prose = $('prose');
   const play = $('play'), seek = $('seek'), followButton = $('follow');
-  if (!chapter || !chapter.paragraphs?.length) {
+  if (!pilot || !window.LumenBook || !window.LumenProgress) {
     $('play-status').textContent = 'The book could not be loaded. Please reload.';
     play.disabled = true;
     return;
   }
-  const recordingSrc = chapter.audio.src + '?v=' + chapter.audio.sha256.slice(0,12);
-  if (audio.getAttribute('src') !== recordingSrc) audio.src = recordingSrc;
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
-  const duration = chapter.duration;
-  const scenes = chapter.scenes.map(scene => ({ ...scene, src: scene.src || 'assets/' + scene.id + '.webp' }));
+  let duration = chapter.duration, scenes = [];
+  let book, manifest, transitionToken = 0, retryTransition = null, continuationToken = 0, committing = false;
+  let accessToken = 0;
+  let automaticEndHandled = false;
   const descriptions = {
     'opening-room': 'Adrian sits in his Berkeley living room, watching a glass office tower on television; a cold coffee rests nearby.',
     'unnamed-suspect': 'The television shows an unnamed young man with a faint smile being escorted in handcuffs outside a glass office building.',
@@ -84,7 +85,9 @@
     }
   }
   function seekTo(value, restoring = false) {
+    if (!book?.getActive()) return;
     const next = Math.min(duration, Math.max(0, Number(value) || 0));
+    if (next < duration - .08) automaticEndHandled = false;
     if (!restoring) { bookmarkDirty = true; $('resume-panel').hidden = true; completed = next >= duration - .08; }
     resumeAfterSeek = resumeAfterSeek || !audio.paused;
     pendingSeek = next;
@@ -130,7 +133,7 @@
     preload.onload = () => {
       if (token !== sceneToken) return;
       incoming.src = scene.src;
-      image.alt = descriptions[scene.id];
+      image.alt = scene.alt || scene.description || descriptions[scene.id] || scene.title || 'Illustration';
       const next = scenes[scenes.indexOf(scene) + 1];
       if (next && !warmedScenes.has(next.id) && !navigator.connection?.saveData) {
         warmedScenes.add(next.id);
@@ -153,6 +156,7 @@
     preload.src = scene.src;
   }
   function render(time = currentPosition(), force = false) {
+    if (committing) return;
     const clamped = Math.min(duration,Math.max(0,time || 0));
     seek.value = clamped;
     seek.style.setProperty('--progress', (clamped / duration * 100) + '%');
@@ -160,8 +164,9 @@
     $('elapsed').textContent = formatTime(clamped);
     updateMediaSession(force);
     showScene(getAt(scenes,clamped) || scenes[0]);
-    const sentence = getAt(sentences,clamped);
-    const paragraph = getAt(chapter.paragraphs,clamped);
+    const candidate = getAt(sentences,clamped);
+    const sentence = candidate && clamped <= candidate.end ? candidate : null;
+    const paragraph = sentence ? getAt(chapter.paragraphs.filter(p => Number.isFinite(p.start)),clamped) : null;
     if (sentence?.id !== activeSentence?.id) {
       if (activeSentence) sentenceElements.get(activeSentence.id)?.classList.remove('active');
       activeSentence = sentence;
@@ -180,40 +185,60 @@
       const a = Math.max(start,mark.start), b = Math.min(end,mark.end);
       if (b <= a) continue;
       if (a > cursor) parent.append(document.createTextNode(text.slice(cursor,a)));
-      const em = document.createElement('em'); em.textContent = text.slice(a,b); parent.append(em); cursor = b;
+      const em = document.createElement(mark.kind === 'bold' ? 'strong' : 'em'); em.textContent = text.slice(a,b); parent.append(em); cursor = b;
     }
     if (cursor < end) parent.append(document.createTextNode(text.slice(cursor,end)));
   }
-  for (const paragraph of chapter.paragraphs) {
-    const p = document.createElement('p'); p.id = paragraph.id;
+  function buildProse() {
+  for (const block of chapter.blocks || chapter.paragraphs.map(p => ({kind:'paragraph',paragraphId:p.id}))) {
+    if (block.kind === 'scene-break') { prose.append(document.createElement('hr')); continue; }
+    const paragraph = chapter.paragraphs.find(p => p.id === block.paragraphId);
+    if (!paragraph) continue;
+    const p = document.createElement(paragraph.headingLevel ? 'h' + paragraph.headingLevel : 'p'); p.id = paragraph.id;
     paragraphElements.set(paragraph.id,p);
     let cursor = 0;
     for (const sentence of paragraph.sentences) {
       if (sentence.textStart > cursor) appendText(p,paragraph.text,cursor,sentence.textStart,paragraph.emphasis);
       const span = document.createElement('span');
       span.className = 'sentence'; span.id = sentence.id;
-      span.setAttribute('role','button'); span.tabIndex = 0;
+      const measured = Number.isFinite(sentence.start) && Number.isFinite(sentence.end);
+      if (!measured) {
+        span.classList.add('unsynchronized');
+        appendText(span,paragraph.text,sentence.textStart,sentence.textEnd,paragraph.emphasis);
+        p.append(span); sentenceElements.set(sentence.id,span); cursor = sentence.textEnd;
+        continue;
+      }
+      span.setAttribute('role','button'); span.tabIndex = sentences.length ? -1 : 0;
       span.setAttribute('aria-label','Listen: ' + sentence.text);
       appendText(span,paragraph.text,sentence.textStart,sentence.textEnd,paragraph.emphasis);
       const activate = () => { setFollow(true); seekTo(sentence.start); };
       span.addEventListener('click',activate);
       span.addEventListener('keydown',event => {
         if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); activate(); }
+        if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+          event.preventDefault(); event.stopPropagation();
+          const next = sentences[sentences.indexOf(sentence) + (event.key === 'ArrowDown' ? 1 : -1)];
+          if (next) { span.tabIndex = -1; const target = sentenceElements.get(next.id); target.tabIndex = 0; target.focus(); }
+        }
       });
       p.append(span); sentenceElements.set(sentence.id,span); sentences.push(sentence); cursor = sentence.textEnd;
     }
     if (cursor < paragraph.text.length) appendText(p,paragraph.text,cursor,paragraph.text.length,paragraph.emphasis);
     prose.append(p);
   }
+  }
   function savePosition(force = false) {
-    if (!progress || !bookmarkDirty) return;
+    if (committing || !progress || !book?.getActive() || !bookmarkDirty) return;
     const time = currentPosition();
     if (!force && Math.abs(time-lastSaved) < 2) return;
     lastSaved = time;
-    progress.save(time, {completed: completed || (pendingSeek === null && audio.ended)});
+    book.save(time, {completed: completed || (pendingSeek === null && audio.ended)});
+    renderChapterNavigation();
   }
   function savePreferences() {
-    progress.savePreferences({speed:audio.playbackRate, textSize:Number($('text-size').value), narratorId:chapter.audio.narratorId, artworkVisible});
+    const preferences = {speed:audio.playbackRate, textSize:Number($('text-size').value), narratorId:chapter.audio.narratorId,
+      artworkVisible, autoContinue:$('auto-continue').checked};
+    if (book) book.savePreferences(preferences); else progress.savePreferences(preferences);
   }
   function setArtworkVisible(value) {
     artworkVisible = value;
@@ -242,13 +267,14 @@
     const wantsPlayback = !audio.paused || (waiting && resumeAfterSeek);
     $('play-icon').textContent = wantsPlayback ? 'Ⅱ' : '▶';
     play.setAttribute('aria-label', ended ? 'Replay audiobook' : wantsPlayback ? 'Pause audiobook' : 'Play audiobook');
-    $('play-status').textContent = errorMessage || (ended ? 'End of the pilot' : audio.paused ? 'Chapter 1 · paused' : 'Chapter 1 · listening');
+    $('play-status').textContent = errorMessage || (ended ? endingLabel() : chapter.title + (audio.paused ? ' · paused' : ' · listening'));
     updateMediaSession(true);
   }
   async function startPlayback() {
     try { await audio.play(); } catch (_) { $('play-status').textContent = 'Playback could not start. Select Play to try again.'; }
   }
   async function togglePlayback() {
+    if (!book?.getActive()) return;
     bookmarkDirty = true;
     $('resume-panel').hidden = true;
     if (audio.error) {
@@ -305,7 +331,16 @@
   audio.addEventListener('pause',() => { cancelAnimationFrame(animationFrame); render(); savePosition(true); setPlayState(); });
   audio.addEventListener('timeupdate',() => { render(); savePosition(); });
   audio.addEventListener('seeked',() => { finishSeek(); render(currentPosition(),true); setPlayState(); });
-  audio.addEventListener('ended',() => { if (pendingSeek !== null) return; completed = true; cancelAnimationFrame(animationFrame); render(duration); savePosition(true); setPlayState(); });
+  audio.addEventListener('ended',() => {
+    if (pendingSeek !== null) return;
+    completed = true; cancelAnimationFrame(animationFrame); render(duration); savePosition(true); setPlayState();
+    if (automaticEndHandled) return;
+    automaticEndHandled = true;
+    const token = ++continuationToken;
+    if ($('auto-continue').checked && nextTrack(1)) {
+      queueMicrotask(() => { if (token === continuationToken && completed) moveTrack(1, true); });
+    }
+  });
   audio.addEventListener('waiting',() => { $('play-status').textContent = 'Loading narration…'; });
   audio.addEventListener('playing',setPlayState);
   audio.addEventListener('error',() => { clearTimeout(seekTimer); setPlayState(); });
@@ -329,37 +364,292 @@
     if (event.key === 'ArrowLeft') { event.preventDefault(); seekTo(currentPosition()-15); }
     if (event.key === 'ArrowRight') { event.preventDefault(); seekTo(currentPosition()+15); }
   });
-  progress = window.LumenProgress.create(chapter, sentences);
+  progress = window.LumenProgress.create(pilot, pilot.paragraphs.flatMap(p => p.sentences));
   const saved = progress.readPreferences();
   if ([.75,1,1.25,1.5,2].includes(Number(saved.speed))) { audio.playbackRate=Number(saved.speed); $('speed').value=saved.speed; }
   setTextSize(saved.textSize);
   setArtworkVisible(saved.artworkVisible !== false);
-  if ('mediaSession' in navigator) {
-    if ('MediaMetadata' in window) navigator.mediaSession.metadata = new MediaMetadata({
+  function updateMediaMetadata() {
+    if ('mediaSession' in navigator && 'MediaMetadata' in window) navigator.mediaSession.metadata = new MediaMetadata({
       title: 'Lumen · ' + chapter.title, artist: chapter.author, album: 'Lumen',
       artwork: [{src:new URL('icons/icon-192.png', location.href).href,sizes:'192x192',type:'image/png'},
                 {src:new URL('icons/icon-512.png', location.href).href,sizes:'512x512',type:'image/png'}]
     });
+  }
+  if ('mediaSession' in navigator) {
     const actions = {
       play: () => { if (audio.paused && !resumeAfterSeek) togglePlayback(); },
       pause: () => { resumeAfterSeek = false; audio.pause(); savePosition(true); setPlayState(); },
       stop: () => { resumeAfterSeek = false; audio.pause(); savePosition(true); setPlayState(); },
       seekbackward: details => seekTo(currentPosition() - (details.seekOffset || 15)),
       seekforward: details => seekTo(currentPosition() + (details.seekOffset || 15)),
-      seekto: details => { if (Number.isFinite(details.seekTime)) seekTo(details.seekTime); }
+      seekto: details => { if (Number.isFinite(details.seekTime)) seekTo(details.seekTime); },
+      previoustrack: () => moveTrack(-1), nexttrack: () => moveTrack(1)
     };
     for (const [action, handler] of Object.entries(actions)) {
       try { navigator.mediaSession.setActionHandler(action, handler); } catch (_) {}
     }
   }
-  $('total').textContent = formatTime(duration); $('excerpt-duration').textContent = formatTime(duration);
-  setFollow(true);
-  const restored = progress.resolve(progress.read());
-  completed = restored?.completed || false;
-  if (restored?.time > 0 || completed) {
-    $('resume-panel').hidden = false;
-    $('resume-message').textContent = completed ? 'You’ve finished the opening excerpt.' : 'Your place is saved · Chapter 1';
-    $('resume-continue').textContent = completed ? 'Listen again' : 'Continue from ' + formatTime(restored.time);
-    seekTo(restored.time, true);
-  } else { render(0); setPlayState(); }
+  function nextTrack(offset) {
+    if (!manifest || !book?.getActive()) return null;
+    const index = manifest.tracks.findIndex(track => track.id === chapter.chapterId);
+    return manifest.tracks[index + offset] || null;
+  }
+  function endingLabel() {
+    if (chapter.readingExtent === 'excerpt' || chapter.id === pilot.id) return 'End of the pilot';
+    return nextTrack(1) ? 'End of ' + chapter.title : 'End of the book';
+  }
+  function renderChapterNavigation() {
+    if (!manifest || !book?.getActive()) return;
+    const index = manifest.tracks.findIndex(track => track.id === chapter.chapterId);
+    const history = book.getHistory(), count = manifest.tracks.filter(track => track.kind === 'story').length;
+    const finished = manifest.tracks.filter(track => track.kind === 'story' && history[track.id]?.completed).length;
+    $('book-progress').textContent = manifest.tracks.length === 1 ? 'Opening excerpt' :
+      (index + 1) + ' / ' + manifest.tracks.length + ' tracks · ' + finished + ' / ' + count + ' chapters finished';
+    $('track-prev').disabled = !nextTrack(-1); $('track-next').disabled = !nextTrack(1);
+    $('chapter-continue').hidden = !nextTrack(1);
+    for (const element of $('chapter-list').querySelectorAll('[data-track-id]')) {
+      const current = element.dataset.trackId === chapter.chapterId;
+      if (current) element.setAttribute('aria-current','page'); else element.removeAttribute('aria-current');
+      const done = history[element.dataset.trackId]?.completed === true;
+      element.querySelector('.chapter-state').textContent = done ? 'Finished' : current ? 'Current' : element.dataset.available;
+    }
+  }
+  function narratorOptions(trackId, narratorId) {
+    const track = manifest?.tracks.find(track => track.id === trackId);
+    if (!track) return;
+    $('narrator').replaceChildren();
+    for (const narrator of manifest.narrators) {
+      const option = document.createElement('option'); option.value = narrator.id;
+      const available = track.recordings[narrator.id]?.status === 'ready';
+      option.textContent = narrator.label + (available ? '' : ' · unavailable'); option.disabled = !available;
+      $('narrator').append(option);
+    }
+    $('narrator').value = narratorId;
+    $('narrator').disabled = !Array.from($('narrator').options).some(option => !option.disabled);
+  }
+  function makeChapterList() {
+    $('chapter-list').replaceChildren(); let lastPart;
+    for (const track of manifest.tracks) {
+      if (track.part !== lastPart && track.part != null) {
+        const heading = document.createElement('h3'); heading.textContent = track.partTitle ||
+          (typeof track.part === 'number' ? 'Part ' + track.part : track.part);
+        $('chapter-list').append(heading); lastPart = track.part;
+      }
+      const button = document.createElement('button'); button.type = 'button'; button.className = 'chapter-choice';
+      button.dataset.trackId = track.id;
+      const available = Object.values(track.recordings).some(recording => recording.status === 'ready');
+      button.dataset.available = available ? '' : 'Unavailable';
+      const label = document.createElement('span'); label.textContent = track.title;
+      const state = document.createElement('span'); state.className = 'chapter-state'; state.textContent = button.dataset.available;
+      button.append(label,state);
+      button.addEventListener('click',() => {
+        $('chapters').close(); transitionTo(track.id, chapter.audio.narratorId, {reason:'chapter'});
+      });
+      $('chapter-list').append(button);
+    }
+  }
+  function updateURL(trackId,narratorId,mode) {
+    if (mode === 'none') return;
+    const url = new URL(location.href); url.searchParams.set('chapter',trackId); url.searchParams.set('voice',narratorId);
+    const state = {trackId,narratorId};
+    if (mode === 'replace') history.replaceState(state,'',url); else history.pushState(state,'',url);
+  }
+  function commitChapter(payload,position,{initial=false,listen=false}={}) {
+    committing = true;
+    audio.pause(); cancelAnimationFrame(animationFrame); clearTimeout(seekTimer); clearTimeout(sceneTimer);
+    ++sceneToken; ++continuationToken;
+    pendingSeek = issuedSeek = null; resumeAfterSeek = false;
+    activeSentence = activeParagraph = activeScene = null; lastSaved = -1; bookmarkDirty = false;
+    warmedScenes.clear(); sentences.length = 0; sentenceElements.clear(); paragraphElements.clear(); prose.replaceChildren();
+    chapter = payload; window.LUMEN_CHAPTER = chapter; duration = chapter.duration;
+    scenes = chapter.scenes.map(scene => ({...scene,src:scene.src || 'assets/' + scene.id + '.webp'}));
+    completed = position.completed === true; automaticEndHandled = completed;
+    buildProse(); progress = window.LumenProgress.create(chapter,sentences);
+    const preferences = book.readPreferences();
+    $('chapter-title').textContent = chapter.title;
+    $('part-title').textContent = chapter.partTitle || (typeof chapter.part === 'number' ? 'Part ' + chapter.part : chapter.part || 'Lumen');
+    $('edition-name').textContent = chapter.readingExtent === 'excerpt' || chapter.id === pilot.id ? 'Opening excerpt' :
+      manifest.narrators.find(narrator => narrator.id === chapter.audio.narratorId)?.label || 'Audiobook';
+    prose.setAttribute('aria-label',chapter.title + ' prose');
+    $('ending-label').textContent = endingLabel();
+    $('total').textContent = $('excerpt-duration').textContent = formatTime(duration); seek.max = duration;
+    $('scene-stage').classList.toggle('placeholder-art',scenes.length === 0); $('art-toggle').disabled = false;
+    $('scene-incoming').classList.remove('visible'); $('scene-image').removeAttribute('src'); $('scene-incoming').removeAttribute('src');
+    $('scene-image').alt = ''; $('scene-stage').removeAttribute('data-scene'); $('scene-title').textContent = ''; $('scene-number').textContent = '';
+    setArtworkVisible(preferences.artworkVisible); setTextSize(preferences.textSize);
+    $('auto-continue').checked = preferences.autoContinue === true;
+    audio.playbackRate = preferences.speed; $('speed').value = preferences.speed;
+    const src = localAssetURL(chapter.audio.src);
+    if (!src.pathname.startsWith('/api/assets/')) src.searchParams.set('v',chapter.audio.sha256.slice(0,12));
+    audio.src = src.href;
+    narratorOptions(chapter.chapterId,chapter.audio.narratorId); renderChapterNavigation(); updateMediaMetadata();
+    pane.scrollTo({top:0,behavior:'auto'}); setFollow(true);
+    $('resume-panel').hidden = true;
+    if (initial && (position.time > 0 || completed)) {
+      $('resume-panel').hidden = false;
+      $('resume-message').textContent = completed ? (chapter.id === pilot.id ? 'You’ve finished the opening excerpt.' : 'You’ve finished ' + chapter.title + '.') : 'Your place is saved · ' + chapter.title;
+      $('resume-continue').textContent = completed ? 'Listen again' : 'Continue from ' + formatTime(position.time);
+    }
+    committing = false; play.disabled = false;
+    seekTo(position.time,true);
+    if (!initial) { bookmarkDirty = true; savePosition(true); }
+    if (listen && !completed) { if (pendingSeek !== null) resumeAfterSeek = true; else startPlayback(); }
+    setPlayState();
+  }
+  async function transitionTo(trackId,narratorId,options={}) {
+    if (!book) return;
+    const token = ++transitionToken, oldActive = book.getActive();
+    const listen = options.listen ?? (!audio.paused || resumeAfterSeek);
+    const bookmark = options.bookmark === undefined && options.reason === 'voice' ? book.capture(currentPosition(),{completed}) : options.bookmark;
+    if (oldActive) savePosition(true);
+    resumeAfterSeek = false; audio.pause();
+    $('transition-panel').hidden = false; $('transition-status').textContent = 'Loading chapter…'; $('transition-retry').hidden = true;
+    retryTransition = {trackId,narratorId,options:{...options,bookmark,listen}};
+    narratorOptions(trackId,narratorId);
+    try {
+      const result = await book.load(trackId,narratorId,{bookmark});
+      if (result.status === 'stale' || token !== transitionToken) return;
+      commitChapter(result.chapter,result.position,{initial:options.initial,listen});
+      updateURL(trackId,narratorId,options.history || (options.reason === 'voice' || options.initial ? 'replace' : 'push'));
+      $('transition-panel').hidden = true; retryTransition = null;
+    } catch (error) {
+      if (token !== transitionToken) return;
+      $('transition-status').textContent = error.message || 'This chapter could not be loaded. Try again.';
+      $('transition-retry').hidden = false;
+      if (error.code === 'ACCESS_REQUIRED' || error.cause?.code === 'ACCESS_REQUIRED') { closeAccess(); return; }
+      if (oldActive) { narratorOptions(chapter.chapterId,chapter.audio.narratorId); if (listen) startPlayback(); }
+    }
+  }
+  function moveTrack(offset,listen) {
+    const track = nextTrack(offset);
+    if (track) transitionTo(track.id,chapter.audio.narratorId,{reason:'chapter',listen});
+  }
+  $('track-prev').addEventListener('click',() => moveTrack(-1));
+  $('track-next').addEventListener('click',() => moveTrack(1));
+  $('chapter-continue').addEventListener('click',() => moveTrack(1,true));
+  $('chapters-open').addEventListener('click',() => $('chapters').showModal());
+  $('chapters-close').addEventListener('click',() => $('chapters').close());
+  $('transition-retry').addEventListener('click',() => { if (retryTransition) transitionTo(retryTransition.trackId,retryTransition.narratorId,retryTransition.options); });
+  $('narrator').addEventListener('change',() => {
+    const target = retryTransition?.trackId || chapter.chapterId;
+    transitionTo(target,$('narrator').value,{reason:'voice',bookmark:target === chapter.chapterId ? undefined : null});
+  });
+  $('auto-continue').addEventListener('change',savePreferences);
+  window.addEventListener('popstate',() => {
+    if (!book) return;
+    const params = new URL(location.href).searchParams;
+    try { const selection = book.initialSelection({trackId:params.get('chapter'),narratorId:params.get('voice')});
+      transitionTo(selection.trackId,selection.narratorId,{bookmark:selection.bookmark,reason:'history',history:'none'});
+    } catch (error) { $('transition-panel').hidden = false; $('transition-status').textContent = error.message; }
+  });
+  async function bootstrap() {
+    const token = ++accessToken;
+    play.disabled = true; $('play-status').textContent = 'Loading your book…';
+    try {
+      const session = await fetch('/api/session',{cache:'no-store'});
+      if (token !== accessToken) return;
+      if (!session.ok) throw new Error('The reading room could not be reached. Try again.');
+      const sessionState = await session.json();
+      if (token !== accessToken) return;
+      if (sessionState.authenticated !== true) { closeAccess(); return; }
+      document.body.classList.add('authenticated'); $('sign-out').hidden = $('sign-out-settings').hidden = false;
+      const response = await fetch('/api/book',{cache:'no-store'});
+      if (token !== accessToken) return;
+      if (response.status === 401) { closeAccess(); return; }
+      if (!response.ok) throw new Error('The book index could not be loaded. Reconnect and try again.');
+      const loadedManifest = await response.json();
+      if (token !== accessToken) return;
+      manifest = loadedManifest;
+      book = window.LumenBook.create({manifest,pilot,loadChapter:async (url,{signal,trackId,narratorId}) => {
+        const record = manifest.tracks.find(track => track.id === trackId)?.recordings[narratorId];
+        if (window.LUMEN_CHAPTER === pilot && trackId === pilot.chapterId && narratorId === pilot.audio.narratorId && record?.audioSha256 === pilot.audio.sha256) return pilot;
+        const loaded = await fetch(localAssetURL(url),{signal,cache:'no-store'});
+        if (loaded.status === 401) { const error = new Error('Your invitation needs to be reopened.'); error.code = 'ACCESS_REQUIRED'; throw error; }
+        if (!loaded.ok) throw new Error('Chapter response ' + loaded.status);
+        return loaded.json();
+      }});
+      window.LUMEN_BOOK = book; makeChapterList();
+      const params = new URL(location.href).searchParams;
+      const selection = book.initialSelection({trackId:params.get('chapter'),narratorId:params.get('voice')});
+      await transitionTo(selection.trackId,selection.narratorId,{bookmark:selection.bookmark,initial:true,listen:false});
+    } catch (error) {
+      if (token !== accessToken) return;
+      if (!document.body.classList.contains('authenticated')) { $('access-status').textContent = error.message; return; }
+      $('transition-panel').hidden = false; $('transition-status').textContent = error.message;
+      $('transition-retry').hidden = false;
+      retryTransition = null;
+    }
+  }
+  $('transition-retry').addEventListener('click',() => { if (!retryTransition) bootstrap(); });
+  function localAssetURL(value) {
+    const url = new URL(value,location.href);
+    // A preview uses its own authenticated host while retaining production's
+    // immutable asset paths. Cookies never travel to a separate media origin.
+    if (url.origin === 'https://lumen-phi-five.vercel.app' && url.pathname.startsWith('/api/assets/')) {
+      return new URL(url.pathname,location.origin);
+    }
+    return url;
+  }
+  function closeAccess() {
+    ++accessToken; ++transitionToken; ++sceneToken; ++continuationToken;
+    resumeAfterSeek = false; savePosition(true); committing = true;
+    audio.pause(); audio.removeAttribute('src'); audio.load();
+    cancelAnimationFrame(animationFrame); clearTimeout(seekTimer); clearTimeout(sceneTimer);
+    pendingSeek = issuedSeek = null; bookmarkDirty = false; book = null; manifest = null; retryTransition = null;
+    prose.replaceChildren(); sentences.length = 0; sentenceElements.clear(); paragraphElements.clear();
+    window.LUMEN_CHAPTER = undefined; window.LUMEN_BOOK = undefined;
+    $('scene-image').removeAttribute('src'); $('scene-incoming').removeAttribute('src');
+    $('scene-title').textContent = $('scene-number').textContent = '';
+    for (const dialog of [$('settings'),$('chapters')]) if (dialog.open) dialog.close();
+    $('resume-panel').hidden = $('transition-panel').hidden = true; $('sign-out').hidden = $('sign-out-settings').hidden = true;
+    document.body.classList.remove('authenticated'); committing = false;
+    $('access-status').textContent = 'Use your invitation to open the book. Your listening place is saved on this browser.';
+  }
+  function inviteToken(value) {
+    const text = value.trim();
+    if (/^[A-Za-z0-9_-]{43}$/.test(text)) return text;
+    try { return new URLSearchParams(new URL(text).hash.slice(1)).get('invite') || ''; } catch (_) { return ''; }
+  }
+  async function activateInvite(value) {
+    const token = inviteToken(value);
+    if (!/^[A-Za-z0-9_-]{43}$/.test(token)) { $('access-status').textContent = 'Open or paste the invitation link you received.'; return; }
+    const attempt = ++accessToken;
+    $('invite-submit').disabled = true; $('access-status').textContent = 'Opening your reading room…';
+    try {
+      const response = await fetch('/api/session',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({invite:token})});
+      if (attempt !== accessToken) return;
+      if (!response.ok) throw new Error('This invitation could not be verified. Check the link and try again.');
+      const sessionState = await response.json();
+      if (attempt !== accessToken) return;
+      if (sessionState.authenticated !== true) throw new Error('This invitation could not be verified. Check the link and try again.');
+      $('invite-code').value = ''; await bootstrap();
+    } catch (error) { $('access-status').textContent = error.message || 'Your invitation could not be opened. Try again.'; }
+    finally { $('invite-submit').disabled = false; }
+  }
+  $('invite-form').addEventListener('submit',event => { event.preventDefault(); activateInvite($('invite-code').value); });
+  async function signOut() {
+    ++accessToken;
+    try {
+      const response = await fetch('/api/session',{method:'DELETE'});
+      if (!response.ok) throw new Error('Sign out could not finish. Please try again.');
+      closeAccess();
+    } catch (error) { $('transition-panel').hidden = false; $('transition-status').textContent = error.message; }
+  }
+  $('sign-out').addEventListener('click',signOut);
+  $('sign-out-settings').addEventListener('click',signOut);
+  audio.addEventListener('error',async () => {
+    if (!book) return;
+    try { const response = await fetch('/api/session',{cache:'no-store'});
+      if (response.ok && (await response.json()).authenticated !== true) closeAccess();
+    } catch (_) { /* A connection failure keeps the existing retry and bookmark. */ }
+  });
+  function consumeInvitation() {
+    const invited = new URLSearchParams(location.hash.slice(1)).get('invite');
+    if (!invited) return false;
+    const clean = new URL(location.href); clean.hash = ''; history.replaceState(null,'',clean);
+    activateInvite(invited); return true;
+  }
+  window.addEventListener('hashchange',consumeInvitation);
+  if (!consumeInvitation()) bootstrap();
 })();

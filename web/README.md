@@ -1,80 +1,45 @@
-# Lumen illustrated audiobook pilot
+# Lumen private reader
 
-An approximately five-minute opening excerpt from Chapter 1 of the v6 manuscript, with the existing Gemini narration, canonical prose, sentence highlighting, and eight GPT-generated paintings in the approved cinematic painted style.
+The reader is in `dist/`. The full release uses the existing mono, 192 kbps MP3s in both voices: female by default, with the last narrator remembered. It contains 89 story chapters plus opening and closing credits. The current production address remains [lumen-phi-five.vercel.app](https://lumen-phi-five.vercel.app/); release promotion is pending technical verification.
 
-## Run locally
+Full prose, timings, audio and future paintings are delivered through authenticated `/api/` endpoints and a private Vercel Blob store. The public app shell contains no full-book prose or invite registry. Invitations establish a secure HttpOnly cookie. Sign out clears the displayed book and audio source while preserving this browser's listening bookmark. The local author audit remains outside the deployment.
 
-From this directory:
+## Listening
 
-```sh
-python3 scripts/serve.py
-```
+Open your invitation link, or paste it into the welcome screen. Returning listeners open paused at their saved chapter and time. **Continue** starts playback; **Start over** resets that chapter deliberately. **Chapters**, **Previous**, and **Next** navigate the book. The settings panel lets you change narrator, text size and chapter auto-continuation. Changing narrator maps a measured canonical sentence and fraction into the other recording; uncertain mappings retain the current recording and ask you to choose a passage.
 
-Open `http://127.0.0.1:8765/`. The app has no package installation, build step, backend, live generation, or API key requirement. All runtime resources are in `dist/`.
+Play/pause, fifteen-second skips, the timeline and playback speed use native browser audio. Clicking a measured sentence seeks to it while preserving paused state. Arrow keys and Space work outside form controls. Only measured intervals receive word/sentence highlighting; inconclusive ASR passages remain faithful plain prose. The audio and timeline continue to work through those intervals. No narration regeneration or estimated cue timestamps are introduced.
 
-Use this server for the preview. It serves audio byte ranges (HTTP 206), which let the browser jump to a requested time without downloading everything first. A plain `python3 -m http.server` can make seeks revert to zero. Local preview responses use `Cache-Control: no-store`; scripts and audio also have versioned URLs so previously cached controls are refreshed.
-
-## Reader controls
-
-- Play/pause, rewind or advance 15 seconds, scrub, and change playback speed.
-- Click a sentence to seek to its narration. If paused, the reader stays paused.
-- Scroll to read ahead; Follow text returns to the narration.
-- Adjust text size with Aa. Speed and text size are remembered on this browser.
-- Returning listeners see **Continue from…** and **Start over**. The audio opens paused at the saved place, with the corresponding painting and highlighted sentence. Continue starts listening; Start over resets the position and stays paused.
-- Navigation before the audio is ready is queued. Repeated 15-second skips accumulate, and the latest timeline selection takes precedence. Loading feedback remains visible on phones.
-- Space toggles playback outside controls; left/right arrows seek 15 seconds. Reduced motion disables scene crossfades.
+Bookmarks use `lumen-book-v2`, with chapter history and completion, canonical sentence position, narrator, final recording hash and exact audio time. The same recording restores exact seconds, including silence. Old pilot bookmarks migrate without deleting their original key; completing the excerpt does not mark the full chapter complete. Storage failures retain usable in-memory progress, and saves merge other tabs' chapter history. Progress is local to this browser and site address; cross-device sync remains later work.
 
 ## Phone and installed app
 
-The phone layout has a full-width touch timeline, large playback controls, adjustable text, and safe-area spacing for notches and home indicators. Rotate to landscape for artwork beside the prose. **Art** hides the illustration when you want more reading space; this preference is remembered. Media Session supplies playback metadata and supported system play/pause/seek controls.
+Phone controls have large touch targets, a full-width timeline and safe-area spacing. iPad and desktop use side-by-side art and text; **Art** can hide the generic placeholder. Narrative illustrations remain pending character/artwork review.
 
-Open the production site in Chrome. In the Aa panel, **Install Lumen** opens Chrome's install prompt when available; otherwise **How to install** shows the browser's steps. There are no automatic install prompts.
+In Android Chrome, use the browser menu to install Lumen or add it to the Home screen. The settings panel offers installation help and an install button when Chrome makes it available. iPhone home-screen launch is also supported. Media Session supplies supported system play/pause, seek and chapter controls. Automated Chrome phone, iPad and desktop checks do not constitute a physical-device installation or lock-screen acceptance test.
 
-- Android Chrome: menu → **Install and create shortcut** → **Install**. Older versions may say **Add to Home screen**.
-- iPhone Chrome: **Share** → **Add to Home Screen** → **Add**.
+The service worker caches only the public reader shell. Private text, timings, audio, paintings and all Range requests bypass it. Reading and listening need a connection; local bookmarks survive disconnection. New workers activate after existing tabs close, without forced reloads during listening. Older public pilot content caches are cleared on activation.
 
-Chrome documents [Android installation](https://support.google.com/chrome/answer/9658361?co=GENIE.Platform%3DAndroid&hl=en) and [iPhone home-screen installation](https://support.google.com/chrome/answer/9658361?co=GENIE.Platform%3DiOS&hl=en). Launching the saved icon opens Lumen as a standalone app when supported. Browser and OS behavior can vary; physical phone installation has not yet been verified.
+## Development and verification
 
-The service worker saves the small reader shell and paintings you visit. Cached text and artwork remain readable offline, subject to browser storage eviction. **Audio requires a connection** and streams through Chrome's native media stack, including byte-range seeking. The bookmark survives offline visits, and Play retries after reconnection. Releases activate after existing reader tabs close, without interrupting current listening.
-
-The eight WebP paintings are about 89% smaller than the original PNGs, with the same dimensions and framing. Only the current painting and the next one load ahead; Save-Data disables the next-image prefetch. Original PNGs remain available for older open tabs. Run `python3 scripts/optimize_art.py` after replacing artwork; `data/artwork-optimization.json` records the output sizes.
-
-## Saved place and narrator editions
-
-`dist/progress.js` stores a versioned bookmark under `lumen-reader-v1`: book, manuscript, chapter, canonical sentence, fraction through that sentence, narrator, recording hash, exact audio time, and completion. Position saves roughly every two seconds during playback, including background audio, and on pause, seek, page hide, or tab hide. Preferences use a separate key. Existing pilot bookmarks migrate without deleting their original key. Completed excerpts remain completed; loading the full chapter later maps the listener to the end of the excerpt rather than skipping the rest of Chapter 1.
-
-The same recording restores exact seconds. A replacement recording or another narrator uses its own sentence timings to map the bookmark back to the same story passage. Missing or incompatible manuscript anchors are never guessed from elapsed seconds. The browser stays usable if storage is unavailable. This is local to the browser and site address; cross-device or localhost-to-production transfer will need an account-based sync or explicit bookmark import.
-
-The full male (Charon) and female (Autonoe) editions are pending final audio and reader timing. The current pilot uses Charon. `data/narration-editions.json` records the planned editions; it does not enable unfinished tracks. Once the audio is ready, export each narrator's chapter audio with a verified SHA-256 and its own canonical sentence/scene timing map. Share manuscript IDs, character references, and painting assets between voices. Add the voice picker when both reader exports are ready, and map the current sentence when switching. Full-book illustration work is on hold until then.
-
-## Timing and production
-
-The excerpt ends at 320.190 seconds after a complete paragraph and a measured quiet gap. It preserves 11 manuscript paragraphs, with 60 sentence cues and eight scene cues. `data/alignment-report.json` records source hashes and checks; timings use existing local ASR word timestamps mapped to the final mastered audio. They are approximate and have not received a full human listening review.
-
-The visual treatment includes present-day scenes, memories, and explicit metaphors for the cognitive grid and people becoming clay. Imagery changes at the corresponding narrated line rather than at an arbitrary text-page boundary. The unnamed suspect is shown only when introduced.
-
-`art-direction/cast-bible.json` separates canonical character facts from provisional design choices and registers stable character IDs, references, wardrobe variants, and reveal boundaries. The pilot model sheets are in `art-direction/models/`; future named cast entries remain planned until their model sheets are created and reviewed. Image-generation prompts are in `data/painting-prompts.json`.
-
-`scripts/prepare_pilot.py` regenerates the text/audio export and browser data from local v6 production files and ignored ASR caches. Run `python3 scripts/prepare_pilot.py --verify-only` to check the canonical prose, cue ordering, exported audio hash, and equality of prepared/browser data. The prepared runtime data is in `dist/data/chapter-001.js` and audio in `dist/assets/chapter-001-pilot.mp3`.
-
-## Verification
-
-`node --test tests/progress.cjs` checks persistence and mapping without a browser. With Playwright and Chrome available, `node tests/browser-smoke.cjs`, `node tests/navigation-real-input.cjs`, and `node tests/resume-navigation.cjs` verify actual audio playback, painting/prose synchronization, mouse and touch navigation, slow loading, resume, completion, and revised recordings. `node tests/mobile-pwa.cjs` covers five phone viewports, touch controls, safe areas, Chrome installability, install choices, offline reading, native audio ranges, error recovery, and system media controls. These use Chrome emulation, not a physical phone. Set `PLAYWRIGHT_MODULE` or `CHROME_PATH` when needed; `LUMEN_QA_URL` targets a deployed site and `LUMEN_QA_OUT` chooses the report directory. The real-input suite uses native mouse and touch events rather than synthesizing range changes.
-
-## Vercel deployment
-
-Production: [lumen-phi-five.vercel.app](https://lumen-phi-five.vercel.app/). Project: `lumen` in `robert-xies-projects`, created on 9 October 2026. This release is the opening pilot.
-
-Releases deploy directly with the Vercel CLI from `web`:
+Run the local author audit with `python3 scripts/audit_server.py` from `web`, then open `http://127.0.0.1:8766/audit`. `python3 scripts/serve.py` serves the static shell and historical pilot assets locally; the private reader needs its API and authenticated media.
 
 ```sh
-vercel deploy --prod --yes --scope robert-xies-projects
+node --test tests/progress.cjs tests/book-controller.cjs
+node tests/private-shell.cjs
+node tests/book-browser.cjs
+npm run test:private
+python3 -m unittest discover -s tests -p 'test_*.py'
 ```
 
-On a fresh checkout, first run `vercel link --yes --project lumen --scope robert-xies-projects` from `web`. Local project identifiers stay in ignored `.vercel/`. Current releases use the CLI; GitHub is the source repository.
+The browser fixture generates short audio in memory and supplies three chapters in both voices. It checks native touch seeking, retries, stale requests, chapter history, narrator switching, completion, private access/logout, source sync gaps and responsive layouts. Playwright and Chrome are required; `PLAYWRIGHT_MODULE` and `LUMEN_QA_OUT` override their locations. Older pilot browser suites remain historical fixtures.
 
-`vercel.json` selects the Other framework preset, no build command, and `dist` as the output directory. `.vercelignore` permits only `dist/` and the deployment configuration in the CLI upload. See [Vercel's configuration documentation](https://vercel.com/docs/project-configuration/vercel-json) and [deployment exclusions](https://vercel.com/docs/deployments/vercel-ignore). If Git-based automatic deployment is added later, set the repository's Root Directory to `web`.
+The release pipeline and deployment steps are documented in `../docs/backlog/`: content contract, audio release, release exporter, media delivery, private release specification and backup recovery. `server/README.md` documents invitation and private Blob configuration.
 
-Use the stable production address for listening bookmarks. Each site origin has its own browser storage; existing localhost bookmarks are separate. Deployment verification is recorded in `data/deployment.json`.
+## Release operation
 
-When changing runtime HTML, JavaScript, or CSS, bump `SHELL_CACHE` in `dist/sw.js`. Keep the worker and manifest revalidation headers in `vercel.json`. Do not force worker activation or reload a listener's page.
+Deploy from `web` to the existing `lumen` project in `robert-xies-projects`. The Vercel configuration builds the static shell from `dist/` and deploys the authenticated Node APIs. `.vercelignore` excludes local audits, casting references, production data, secrets, scripts/tests and legacy pilot prose/audio. Preserve local originals for historical tabs and production work.
+
+Use the machine's ignored, owner-only `.env`, encrypted `.env.shared`, and separate `.env.keys` convention. Configure Vercel secrets on the server; never include them in static assets or Git. Upload and verify immutable private media before promoting the corresponding server index. Keep the production origin stable so bookmarks survive releases. Roll back the app and immutable index together.
+
+Bump `SHELL_CACHE` in `dist/sw.js` for runtime changes. Do not use `skipWaiting` or force a reader reload. The Google Drive `test-apps` folder is for Nimblip only; Lumen backups go to the existing private Lumen folder.
