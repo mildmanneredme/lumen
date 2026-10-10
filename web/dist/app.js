@@ -247,10 +247,8 @@
     book.save(time, {completed: completed || (pendingSeek === null && audio.ended)});
     renderChapterNavigation();
   }
-  function savePreferences() {
-    const preferences = {speed:audio.playbackRate, textSize:Number($('text-size').value), narratorId:chapter.audio.narratorId,
-      artworkVisible, autoContinue:$('auto-continue').checked};
-    if (book) book.savePreferences(preferences); else progress.savePreferences(preferences);
+  function savePreferences(changes) {
+    if (book) book.savePreferences(changes); else progress.savePreferences(changes);
   }
   function setArtworkVisible(value) {
     artworkVisible = value;
@@ -332,14 +330,14 @@
   seek.addEventListener('change',setPlayState);
   followButton.addEventListener('click',() => setFollow(!follow,true));
   $('art-toggle').addEventListener('click',() => {
-    setArtworkVisible(!artworkVisible); savePreferences();
+    setArtworkVisible(!artworkVisible); savePreferences({artworkVisible});
     requestAnimationFrame(() => scrollToActive(true));
   });
   for (const event of ['wheel','touchmove']) pane.addEventListener(event,() => setFollow(false),{passive:true});
   pane.addEventListener('keydown',event => {
     if (['ArrowDown','ArrowUp','PageDown','PageUp','Home','End'].includes(event.key)) setFollow(false);
   });
-  $('speed').addEventListener('change',() => { audio.playbackRate = Number($('speed').value); savePreferences(); render(); });
+  $('speed').addEventListener('change',() => { audio.playbackRate = Number($('speed').value); savePreferences({speed:audio.playbackRate}); render(); });
   function startOver(listen = false) {
     setListeningIntent(listen);
     resumeAfterSeek = false;
@@ -377,7 +375,7 @@
     document.documentElement.style.setProperty('--text-size',size+'px');
     $('text-size').value = size; $('text-size-value').textContent = size+' px';
   }
-  $('text-size').addEventListener('input',() => { setTextSize($('text-size').value); savePreferences(); });
+  $('text-size').addEventListener('input',() => { setTextSize($('text-size').value); savePreferences({textSize:Number($('text-size').value)}); });
   window.addEventListener('pagehide',() => savePosition(true));
   document.addEventListener('visibilitychange',() => { if (document.visibilityState === 'hidden') savePosition(true); });
   document.addEventListener('keydown',event => {
@@ -572,7 +570,7 @@
     const target = retryTransition?.trackId || chapter.chapterId;
     transitionTo(target,$('narrator').value,{reason:'voice'});
   });
-  $('auto-continue').addEventListener('change',savePreferences);
+  $('auto-continue').addEventListener('change',() => savePreferences({autoContinue:$('auto-continue').checked}));
   window.addEventListener('popstate',() => {
     if (!book) return;
     const params = new URL(location.href).searchParams;
