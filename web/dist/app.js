@@ -512,6 +512,7 @@
     if (!book) return;
     const token = ++transitionToken, oldActive = book.getActive();
     const listen = options.listen ?? (!audio.paused || resumeAfterSeek);
+    const resumePrevious = !audio.paused && !audio.ended && !completed;
     const sameTrackVoice = options.reason === 'voice' && oldActive?.trackId === trackId;
     const bookmark = options.bookmark === undefined && sameTrackVoice ? book.capture(currentPosition(),{completed}) : options.bookmark;
     if (oldActive) savePosition(true);
@@ -530,7 +531,7 @@
       $('transition-status').textContent = error.message || 'This chapter could not be loaded. Try again.';
       $('transition-retry').hidden = false;
       if (error.code === 'ACCESS_REQUIRED' || error.cause?.code === 'ACCESS_REQUIRED') { closeAccess(); return; }
-      if (oldActive && listen) startPlayback();
+      if (oldActive && resumePrevious) startPlayback();
     }
   }
   function moveTrack(offset,listen) {

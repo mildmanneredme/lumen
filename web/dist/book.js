@@ -560,7 +560,7 @@
         chapterId: active.trackId,
         readingExtentId: chapter.readingExtentId || chapter.id,
         sentenceId: sentence.id,
-        anchorMeasured: finite(sentence.start) && finite(sentence.end) &&
+        anchorMeasured: finite(sentence.start) && finite(sentence.end) && audioTime >= sentence.start &&
           !active.uncertainWindows.some(window=>audioTime>=window.start &&
             (audioTime<window.end || (window.end===chapter.duration && audioTime===window.end))),
         sentenceFraction: finite(sentence.start) && finite(sentence.end) ? clamp(

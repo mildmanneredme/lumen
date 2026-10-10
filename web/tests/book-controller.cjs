@@ -265,6 +265,22 @@ test('capture is side-effect free and voice switching maps the current semantic 
   assert.equal(result.position.mapped, true);
   assert.equal(result.position.completed, false);
 });
+
+test('an unmeasured introduction keeps exact recording time and cannot map to another narrator', async () => {
+  const { f, book } = await opened();
+  const bookmark = book.save(2.5);
+  assert.equal(bookmark.anchorMeasured, false);
+  const stored = f.storage.values.get(BOOKMARK_KEY);
+  assert.deepEqual((await book.load('chapter-001', 'charon', { bookmark })).position,
+    { time: 2.5, completed: false, mapped: false });
+  const prior = book.getActive();
+  await assert.rejects(book.load('chapter-001', 'autonoe', { bookmark }), error => error.code === 'MISSING_ANCHOR');
+  assert.equal(book.getActive(), prior);
+  assert.equal(f.storage.values.get(BOOKMARK_KEY), stored);
+  assert.equal(book.capture(5).anchorMeasured, true);
+  assert.deepEqual((await book.load('chapter-001', 'autonoe', { bookmark: book.capture(0) })).position,
+    { time: 0, completed: false, mapped: true });
+});
 test('completed pilot maps through verified aliases to its endpoint without finishing the chapter', async () => {
   const f = fixture(),
     bookmark = v1(f, {
