@@ -264,6 +264,13 @@ async function run() {
     await page.locator('#settings-open').click(); await page.locator('#narrator').selectOption(voice);
     await page.locator('#settings-close').click();
   }
+  async function selectVoiceFromBeginning(voice) {
+    const current = await state();
+    await page.locator('#seek').press('Home');
+    await waitTrack(current.track, current.voice, 0);
+    if (current.voice !== voice) await selectVoice(voice);
+    await waitTrack(current.track, voice, 0);
+  }
   const state = () => page.evaluate(() => {
     const audio = document.querySelector('#narration'); return {track:window.LUMEN_CHAPTER.chapterId,
       voice:window.LUMEN_CHAPTER.audio.narratorId, duration:audio.duration, time:audio.currentTime,
@@ -277,7 +284,7 @@ async function run() {
   const representatives = [manifest.tracks[0], story[0], story[Math.floor(story.length / 2)], story.at(-1), manifest.tracks.at(-1)];
   for (const track of representatives) for (const voice of ['autonoe','charon']) {
     if ((await state()).track !== track.id) await selectTrack(track.id);
-    if ((await state()).voice !== voice) await selectVoice(voice);
+    await selectVoiceFromBeginning(voice);
     await waitTrack(track.id, voice);
     const before = await state(), payload = payloads.get(track.id + '/' + voice);
     assert.ok(!before.error && Math.abs(before.duration-payload.duration) < .5,
@@ -291,8 +298,28 @@ async function run() {
     playback.push({trackId:track.id,narratorId:voice,declaredDuration:payload.duration,nativeDuration:after.duration,
       observedPlayedSeconds:Number((after.time-before.time).toFixed(3)),pausedAfter:after.paused});
     check('native MP3 metadata and brief playback: ' + track.id + '/' + voice, after.paused && after.time > before.time);
+    if (track.id === manifest.defaultTrackId && voice === 'autonoe') {
+      const firstCue = payload.paragraphs.flatMap(p => p.sentences).find(s => s.syncStatus === 'measured');
+      assert.ok(firstCue.start > .5, 'The actual opening needs a positive introduction interval');
+      const introAt = firstCue.start / 2;
+      await page.locator('#seek').evaluate((element, time) => {
+        element.value = String(time); element.dispatchEvent(new Event('input',{bubbles:true}));
+      }, introAt);
+      await waitTrack(track.id, voice, introAt);
+      await selectVoice('charon');
+      await page.locator('#transition-retry').waitFor({state:'visible'});
+      const preserved = await state();
+      check('actual positive introduction refuses guessed voice mapping and preserves its source',
+        preserved.voice === voice && Math.abs(preserved.time-introAt) < .4 && preserved.paused);
+    }
+    // Keep this diagnostic chapter history at an observed cue. A different
+    // narrator cannot map the intentionally unanchored half-second playback
+    // bookmark used above; that behavior has its own explicit assertion.
+    const measuredStart = payload.paragraphs.flatMap(p => p.sentences).find(s => s.syncStatus === 'measured');
+    await page.locator(`[id="${measuredStart.id}"]`).click();
+    await waitTrack(track.id, voice, measuredStart.start);
   }
-  await selectTrack(story[0].id); await selectVoice('autonoe'); await waitTrack(story[0].id, 'autonoe');
+  await selectTrack(story[0].id); await selectVoiceFromBeginning('autonoe');
   const female = payloads.get(story[0].id + '/autonoe'), male = payloads.get(story[0].id + '/charon');
   const maleCues = new Map(male.paragraphs.flatMap(p=>p.sentences).map(s=>[s.id,s]));
   const shared = female.paragraphs.flatMap(p=>p.sentences).find(s => s.syncStatus === 'measured' && s.end-s.start > 3 &&
@@ -348,7 +375,7 @@ async function run() {
   }
   assert.ok(gapCase, 'The prepared partial-sync release needs one actual unavailable interval for this check');
   await selectTrack(gapCase.payload.chapterId);
-  if ((await state()).voice !== gapCase.payload.audio.narratorId) await selectVoice(gapCase.payload.audio.narratorId);
+  if ((await state()).voice !== gapCase.payload.audio.narratorId) await selectVoiceFromBeginning(gapCase.payload.audio.narratorId);
   await waitTrack(gapCase.payload.chapterId, gapCase.payload.audio.narratorId);
   const gapSpan = page.locator(`[id="${gapCase.sentence.id}"]`);
   check('actual unavailable sentence stays faithful prose without a seek control',
