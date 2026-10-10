@@ -1,6 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { create, validateManifest, BOOKMARK_KEY, LEGACY_BOOKMARK_KEY } = require('../dist/book.js');
+const { create: createLegacyProgress } = require('../dist/progress.js');
 const clone = (value) => JSON.parse(JSON.stringify(value));
 function storage(seed = {}) {
   const values = new Map(Object.entries(seed));
@@ -281,6 +282,77 @@ test('an unmeasured introduction keeps exact recording time and cannot map to an
   assert.equal(book.capture(5).anchorMeasured, true);
   assert.deepEqual((await book.load('chapter-001', 'autonoe', { bookmark: book.capture(0) })).position,
     { time: 0, completed: false, mapped: true });
+});
+test('original legacy pre-cue bookmarks never map to a changed recording before deliberate recovery', async () => {
+  const f=fixture(),legacy=createLegacyProgress(f.pilot,f.pilot.paragraphs.flatMap(p=>p.sentences),f.storage).save(2.5);
+  assert.equal(Object.hasOwn(legacy,'anchorMeasured'),false,'use the original on-disk v1 producer');
+  const target=f.payloads[f.manifest.tracks[1].recordings.charon.url].paragraphs[0];
+  target.start=target.sentences[0].start=1;
+  const raw=f.storage.getItem(LEGACY_BOOKMARK_KEY),book=reader(f),selection=book.initialSelection();
+  await assert.rejects(book.load(selection.trackId,selection.narratorId,{bookmark:selection.bookmark}),error=>error.code==='MISSING_ANCHOR');
+  assert.equal(book.getActive(),null);
+  assert.equal(f.storage.getItem(LEGACY_BOOKMARK_KEY),raw);assert.equal(f.storage.getItem(BOOKMARK_KEY),null);
+  await assert.rejects(book.load(selection.trackId,selection.narratorId,{bookmark:selection.bookmark}),error=>error.code==='MISSING_ANCHOR');
+  assert.equal(f.storage.getItem(LEGACY_BOOKMARK_KEY),raw);
+  const restarted=await book.load(selection.trackId,selection.narratorId,{startFromBeginning:true});
+  assert.deepEqual(restarted.position,{time:0,completed:false,mapped:false});
+  assert.equal(f.storage.getItem(LEGACY_BOOKMARK_KEY),raw,'loading recovery does not write the old bookmark');
+  const saved=book.save(0);
+  assert.equal(saved.audioTime,0);assert.equal(saved.audioSha256,'a'.repeat(64));
+  assert.equal(saved.sentenceId,'v6:chapter-001:p001-s01');
+});
+test('a measured original legacy bookmark uses its source cue before canonical alias migration', async () => {
+  const f=fixture(),legacy=createLegacyProgress(f.pilot,f.pilot.paragraphs.flatMap(p=>p.sentences),f.storage).save(6);
+  assert.equal(Object.hasOwn(legacy,'anchorMeasured'),false);
+  assert.equal(legacy.sentenceId,'p001-s01');assert.equal(legacy.sentenceFraction,.1);
+  const raw=f.storage.getItem(LEGACY_BOOKMARK_KEY),book=reader(f),selection=book.initialSelection({narratorId:'autonoe'});
+  const result=await book.load(selection.trackId,selection.narratorId,{bookmark:selection.bookmark});
+  assert.deepEqual(result.position,{time:9,completed:false,mapped:true});
+  assert.equal(f.storage.getItem(LEGACY_BOOKMARK_KEY),raw);
+  book.save(result.position.time);
+  assert.equal(JSON.parse(f.storage.getItem(BOOKMARK_KEY)).lastPosition.sentenceId,'v6:chapter-001:p001-s01');
+});
+test('same-recording original legacy introductory seconds restore exactly before adding measured flags', async () => {
+  const f=fixture(),legacy=createLegacyProgress(f.pilot,f.pilot.paragraphs.flatMap(p=>p.sentences),f.storage).save(2.5);
+  f.manifest.tracks[1].recordings.charon.audioSha256=f.pilot.audio.sha256;
+  f.payloads[f.manifest.tracks[1].recordings.charon.url]=clone(f.pilot);
+  const raw=f.storage.getItem(LEGACY_BOOKMARK_KEY),book=reader(f),selection=book.initialSelection();
+  const result=await book.load(selection.trackId,selection.narratorId,{bookmark:selection.bookmark});
+  assert.deepEqual(result.position,{time:2.5,completed:false,mapped:false});
+  assert.equal(f.storage.getItem(LEGACY_BOOKMARK_KEY),raw);
+  assert.equal(book.save(result.position.time).anchorMeasured,false);
+});
+test('an unknown legacy source hash cannot borrow another recording\'s cues', async () => {
+  const f=fixture(),legacy=createLegacyProgress(f.pilot,f.pilot.paragraphs.flatMap(p=>p.sentences),f.storage).save(6);
+  legacy.audioSha256='c'.repeat(64);f.storage.setItem(LEGACY_BOOKMARK_KEY,JSON.stringify(legacy));
+  const raw=f.storage.getItem(LEGACY_BOOKMARK_KEY),book=reader(f),selection=book.initialSelection();
+  await assert.rejects(book.load(selection.trackId,selection.narratorId,{bookmark:selection.bookmark}),error=>error.code==='MISSING_ANCHOR');
+  assert.equal(book.getActive(),null);assert.equal(f.storage.getItem(LEGACY_BOOKMARK_KEY),raw);
+  assert.equal(f.storage.getItem(BOOKMARK_KEY),null);
+});
+test('exact zero in the original legacy schema retains the introduction even for an unknown old recording', async () => {
+  const f=fixture(),legacy=createLegacyProgress(f.pilot,f.pilot.paragraphs.flatMap(p=>p.sentences),f.storage).save(0);
+  legacy.audioSha256='c'.repeat(64);f.storage.setItem(LEGACY_BOOKMARK_KEY,JSON.stringify(legacy));
+  const raw=f.storage.getItem(LEGACY_BOOKMARK_KEY),book=reader(f),selection=book.initialSelection();
+  assert.deepEqual((await book.load(selection.trackId,selection.narratorId,{bookmark:selection.bookmark})).position,
+    {time:0,completed:false,mapped:true});
+  assert.equal(f.storage.getItem(LEGACY_BOOKMARK_KEY),raw);
+});
+test('legacy source measurement can use the validated active recording without fetching or rewriting it', async () => {
+  for(const time of [2.5,25]) {
+    const {f,book}=await opened(),prior=book.getActive(),chapter=prior.chapter;
+    const legacy=createLegacyProgress(chapter,chapter.paragraphs.flatMap(p=>p.sentences),f.storage).save(time);
+    assert.equal(Object.hasOwn(legacy,'anchorMeasured'),false);
+    const raw=f.storage.getItem(LEGACY_BOOKMARK_KEY);
+    if(time<chapter.paragraphs[0].sentences[0].start) {
+      await assert.rejects(book.load('chapter-001','autonoe',{bookmark:legacy}),error=>error.code==='MISSING_ANCHOR');
+      assert.equal(book.getActive(),prior);
+    } else {
+      const mapped=await book.load('chapter-001','autonoe',{bookmark:legacy});
+      assert.ok(Math.abs(mapped.position.time-(30+20/3))<1e-9);
+    }
+    assert.equal(f.storage.getItem(LEGACY_BOOKMARK_KEY),raw);
+  }
 });
 test('completed pilot maps through verified aliases to its endpoint without finishing the chapter', async () => {
   const f = fixture(),
