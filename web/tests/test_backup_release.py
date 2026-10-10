@@ -7,6 +7,7 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+import subprocess
 import tempfile
 import sys
 import unittest
@@ -101,6 +102,108 @@ class BackupReleaseTests(unittest.TestCase):
         with self.assertRaisesRegex(backup.BackupError, "changed"):
             self.run_copy(plan)
         self.assertFalse(self.destination.exists())
+
+    def test_same_size_replacement_with_preserved_mtime_rejects_before_copy(self):
+        plan = self.plan()
+        source = self.root / self.paths[0]
+        before = source.stat()
+        replacement = source.with_name("replacement.md")
+        replacement.write_bytes(b"x" * before.st_size)
+        os.utime(replacement, ns=(before.st_atime_ns, before.st_mtime_ns))
+        replacement.replace(source)
+        self.assertEqual(source.stat().st_size, before.st_size)
+        self.assertEqual(source.stat().st_mtime_ns, before.st_mtime_ns)
+        with self.assertRaisesRegex(backup.BackupError, "identity|changed"):
+            self.run_copy(plan)
+        self.assertFalse(self.destination.exists())
+
+    def test_same_size_in_place_change_with_preserved_mtime_rejects_before_copy(self):
+        plan = self.plan()
+        source = self.root / self.paths[0]
+        before = source.stat()
+        with source.open("r+b") as stream:
+            stream.write(b"x" * before.st_size)
+        os.utime(source, ns=(before.st_atime_ns, before.st_mtime_ns))
+        self.assertEqual(source.stat().st_ino, before.st_ino)
+        self.assertEqual(source.stat().st_size, before.st_size)
+        self.assertEqual(source.stat().st_mtime_ns, before.st_mtime_ns)
+        with self.assertRaisesRegex(backup.BackupError, "identity|changed"):
+            self.run_copy(plan)
+        self.assertFalse(self.destination.exists())
+
+    def test_same_clock_swap_between_validation_and_copy_cannot_write_replacement_bytes(self):
+        plan = self.plan()
+        original = backup.copy_hashed
+        swapped = []
+        def swap_before_open(source, destination, **kwargs):
+            if not swapped:
+                before = source.stat()
+                replacement = source.with_name("replacement.md")
+                replacement.write_bytes(b"x" * before.st_size)
+                os.utime(replacement, ns=(before.st_atime_ns, before.st_mtime_ns))
+                replacement.replace(source)
+                swapped.append(destination)
+            return original(source, destination, **kwargs)
+        with patch.object(backup, "copy_hashed", side_effect=swap_before_open):
+            with self.assertRaisesRegex(backup.BackupError, "identity|changed"):
+                self.run_copy(plan)
+        self.assertFalse(swapped[0].exists(), "Replacement bytes must not reach the destination")
+        self.assertFalse((self.destination / "backup-manifest.json").exists())
+        self.assertEqual(json.loads((self.destination / "backup-state.json").read_text())["copyStatus"], "incomplete")
+
+    def test_current_plans_bind_source_identity_and_old_plans_are_inspection_only(self):
+        plan = self.plan()
+        self.assertEqual(plan["schemaVersion"], 2)
+        for row in plan["files"]:
+            info = (self.root / row["path"]).stat()
+            self.assertEqual(row["sourceIdentity"], {"device": info.st_dev, "inode": info.st_ino,
+                                                    "ctimeNs": info.st_ctime_ns})
+        historic = copy.deepcopy(plan)
+        historic["schemaVersion"] = 1
+        for row in historic["files"]:
+            row.pop("sourceIdentity")
+        historic = backup.signed(historic, "planSha256")
+        self.assertEqual(len(backup.validate_fileset(historic)), len(self.paths))
+        with self.assertRaisesRegex(backup.BackupError, "identity|fresh plan"):
+            self.run_copy(historic)
+        self.assertFalse(self.destination.exists())
+
+    def test_in_place_mutation_during_read_is_rejected_before_unreviewed_bytes_are_written(self):
+        plan = self.plan()
+        name = sorted(self.paths)[0]
+        source = self.root / name
+        before = source.stat()
+        original_fdopen = backup.os.fdopen
+        changed = []
+        class MutatingReader:
+            def __init__(self, stream):
+                self.stream = stream
+            def __enter__(self):
+                self.stream.__enter__()
+                return self
+            def __exit__(self, *args):
+                return self.stream.__exit__(*args)
+            def __getattr__(self, name):
+                return getattr(self.stream, name)
+            def read(self, size):
+                block = self.stream.read(size)
+                if not changed:
+                    with source.open("r+b") as output:
+                        output.write(b"x" * before.st_size)
+                    os.utime(source, ns=(before.st_atime_ns, before.st_mtime_ns))
+                    changed.append(True)
+                return block
+        def mutate_after_read(descriptor, mode, *args, **kwargs):
+            stream = original_fdopen(descriptor, mode, *args, **kwargs)
+            return MutatingReader(stream) if mode == "rb" and os.fstat(descriptor).st_ino == before.st_ino else stream
+        with patch.object(backup.os, "fdopen", side_effect=mutate_after_read):
+            with self.assertRaisesRegex(backup.BackupError, "identity changed"):
+                self.run_copy(plan)
+        self.assertTrue(changed)
+        self.assertEqual(source.stat().st_mtime_ns, before.st_mtime_ns)
+        self.assertEqual((self.destination / "files" / name).read_bytes(), b"")
+        self.assertFalse((self.destination / "backup-manifest.json").exists())
+        self.assertEqual(json.loads((self.destination / "backup-state.json").read_text())["copyStatus"], "incomplete")
 
     def test_plan_hash_and_byte_totals_cannot_be_silently_edited(self):
         for edit in [lambda p: p.update(totalBytes=1), lambda p: p["files"][0].update(bytes=1)]:
@@ -287,12 +390,12 @@ class BackupReleaseTests(unittest.TestCase):
 
         with patch.object(backup.os, "fdopen", side_effect=growing_fdopen), \
              patch.object(backup.shutil, "disk_usage", side_effect=disk_space):
-            with self.assertRaisesRegex(backup.BackupError, "grew|byte count changed"):
+            with self.assertRaisesRegex(backup.BackupError, "grew|byte count changed|identity changed"):
                 backup.copy_snapshot(self.root, self.destination, plan, minimum_free_bytes=reserve)
         target = self.destination / "files" / name
         self.assertTrue(appended)
         self.assertLessEqual(target.stat().st_size, planned_bytes)
-        self.assertEqual(target.read_bytes(), original_bytes)
+        self.assertEqual(target.read_bytes(), original_bytes[:target.stat().st_size])
         self.assertGreaterEqual(disk_space(self.destination).free, reserve)
         self.assertEqual(source.stat().st_size, planned_bytes + len(growth))
         self.assertFalse((self.destination / "backup-manifest.json").exists())
@@ -311,10 +414,10 @@ class BackupReleaseTests(unittest.TestCase):
                 incoming.write_bytes(b"unexpected growth")
             return original(incoming, destination, **kwargs)
         with patch.object(backup, "copy_hashed", side_effect=grow_before_copy):
-            with self.assertRaisesRegex(backup.BackupError, "grew|byte count changed"):
+            with self.assertRaisesRegex(backup.BackupError, "grew|byte count changed|identity changed"):
                 self.run_copy(plan)
         target = self.destination / "files" / name
-        self.assertLessEqual(target.stat().st_size, 0)
+        self.assertTrue(not target.exists() or target.stat().st_size == 0)
         self.assertFalse((self.destination / "backup-manifest.json").exists())
         self.assertEqual(json.loads((self.destination / "backup-state.json").read_text())["copyStatus"], "incomplete")
 
@@ -324,6 +427,63 @@ class BackupReleaseTests(unittest.TestCase):
         with self.assertRaises(OSError):
             backup.copy_hashed(source, self.base / "copied.md")
         self.assertFalse((self.base / "copied.md").exists())
+
+    def test_fifo_swap_after_validation_is_rejected_by_all_source_readers_without_hanging(self):
+        # A real FIFO with no writer would block a plain O_RDONLY open. Each
+        # subprocess is bounded and killed on timeout, so the test itself is safe.
+        script = '''
+import json, os, sys
+from pathlib import Path
+sys.path.insert(0, sys.argv[1])
+import backup_release as backup
+payload = json.loads(sys.stdin.read())
+root = Path(payload["root"])
+destination = Path(payload["destination"])
+source = root / payload["path"]
+original = backup.copy_hashed
+def replace_with_fifo():
+    source.unlink()
+    os.mkfifo(source, 0o600)
+def swap_before_copy(incoming, outgoing, **kwargs):
+    if incoming == source:
+        replace_with_fifo()
+    return original(incoming, outgoing, **kwargs)
+try:
+    if payload["reader"] == "copy":
+        backup.copy_hashed = swap_before_copy
+        backup.copy_snapshot(root, destination, payload["plan"], minimum_free_bytes=0)
+    else:
+        backup.owned_file(root, payload["path"])
+        replace_with_fifo()
+        {"hash": backup.file_digest, "clock": backup.source_clock, "json": backup.read_json}[payload["reader"]](source)
+except backup.BackupError as exc:
+    print(json.dumps({"rejected": True, "error": str(exc)}))
+else:
+    raise RuntimeError("FIFO source was not rejected")
+'''
+        for reader in ["copy", "hash", "clock", "json"]:
+            with self.subTest(reader=reader):
+                source = self.root / sorted(self.paths)[0]
+                if source.exists():
+                    source.unlink()
+                source.write_bytes(b"regular planned source")
+                destination = self.destination.with_name("lumen-backup-fixture-" + reader)
+                plan = backup.prepare_fileset(self.root, self.paths, destination.name)
+                payload = {"root": str(self.root), "destination": str(destination), "path": source.relative_to(self.root).as_posix(),
+                           "reader": reader, "plan": plan}
+                try:
+                    result = subprocess.run([sys.executable, "-c", script, str(SCRIPT.parent)],
+                                            input=json.dumps(payload), capture_output=True, text=True, timeout=2)
+                except subprocess.TimeoutExpired:
+                    self.fail(f"{reader} blocked opening a FIFO after source validation")
+                self.assertEqual(result.returncode, 0, result.stderr)
+                response = json.loads(result.stdout)
+                self.assertTrue(response["rejected"])
+                self.assertIn("regular file", response["error"])
+                if reader == "copy":
+                    self.assertFalse((destination / "files" / payload["path"]).exists())
+                    self.assertFalse((destination / "backup-manifest.json").exists())
+                    self.assertEqual(json.loads((destination / "backup-state.json").read_text())["copyStatus"], "incomplete")
 
     def test_plan_cli_keeps_fileset_outside_public_runtime(self):
         public = self.root / "web/dist/backup-plan.json"

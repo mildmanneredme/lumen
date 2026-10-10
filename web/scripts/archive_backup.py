@@ -37,10 +37,6 @@ def sidecar_path(path):
     return Path(str(path) + ".checksums.json")
 
 
-def clock(info):
-    return {"bytes": info.st_size, "mtimeNs": info.st_mtime_ns}
-
-
 def identity(info):
     return info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns, info.st_ctime_ns
 
@@ -53,9 +49,7 @@ def open_source(root, row):
         descriptor = os.open(name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=parent)
         with os.fdopen(descriptor, "rb") as incoming:
             before = os.fstat(incoming.fileno())
-            backup.require(stat.S_ISREG(before.st_mode) and clock(before) ==
-                           {key: row[key] for key in ("bytes", "mtimeNs")},
-                           f"Backup source changed at open: {row['path']}")
+            backup.require_source_state(before, row)
             yield incoming
             backup.require(identity(os.fstat(incoming.fileno())) == identity(before),
                            f"Backup source changed during read: {row['path']}")
@@ -147,7 +141,7 @@ def assert_sources_unchanged(root, rows, states):
 def archive_snapshot(root, destination, plan, *, maximum_archive_bytes,
                      minimum_free_bytes=backup.DEFAULT_RESERVE_BYTES, progress=None):
     """Write only the ZIP and sidecar. No intermediate copied audio exists."""
-    rows = backup.validate_fileset(plan)
+    rows = backup.validate_fileset(plan, require_source_identity=True)
     backup.require(plan.get("copyStatus") == "planned" and plan.get("cloudDestinationFolderId") == LUMEN_FOLDER_ID,
                    "Archive needs a planned fileset for the verified private Lumen folder")
     backup.require(MANIFEST_NAME not in {row["path"] for row in rows}, "Backup manifest path is reserved")
@@ -176,7 +170,9 @@ def archive_snapshot(root, destination, plan, *, maximum_archive_bytes,
                             with archive.open(info_for(row["path"]), "w", force_zip64=True) as entry:
                                 for block in iter(lambda: incoming.read(CHUNK_BYTES), b""):
                                     check_free(parent, minimum_free_bytes)
+                                    backup.require_source_state(os.fstat(incoming.fileno()), row)
                                     entry.write(block); result.update(block); count += len(block)
+                                    backup.require_source_state(os.fstat(incoming.fileno()), row)
                                     backup.require(count <= row["bytes"], f"Backup source grew: {row['path']}")
                         source_hash = result.hexdigest()
                         backup.require(count == row["bytes"], f"Backup source byte count changed: {row['path']}")
@@ -367,7 +363,7 @@ def compression_group(path):
 def estimate_archive(root, plan, sample_paths, *, window_bytes=4 * 1024 * 1024):
     """Bounded read-only samples; unrepresented groups use no savings."""
     root = backup.existing_directory(root)
-    rows = backup.validate_fileset(plan)
+    rows = backup.validate_fileset(plan, require_source_identity=True)
     index = {row["path"]: row for row in rows}
     selected = selected_rows(index, sample_paths)
     backup.require(len(selected) <= 24 and type(window_bytes) is int and 1 <= window_bytes <= 8 * 1024 * 1024,

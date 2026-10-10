@@ -17,6 +17,7 @@ import os
 from pathlib import Path, PurePosixPath
 import re
 import shutil
+import stat
 import sys
 import time
 import uuid
@@ -61,7 +62,15 @@ def signed(value, field):
 
 def read_json(path):
     try:
-        value = json.loads(Path(path).read_text(encoding="utf-8"))
+        with opened_parent(path) as (parent, name):
+            descriptor = os.open(name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=parent)
+            with os.fdopen(descriptor, "rb") as incoming:
+                before = os.fstat(incoming.fileno())
+                require(stat.S_ISREG(before.st_mode), "Backup JSON source must be a regular file")
+                raw = incoming.read(before.st_size + 1)
+                require(len(raw) == before.st_size, "Backup JSON source byte count changed while reading")
+                require_source_state(os.fstat(incoming.fileno()), source_state(before))
+                value = json.loads(raw.decode("utf-8"))
     except (OSError, ValueError) as exc:
         raise BackupError(f"Cannot read backup JSON: {exc}") from exc
     require(isinstance(value, dict), "Backup JSON must be an object")
@@ -95,14 +104,33 @@ def owned_file(root, name):
     return path
 
 
+def source_state(info):
+    return {"bytes": info.st_size, "mtimeNs": info.st_mtime_ns,
+            "sourceIdentity": {"device": info.st_dev, "inode": info.st_ino, "ctimeNs": info.st_ctime_ns}}
+
+
 def source_clock(path):
-    info = path.stat()
-    return {"bytes": info.st_size, "mtimeNs": info.st_mtime_ns}
+    with opened_parent(path) as (parent, name):
+        descriptor = os.open(name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=parent)
+        try:
+            info = os.fstat(descriptor)
+            require(stat.S_ISREG(info.st_mode), "Backup source must be a regular file")
+            return source_state(info)
+        finally:
+            os.close(descriptor)
 
 
-def validate_fileset(plan):
-    require(isinstance(plan, dict) and type(plan.get("schemaVersion")) is int and plan["schemaVersion"] == 1,
+def require_source_state(info, row):
+    require(stat.S_ISREG(info.st_mode) and source_state(info) ==
+            {key: row.get(key) for key in ("bytes", "mtimeNs", "sourceIdentity")},
+            f"Backup source identity changed after planning: {row.get('path', 'opened source')}")
+
+
+def validate_fileset(plan, *, require_source_identity=False):
+    require(isinstance(plan, dict) and type(plan.get("schemaVersion")) is int and plan["schemaVersion"] in (1, 2),
             "Unsupported backup plan schema")
+    require(not require_source_identity or plan["schemaVersion"] == 2,
+            "Historical backup plans lack reviewed source identity; create a fresh plan before copying")
     require(isinstance(plan.get("backupId"), str) and re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{1,120}", plan["backupId"]),
             "Invalid backup ID")
     require(plan.get("planSha256") == digest({key: value for key, value in plan.items() if key != "planSha256"}),
@@ -117,6 +145,12 @@ def validate_fileset(plan):
         seen.add(row["path"])
         require(type(row.get("bytes")) is int and row["bytes"] >= 0 and type(row.get("mtimeNs")) is int,
                 "Invalid backup source clock")
+        if plan["schemaVersion"] == 2:
+            identity = row.get("sourceIdentity")
+            require(isinstance(identity, dict) and set(identity) == {"device", "inode", "ctimeNs"}
+                    and all(type(identity[key]) is int for key in identity)
+                    and identity["device"] >= 0 and identity["inode"] >= 0,
+                    "Invalid reviewed backup source identity")
         if row.get("expectedSha256") is not None:
             require(isinstance(row["expectedSha256"], str) and SHA256.fullmatch(row["expectedSha256"]), "Invalid expected backup hash")
     require(type(plan.get("totalBytes")) is int and plan["totalBytes"] == sum(row["bytes"] for row in rows),
@@ -139,7 +173,7 @@ def prepare_fileset(root, paths, backup_id, *, expected_hashes=None):
         if name in expected_hashes:
             row["expectedSha256"] = expected_hashes[name]
         rows.append(row)
-    plan = signed({"schemaVersion": 1, "backupId": backup_id, "copyStatus": "planned",
+    plan = signed({"schemaVersion": 2, "backupId": backup_id, "copyStatus": "planned",
                    "cloudDestinationFolderId": "1h2Qlk0pdiwG-Nsbc9i6hWxsIwXG7rCO4",
                    "files": rows, "totalBytes": sum(row["bytes"] for row in rows)}, "planSha256")
     validate_fileset(plan)
@@ -212,22 +246,36 @@ def write_json(path, value):
 def file_digest(path):
     result = hashlib.sha256()
     with opened_parent(path) as (parent, name):
-        descriptor = os.open(name, os.O_RDONLY | os.O_NOFOLLOW, dir_fd=parent)
+        descriptor = os.open(name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=parent)
         with os.fdopen(descriptor, "rb") as stream:
-            for block in iter(lambda: stream.read(CHUNK_BYTES), b""):
+            before = os.fstat(stream.fileno())
+            require(stat.S_ISREG(before.st_mode), "Backup hash source must be a regular file")
+            opened_state, count = source_state(before), 0
+            while count < before.st_size:
+                block = stream.read(min(CHUNK_BYTES, before.st_size - count))
+                require(bool(block), "Backup hash source byte count changed while reading")
+                require_source_state(os.fstat(stream.fileno()), opened_state)
                 result.update(block)
+                count += len(block)
+            require(not stream.read(1), "Backup hash source grew while reading")
+            require_source_state(os.fstat(stream.fileno()), opened_state)
     return result.hexdigest()
 
 
-def copy_hashed(source, destination, *, maximum_bytes=None):
+def copy_hashed(source, destination, *, maximum_bytes=None, expected_source=None):
     """Copy at most the approved byte count; reject growth before writing it."""
     require(maximum_bytes is None or type(maximum_bytes) is int and maximum_bytes >= 0,
             "Invalid backup copy byte limit")
     result, count = hashlib.sha256(), 0
     with opened_parent(source) as (parent, name):
-        source_fd = os.open(name, os.O_RDONLY | os.O_NOFOLLOW, dir_fd=parent)
+        source_fd = os.open(name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=parent)
         with os.fdopen(source_fd, "rb") as incoming:
-            limit = os.fstat(incoming.fileno()).st_size if maximum_bytes is None else maximum_bytes
+            before = os.fstat(incoming.fileno())
+            require(stat.S_ISREG(before.st_mode), "Backup source must be a regular file")
+            if expected_source is not None:
+                require_source_state(before, expected_source)
+            opened_state = source_state(before)
+            limit = before.st_size if maximum_bytes is None else maximum_bytes
             with opened_parent(destination, create=True) as (outgoing_parent, outgoing_name):
                 destination_fd = os.open(outgoing_name, os.O_CREAT | os.O_EXCL | os.O_WRONLY | os.O_NOFOLLOW,
                                          0o600, dir_fd=outgoing_parent)
@@ -235,22 +283,25 @@ def copy_hashed(source, destination, *, maximum_bytes=None):
                     while count < limit:
                         block = incoming.read(min(CHUNK_BYTES, limit - count))
                         require(bool(block), "Backup source byte count changed during copy")
+                        require_source_state(os.fstat(incoming.fileno()), opened_state)
                         outgoing.write(block); result.update(block); count += len(block)
+                        require_source_state(os.fstat(incoming.fileno()), opened_state)
                     require(not incoming.read(1), "Backup source grew beyond its approved byte count")
+                    require_source_state(os.fstat(incoming.fileno()), opened_state)
                     outgoing.flush(); os.fsync(outgoing.fileno())
     return count, result.hexdigest()
 
 
 def check_source_clock(root, row):
     path = owned_file(root, row["path"])
-    require(source_clock(path) == {key: row[key] for key in ("bytes", "mtimeNs")},
-            f"Backup source changed after planning: {row['path']}")
+    require(source_clock(path) == {key: row.get(key) for key in ("bytes", "mtimeNs", "sourceIdentity")},
+            f"Backup source identity changed after planning: {row['path']}")
     return path
 
 
 def copy_snapshot(root, destination, plan, *, minimum_free_bytes=DEFAULT_RESERVE_BYTES, progress=None):
     root = Path(root).resolve()
-    rows = validate_fileset(plan)
+    rows = validate_fileset(plan, require_source_identity=True)
     require(type(minimum_free_bytes) is int and minimum_free_bytes >= 0, "Invalid free-space reserve")
     destination = Path(destination).absolute()
     require(not destination.exists() and not destination.is_symlink(), "Backup destination already exists")
@@ -274,7 +325,8 @@ def copy_snapshot(root, destination, plan, *, minimum_free_bytes=DEFAULT_RESERVE
             require(shutil.disk_usage(parent).free >= row["bytes"] + minimum_free_bytes,
                     "Insufficient local free space during backup; incomplete copy retained")
             source = check_source_clock(root, row)
-            count, source_hash = copy_hashed(source, destination / "files" / row["path"], maximum_bytes=row["bytes"])
+            count, source_hash = copy_hashed(source, destination / "files" / row["path"],
+                                             maximum_bytes=row["bytes"], expected_source=row)
             require(count == row["bytes"], f"Backup source byte count changed: {row['path']}")
             check_source_clock(root, row)
             require(row.get("expectedSha256", source_hash) == source_hash, f"Backup production hash differs: {row['path']}")

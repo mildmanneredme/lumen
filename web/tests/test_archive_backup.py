@@ -120,6 +120,86 @@ class ArchiveBackupTests(unittest.TestCase):
             self.create(plan)
         self.assertFalse(self.destination.exists())
 
+    def test_same_size_replacement_preserving_mtime_after_plan_rejects_before_archive(self):
+        plan = self.plan()
+        source = self.root / self.paths[0]
+        before = source.stat()
+        replacement = source.with_name("replacement.md")
+        replacement.write_bytes(b"x" * before.st_size)
+        os.utime(replacement, ns=(before.st_atime_ns, before.st_mtime_ns))
+        replacement.replace(source)
+        self.assertEqual(source.stat().st_size, before.st_size)
+        self.assertEqual(source.stat().st_mtime_ns, before.st_mtime_ns)
+        with self.assertRaisesRegex(archive.backup.BackupError, "identity|changed"):
+            self.create(plan)
+        self.assertFalse(self.destination.exists())
+
+    def test_same_size_in_place_change_preserving_mtime_after_plan_rejects_before_archive(self):
+        plan = self.plan()
+        source = self.root / self.paths[0]
+        before = source.stat()
+        with source.open("r+b") as stream:
+            stream.write(b"x" * before.st_size)
+        os.utime(source, ns=(before.st_atime_ns, before.st_mtime_ns))
+        self.assertEqual(source.stat().st_ino, before.st_ino)
+        self.assertEqual(source.stat().st_size, before.st_size)
+        self.assertEqual(source.stat().st_mtime_ns, before.st_mtime_ns)
+        with self.assertRaisesRegex(archive.backup.BackupError, "identity|changed"):
+            self.create(plan)
+        self.assertFalse(self.destination.exists())
+
+    def test_legacy_plan_cannot_create_new_archive_but_existing_archive_still_verifies(self):
+        plan = self.plan()
+        historic = copy.deepcopy(plan)
+        historic["schemaVersion"] = 1
+        for row in historic["files"]:
+            row.pop("sourceIdentity", None)
+        historic = archive.backup.signed(historic, "planSha256")
+        with self.assertRaisesRegex(archive.backup.BackupError, "identity|fresh plan"):
+            self.create(historic)
+        self.assertFalse(self.destination.exists())
+        self.create(plan)
+        with zipfile.ZipFile(self.destination) as handle:
+            self.assertEqual(json.loads(handle.read(archive.MANIFEST_NAME))["schemaVersion"], 1)
+        self.assertEqual(archive.verify_archive(self.destination)["verifiedFiles"], len(self.paths))
+
+    def test_in_place_mutation_during_read_cannot_reach_compressed_entry(self):
+        plan = self.plan()
+        name = sorted(self.paths)[0]
+        source = self.root / name
+        before = source.stat()
+        original_fdopen = archive.os.fdopen
+        changed = []
+        class MutatingReader:
+            def __init__(self, stream):
+                self.stream = stream
+            def __enter__(self):
+                self.stream.__enter__()
+                return self
+            def __exit__(self, *args):
+                return self.stream.__exit__(*args)
+            def __getattr__(self, name):
+                return getattr(self.stream, name)
+            def read(self, size):
+                block = self.stream.read(size)
+                if not changed:
+                    with source.open("r+b") as output:
+                        output.write(b"x" * before.st_size)
+                    os.utime(source, ns=(before.st_atime_ns, before.st_mtime_ns))
+                    changed.append(True)
+                return block
+        def mutate_after_read(descriptor, mode, *args, **kwargs):
+            stream = original_fdopen(descriptor, mode, *args, **kwargs)
+            return MutatingReader(stream) if mode == "rb" and os.fstat(descriptor).st_ino == before.st_ino else stream
+        with patch.object(archive.os, "fdopen", side_effect=mutate_after_read):
+            with self.assertRaisesRegex(archive.backup.BackupError, "identity changed"):
+                self.create(plan)
+        self.assertTrue(changed)
+        self.assertEqual(source.stat().st_mtime_ns, before.st_mtime_ns)
+        with zipfile.ZipFile(self.destination) as handle:
+            self.assertEqual(handle.read(name), b"")
+        self.assertFalse(archive.sidecar_path(self.destination).exists())
+
     def test_expected_hash_failure_has_no_completion_sidecar(self):
         plan = self.plan(expected_hashes={self.paths[1]: "a" * 64})
         with self.assertRaisesRegex(archive.backup.BackupError, "hash"):

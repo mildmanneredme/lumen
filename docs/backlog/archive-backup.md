@@ -51,6 +51,13 @@ lossless masters, manuscript, code, continuity references, and review evidence.
 It excludes credentials, all `.env` variants, private keys, models,
 environments, API receipts, unselected raw takes, and redundant M4B/ZIP builds.
 
+Execution requires a fresh schema-2 plan. Each source is bound to its device,
+inode, ctime, size, and mtime when planned, then checked through its opened
+descriptor before and throughout reading. A replacement with the same size
+and mtime is rejected. Older schema-1 plans can be inspected but must be
+regenerated before archive creation; completed hash-bound backups remain
+verifiable and restorable.
+
 Run `archive_backup.py --estimate PLAN --root PROJECT --path SELECTED_WAV`
 with up to 24 unique sample paths that appear in the plan. Include both raw
 and mastered files from both editions. It reads bounded windows and writes
@@ -72,7 +79,8 @@ The filename must be the plan's exact `backupId` followed by `.zip`. Archive
 and sidecar creation are exclusive, with local mode `0600`; newly restored
 directories use `0700`. All ancestors and leaf files are opened with
 descriptor traversal and `O_NOFOLLOW`. Sources must remain regular files
-with the same size, mtime, inode, and ctime throughout the operation. Hashes
+with the same planned device, inode, ctime, size, and mtime throughout the
+operation. Nonblocking opens reject a substituted FIFO without hanging. Hashes
 from production checkpoints are checked while compressing; every copied
 source also receives a SHA-256 hash in the internal manifest.
 
@@ -125,7 +133,8 @@ does not establish cloud durability.
 python3 -m unittest discover -s web/tests -p test_archive_backup.py
 ```
 
-Twenty fixtures verify original bytes, ZIP64 streaming, deterministic paths
+Twenty-four archive fixtures and 31 backup fixtures verify original bytes, ZIP64 streaming, deterministic paths
 and timestamps, checksum binding, full verification, sample restore, exclusive
 files, public-path and symlink defenses, source identity changes, reserve and
-size-cap failures, malformed entries, and explicit CLI restoration scope.
+size-cap failures, malformed entries, source replacement after planning,
+nonblocking FIFO rejection, and explicit CLI restoration scope.
