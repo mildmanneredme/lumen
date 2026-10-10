@@ -478,6 +478,9 @@
           mapped: false,
         };
       }
+      if (bookmark.completed && loaded.extent === 'full' && bookmark.readingExtentId === extent) {
+        return { time: chapter.duration, completed: true, mapped: true };
+      }
       const alias =
         manifest.legacyAliases?.[
           bookmark.readingExtentId || (!bookmark.sentenceId.includes(':') ? pilot?.id : '')
