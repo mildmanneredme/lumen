@@ -98,7 +98,8 @@ class BackupReleaseTests(unittest.TestCase):
 
     def test_common_oauth_credentials_are_rejected_even_when_explicitly_selected(self):
         for name in ["token.json", "refresh_token.json", "client_secret_lumen.json",
-                     "web/client_secrets.json", "web/oauth-token.json", "web/id_token.json"]:
+                     "web/client_secrets.json", "web/oauth-token.json", "web/id_token.json",
+                     "secret.json", "docs/Secrets.json"]:
             with self.subTest(name=name):
                 source = self.root / name
                 source.parent.mkdir(parents=True, exist_ok=True)
@@ -248,6 +249,27 @@ class BackupReleaseTests(unittest.TestCase):
         self.assertEqual(report["verificationScope"], "local-restored-sample")
         for name in [self.paths[0], self.paths[2]]:
             self.assertEqual((restored / name).read_bytes(), (self.root / name).read_bytes())
+
+    def test_restore_cannot_use_replacement_manifest_after_verifying_another_manifest(self):
+        manifest = self.run_copy()
+        selected = self.paths[0]
+        restored = self.base / "restore-manifest-race"
+        original_verify = backup.verify_snapshot
+        verified = []
+        def verify_then_replace(snapshot, paths):
+            report = original_verify(snapshot, paths)
+            verified.append(report["manifestSha256"])
+            replacement = b"b" * (self.root / selected).stat().st_size
+            (self.destination / "files" / selected).write_bytes(replacement)
+            changed = copy.deepcopy(manifest)
+            next(row for row in changed["files"] if row["path"] == selected)["sha256"] = hashlib.sha256(replacement).hexdigest()
+            backup.write_json(self.destination / "backup-manifest.json", backup.signed(changed, "manifestSha256"))
+            return report
+        with patch.object(backup, "verify_snapshot", side_effect=verify_then_replace):
+            with self.assertRaisesRegex(backup.BackupError, "manifest.*changed|manifest.*differ"):
+                backup.restore_sample(self.root, self.destination, restored, [selected], minimum_free_bytes=0)
+        self.assertEqual(verified, [manifest["manifestSha256"]])
+        self.assertFalse(restored.exists())
 
     def test_restore_default_reserve_rejects_insufficient_capacity_before_creation(self):
         self.run_copy()
@@ -525,6 +547,44 @@ class BackupReleaseTests(unittest.TestCase):
         self.assertEqual(state["copyStatus"], "incomplete")
         self.assertEqual(state["copiedBytes"], 0)
 
+    def test_backup_rechecks_remaining_capacity_after_each_flushed_chunk(self):
+        selected = self.paths[0]
+        source = self.root / selected
+        source.write_bytes(b"x" * (backup.CHUNK_BYTES * 2 + 17))
+        plan = backup.prepare_fileset(self.root, [selected], "lumen-backup-fixture")
+        reserve = 64
+        target = self.destination / "files" / selected
+        def available(_):
+            written = target.stat().st_size if target.exists() else 0
+            unrelated_usage = 1 if written >= backup.CHUNK_BYTES else 0
+            return type("Usage", (), {"free": plan["totalBytes"] + reserve - written - unrelated_usage})()
+        with patch.object(backup.shutil, "disk_usage", side_effect=available):
+            with self.assertRaisesRegex(backup.BackupError, "space.*incomplete"):
+                backup.copy_snapshot(self.root, self.destination, plan, minimum_free_bytes=reserve)
+        self.assertEqual(target.stat().st_size, backup.CHUNK_BYTES)
+        self.assertEqual(target.read_bytes(), b"x" * backup.CHUNK_BYTES)
+        self.assertEqual(source.stat().st_size, plan["totalBytes"])
+        self.assertGreaterEqual(available(None).free, reserve)
+        self.assertFalse((self.destination / "backup-manifest.json").exists())
+        state = json.loads((self.destination / "backup-state.json").read_text())
+        self.assertEqual(state["copyStatus"], "incomplete")
+        self.assertEqual(state["copiedBytes"], 0)
+        self.assertEqual(state["files"], [])
+
+    def test_backup_exact_capacity_preserves_reserve_across_chunks_and_files(self):
+        selected = self.paths[0]
+        (self.root / selected).write_bytes(b"x" * (backup.CHUNK_BYTES * 2 + 17))
+        plan = self.plan()
+        reserve = 64
+        def available(_):
+            written = sum(path.stat().st_size for path in (self.destination / "files").rglob("*") if path.is_file())
+            return type("Usage", (), {"free": plan["totalBytes"] + reserve - written})()
+        with patch.object(backup.shutil, "disk_usage", side_effect=available):
+            manifest = backup.copy_snapshot(self.root, self.destination, plan, minimum_free_bytes=reserve)
+        self.assertEqual(manifest["copyStatus"], "complete")
+        self.assertEqual(available(None).free, reserve)
+        self.assertEqual(backup.verify_snapshot(self.destination)["verifiedBytes"], plan["totalBytes"])
+
     def test_empty_planned_source_growth_is_detected_without_writing_extra_bytes(self):
         name = sorted(self.paths)[0]
         source = self.root / name
@@ -631,7 +691,9 @@ else:
                      "client_secret_lumen.json", "web/client_secrets.json", "web/env/site.py",
                      "web/models/weights.bin", "docs/cache/proof.json", "Audiobook/author-audit/env/config.py",
                      "web/.cache/weights.bin", "web/.pytest_cache/cache.json", "web/downloaded_models/weights.bin",
-                     "web/.mypy_cache/meta.json", "web/.ruff_cache/meta.json", "web/.tox/site.py", "web/.nox/site.py"]
+                     "web/.mypy_cache/meta.json", "web/.ruff_cache/meta.json", "web/.tox/site.py", "web/.nox/site.py",
+                     "secret.json", "secrets.json", "docs/Secrets.json", "web/secret.json",
+                     "Audiobook/v8/secret.json", "Audiobook/v8/mastered/secrets.json"]
         for name in excluded:
             path = self.root / name; path.parent.mkdir(parents=True, exist_ok=True); path.write_text("excluded")
         (self.root / "web/env/linked.py").symlink_to(self.root / self.paths[0])
@@ -653,6 +715,24 @@ else:
         self.assertFalse(any(name.endswith((".m4b", ".zip")) or "receipts" in name or "unselected" in name or ".env" in name or "node_modules" in name or ".npmrc" in name for name in names))
         self.assertEqual(sum("expectedSha256" in row for row in plan["files"]), 3)
 
+    def test_collector_requires_valid_checkpoint_hash_for_selected_lossless_audio(self):
+        sys.path.insert(0, str(SCRIPT.parent))
+        self.addCleanup(lambda: sys.path.remove(str(SCRIPT.parent)))
+        import book_content as content
+        mp3 = self.root / self.paths[2]
+        mp3.with_suffix(".wav").write_bytes(b"lossless fixture")
+        mp3.with_suffix(".qa.json").write_text('{"warnings":[]}')
+        inventory = {"recordings": [{"sourcePath": self.paths[2], "sha256": hashlib.sha256(mp3.read_bytes()).hexdigest(),
+                                    "selectedClips": []}]}
+        for checkpoint in [{}, {"output_sha256": {}}, {"output_sha256": {"lossless_wav": None}},
+                           {"output_sha256": {"lossless_wav": ""}}, {"output_sha256": {"lossless_wav": "bad-hash"}},
+                           {"output_sha256": None}, {"output_sha256": {"lossless_wav": 42}}]:
+            with self.subTest(checkpoint=checkpoint):
+                mp3.with_suffix(".checkpoint.json").write_text(json.dumps(checkpoint))
+                with patch.object(content, "load_project_registry", return_value={}), \
+                     patch.object(content, "load_recording_inventory", return_value=inventory):
+                    with self.assertRaisesRegex(backup.BackupError, "production.*hash|lossless.*hash"):
+                        backup.collect_release_fileset(self.root, "lumen-backup-fixture")
 
 if __name__ == "__main__":
     unittest.main()

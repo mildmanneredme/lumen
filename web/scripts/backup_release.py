@@ -30,7 +30,7 @@ BLOCKED_PARTS = {".git", ".vercel", ".aws", ".ssh", ".codex", ".agents", "receip
                  "node_modules", "__pycache__", ".venv", "venv", "models-cache", "downloaded-models"}
 BLOCKED_SUFFIXES = {".pem", ".key", ".p12", ".pfx", ".jks", ".keystore", ".pyc", ".lock"}
 BLOCKED_FILES = {".netrc", ".npmrc", ".pypirc", ".git-credentials", ".ds_store",
-                 "id_rsa", "id_ed25519", "id_ecdsa", "id_dsa"}
+                 "id_rsa", "id_ed25519", "id_ecdsa", "id_dsa", "secret.json", "secrets.json"}
 GENERATED_DIRECTORIES = {"env", "venv", "models", "cache", "caches", "checkpoints",
                          "downloaded-models", "models-cache", "pytest-cache", "mypy-cache",
                          "ruff-cache", "tox", "nox"}
@@ -333,18 +333,23 @@ def copy_snapshot(root, destination, plan, *, minimum_free_bytes=DEFAULT_RESERVE
              "copyStatus": "incomplete", "remoteSyncStatus": "pending", "files": copied,
              "totalBytes": plan["totalBytes"], "copiedBytes": 0}
     write_json(destination / "backup-state.json", state)
+    remaining = plan["totalBytes"]
+    def check_capacity(copied=0):
+        require(shutil.disk_usage(parent).free >= remaining - copied + minimum_free_bytes,
+                "Insufficient local free space during backup; incomplete copy retained")
     try:
         for row in rows:
-            require(shutil.disk_usage(parent).free >= row["bytes"] + minimum_free_bytes,
-                    "Insufficient local free space during backup; incomplete copy retained")
+            check_capacity()
             source = check_source_clock(root, row)
             count, source_hash = copy_hashed(source, destination / "files" / row["path"],
-                                             maximum_bytes=row["bytes"], expected_source=row)
+                                             maximum_bytes=row["bytes"], expected_source=row,
+                                             before_write=check_capacity)
             require(count == row["bytes"], f"Backup source byte count changed: {row['path']}")
             check_source_clock(root, row)
             require(row.get("expectedSha256", source_hash) == source_hash, f"Backup production hash differs: {row['path']}")
             copied.append({"path": row["path"], "bytes": count, "sha256": source_hash})
             state["copiedBytes"] += count
+            remaining -= count
             write_json(destination / "backup-state.json", state)
             if progress:
                 progress(len(copied), len(rows), state["copiedBytes"], plan["totalBytes"])
@@ -412,7 +417,9 @@ def restore_sample(root, snapshot, destination, paths, *, minimum_free_bytes=DEF
     require(destination != public_root and public_root not in destination.parents,
             "Restore destination cannot be public web/dist")
     report = verify_snapshot(snapshot, paths)
-    snapshot, _, rows = manifest_files(snapshot, paths)
+    snapshot, manifest, rows = manifest_files(snapshot, paths)
+    require(manifest["manifestSha256"] == report["manifestSha256"],
+            "Backup manifest changed after sample verification")
     remaining = sum(row["bytes"] for row in rows)
     require(shutil.disk_usage(parent).free >= remaining + minimum_free_bytes,
             "Insufficient local free space for restored sample plus reserve")
@@ -463,7 +470,10 @@ def collect_release_fileset(root, backup_id):
         qa_name = str(Path(name).with_suffix(".qa.json"))
         checkpoint = read_json(owned_file(root, checkpoint_name))
         add(checkpoint_name); add(qa_name)
-        add(str(Path(name).with_suffix(".wav")), checkpoint.get("output_sha256", {}).get("lossless_wav"))
+        output_hashes = checkpoint.get("output_sha256")
+        require(isinstance(output_hashes, dict) and isinstance(output_hashes.get("lossless_wav"), str)
+                and SHA256.fullmatch(output_hashes["lossless_wav"]), f"Missing production lossless hash: {name}")
+        add(str(Path(name).with_suffix(".wav")), output_hashes["lossless_wav"])
         for clip in recording["selectedClips"]:
             add(clip["sourcePath"], clip["rawAudioSha256"])
             add(str(Path(clip["sourcePath"]).with_suffix(".json")))
@@ -494,7 +504,12 @@ def collect_release_fileset(root, backup_id):
     for edition in ["v7", "v8"]:
         job = root / "Audiobook" / edition
         for path in list(job.glob("*.json")) + list(job.glob("*.py")) + list((job / "delivery").glob("*.json")) + list((job / "mastered").glob("*.json")):
-            add(path.relative_to(root).as_posix())
+            name = path.relative_to(root).as_posix()
+            try:
+                safe_relative(name)
+            except BackupError:
+                continue
+            add(name)
     for path in root.iterdir():
         if path.is_file() and (path.suffix.lower() in {".md", ".json", ".py", ".txt", ".toml"} or path.name == ".gitignore"):
             try:
