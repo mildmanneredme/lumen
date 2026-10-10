@@ -533,8 +533,8 @@
           : (alias?.trackId === track.id && alias.sentenceIds[bookmark.sentenceId]) ||
             bookmark.sentenceId;
       const sentence = loaded.byId.get(anchor);
-      const anchorMeasured = bookmark.anchorMeasured === true || (bookmark.anchorMeasured === undefined &&
-        (knownCompletion || legacyAnchorMeasured(bookmark)));
+      const anchorMeasured = knownCompletion || bookmark.anchorMeasured === true ||
+        (bookmark.anchorMeasured === undefined && legacyAnchorMeasured(bookmark));
       ensure(
         (!completedAlias || knownCompletion) && sentence &&
           (bookmark.audioTime === 0 || (anchorMeasured && finite(sentence.start) && finite(sentence.end))),
