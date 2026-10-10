@@ -54,6 +54,15 @@ v6:chapter-001:p001-s01
 v6:chapter-002:p001-s01
 ```
 
+Sentence segmentation preserves dotted initialisms and personal initials within
+prose, including `D.C. residence`, `U.S. Supreme Court`, and `Ursula K. Le Guin`.
+Clear following sentence openers, such as `D.C. He`, retain the true boundary;
+paragraph ends remain boundaries. Ambiguous abbreviation contexts still need
+editorial review before anchor/timing approval. The current private registry has
+12,912 sentence anchors, and the existing 60 pilot sentence aliases are unchanged.
+These exports remain pending; the corrected segmentation changes their content
+hashes before final timing maps are created.
+
 Pass the prior registry with `--previous` when rebuilding. A reused sentence ID
 with different prose is rejected. A revised manuscript needs a new version and
 an explicitly reviewed migration map; positional IDs alone cannot determine

@@ -103,12 +103,28 @@ def display_markdown(markdown):
 
 
 def sentence_ranges(text):
+    # Dotted initialisms and personal initials can occur within prose before
+    # either lower-case words (D.C. residence) or proper names (U.S. Supreme
+    # Court, Ursula K. Le Guin). Clear sentence openers still end the sentence
+    # after an initialism, as does the end of the paragraph.
+    sentence_openers = {
+        "A", "An", "The", "This", "That", "These", "Those", "He", "She", "It", "They", "We", "I", "You",
+        "His", "Her", "Their", "Our", "My", "Your", "There", "Here", "Then", "But", "And", "Yet", "So",
+        "Now", "When", "While", "After", "Before", "At", "In", "On", "As", "For", "From", "With", "Without",
+        "By", "No", "Not", "Nothing", "Someone", "Something", "Everyone", "Everything", "Nobody", "Some",
+        "Most", "All", "Each", "One", "Two", "Three", "Another", "Both", "Neither", "Either", "More", "Less",
+        "Only", "Even", "Still", "Finally", "Meanwhile", "Later", "Next", "Instead", "Eventually",
+    }
     cursor = 0
     for match in re.finditer(r"[.!?][\"”']?(?=\s+|$)", text):
         ending = match.end()
         candidate = text[cursor:ending].strip()
         if re.search(r"\b(?:Mr|Mrs|Ms|Dr|Prof|Sr|Jr|St|vs|etc|et al|a\.m|p\.m|e\.g|i\.e)\.$", candidate, re.I):
             continue
+        if re.search(r"\b(?:[A-Z]\.)+$", candidate.rstrip('\"”\'')):
+            following = re.match(r'\s*[\"“‘(\[]*([A-Za-z]+)', text[ending:])
+            if following and following.group(1) not in sentence_openers:
+                continue
         if candidate:
             start = cursor + len(text[cursor:ending]) - len(text[cursor:ending].lstrip())
             yield start, ending

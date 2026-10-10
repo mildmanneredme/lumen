@@ -84,6 +84,32 @@ class ContentContractTests(unittest.TestCase):
         self.assertIn("v6:chapter-002:p001-s01", ids)
         self.assertTrue(all(t["publicationStatus"] == "pending" for t in registry["tracks"]))
 
+    def test_initialisms_and_name_initials_do_not_split_a_sentence(self):
+        cases = [
+            ("He called from his D.C. residence. Nobody answered.",
+             ["He called from his D.C. residence.", "Nobody answered."]),
+            ("A U.S. senator spoke. She left.", ["A U.S. senator spoke.", "She left."]),
+            ("The U.S. Supreme Court convened. They waited.",
+             ["The U.S. Supreme Court convened.", "They waited."]),
+            ("N.A.T.O. officials arrived. Nothing changed.", ["N.A.T.O. officials arrived.", "Nothing changed."]),
+            ("J. R. Oppenheimer waited. It was late.", ["J. R. Oppenheimer waited.", "It was late."]),
+            ("He knew J. Smith. Smith disagreed.", ["He knew J. Smith.", "Smith disagreed."]),
+        ]
+        for text, expected in cases:
+            with self.subTest(text=text):
+                self.assertEqual([text[start:end] for start, end in content.sentence_ranges(text)], expected)
+
+    def test_initialism_period_still_ends_sentence_at_a_clear_new_sentence(self):
+        cases = [
+            ("They arrived in D.C. He made a call.", ["They arrived in D.C.", "He made a call."]),
+            ("She lived in the U.S. The hearing started.", ["She lived in the U.S.", "The hearing started."]),
+            ("Washington, D.C.", ["Washington, D.C."]),
+            ('"He lives in D.C." She waited.', ['"He lives in D.C."', "She waited."]),
+        ]
+        for text, expected in cases:
+            with self.subTest(text=text):
+                self.assertEqual([text[start:end] for start, end in content.sentence_ranges(text)], expected)
+
     def test_changed_source_hash_is_rejected(self):
         (self.source / "part1.md").write_text(self.source_text.replace("waited", "left"))
         with self.assertRaisesRegex(content.ContentError, "source hash"):
@@ -315,6 +341,15 @@ class ActualInventoryTests(unittest.TestCase):
         self.assertNotEqual(by_track[0]["decodedDuration"], by_track[1]["decodedDuration"])
         self.assertTrue(all(r["publicationStatus"] == "pending" and r["audioHashVerified"] is False
                             for r in inventory["recordings"]))
+
+    def test_chapter_50_d_c_residence_is_one_canonical_sentence(self):
+        chapter = next(track for track in self.registry["tracks"] if track["id"] == "chapter-050")
+        paragraph = next(paragraph for paragraph in chapter["paragraphs"] if "his D.C. residence" in paragraph["text"])
+        self.assertEqual([sentence["text"] for sentence in paragraph["sentences"]], [
+            "At 6:31 that morning in Washington, Polk opened the emergency video session from his D.C. residence.",
+            "Screens showed damage assessments.", "Phones rang constantly.",
+            "Suspicion crystallized quickly: someone with insider knowledge of all six companies had designed these exploits.",
+        ])
 
 
 if __name__ == "__main__":
