@@ -516,7 +516,9 @@ def validate_timing_map(track, recording, timing, *, require_approved=False):
                     f"Missing/stale human {kind} approval")
         require(timing["approvals"]["alignment"].get("timingSha256") == timing_content_hash(timing),
                 "Missing/stale alignment timing content hash")
-        require(recording.get("audioHashVerified") is True, "Final physical audio bytes are not hash verified")
+        require(recording.get("audioHashVerified") is True
+                and recording.get("audioVerificationSha256") == recording["sha256"],
+                "Final physical audio bytes are not hash verified for the current recording")
         selected_clips = recording.get("selectedClips")
         require(isinstance(selected_clips, list) and bool(selected_clips)
                 and all(isinstance(clip, dict) for clip in selected_clips)
@@ -641,6 +643,10 @@ def load_recording_inventory(root, registry):
             qa_path = path.with_suffix(".qa.json")
             checkpoint_path = path.with_suffix(".checkpoint.json")
             qa, checkpoint = read_project_json(root, qa_path), read_project_json(root, checkpoint_path)
+            require(qa.get("technical_ceilings_and_format_checks_passed") is True
+                    and isinstance(qa.get("coordinator_checks"), dict)
+                    and qa["coordinator_checks"].get("duration_and_boundary_checks_passed") is True,
+                    f"{edition}/{track['id']}: failed or missing technical QA gate")
             binding = row.get("source_binding", {})
             identity = checkpoint.get("identity")
             require(isinstance(identity, dict) and isinstance(binding, dict), f"{edition}/{track['id']}: missing master identity")
@@ -685,7 +691,8 @@ def load_recording_inventory(root, registry):
                                "rawSourceHashesVerified": False, "rawSourceVerificationSha256": None,
                                "textSha256": track["textSha256"], "warnings": qa.get("warnings", []),
                                "publicationStatus": "pending", "contentApproval": "pending",
-                               "timingApproval": "pending", "audioHashVerified": False})
+                               "timingApproval": "pending", "audioHashVerified": False,
+                               "audioVerificationSha256": None})
     return {"schemaVersion": 1, "bookId": registry["bookId"], "registrySha256": registry["registrySha256"],
             "recordings": recordings, "publicationStatus": "pending"}
 
@@ -697,7 +704,7 @@ def verify_recording_file(recording, root):
     require(root in path.parents and path.is_file() and path.stat().st_size == recording["bytes"],
             "Unexpected audio path/byte count")
     require(file_hash(path) == recording["sha256"], "Final audio file hash changed")
-    return dict(recording, audioHashVerified=True)
+    return dict(recording, audioHashVerified=True, audioVerificationSha256=recording["sha256"])
 
 
 def verify_recording_sources(recording, root):

@@ -105,6 +105,9 @@ across the checkpoint, delivery binding, and QA. The mastering report must be
 complete and bind the current generation manifest. Merely refreshing outer
 container hashes cannot relabel an old master as a new selected take; a retake
 requires an affected chapter rebuild and coherent provenance.
+Both QA gates, `technical_ceilings_and_format_checks_passed` and coordinator
+`duration_and_boundary_checks_passed`, must be explicitly true. Failed or
+missing technical checks reject the inventory even if outer hashes agree.
 
 Each selected manifest output and checkpoint input path must name the same
 logical `Audiobook/<edition>/raw/<selected-id>.wav` file. Historical absolute
@@ -132,7 +135,7 @@ permission to read files outside the selected project root.
 
 The duration comes from decoded MP3 samples, rather than the lossless assembly
 clock used by historical delivery-manifest fields. Records initially have
-`audioHashVerified: false`, `rawSourceHashesVerified: false`,
+`audioHashVerified: false`, `audioVerificationSha256: null`, `rawSourceHashesVerified: false`,
 `rawSourceVerificationSha256: null`, `contentApproval: pending`,
 `timingApproval: pending`, and `publicationStatus: pending`. This metadata
 inspection checks raw file ownership, existence, and size, without reading all
@@ -140,8 +143,11 @@ raw audio or 2.66 GB of mastered audio. Matching metadata or byte counts alone
 does not prove that the current raw bytes still match their master inputs.
 
 `verify_recording_file(recording, root)` verifies the actual file byte count and
-streams its SHA-256, returning a copy with `audioHashVerified: true`. It does not
-grant content approval. Re-encoding a chapter creates a new recording identity;
+streams its SHA-256, returning a copy with `audioHashVerified: true` and
+`audioVerificationSha256` bound to that verified recording hash. Publication
+requires the proof hash to match the current audio hash; retaining a true flag
+after re-encoding cannot reuse the earlier proof. It does not grant content
+approval. Re-encoding a chapter creates a new recording identity;
 its final encoded bytes must be inventoried and aligned again.
 
 `verify_recording_sources(recording, root)` streams only that recording's

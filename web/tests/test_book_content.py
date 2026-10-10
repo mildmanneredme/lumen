@@ -69,6 +69,7 @@ class ContentContractTests(unittest.TestCase):
         recording = {
             "trackId": track["id"], "narratorId": "charon", "sha256": "a" * 64,
             "bytes": 128, "decodedDuration": 8.0, "audioHashVerified": True,
+            "audioVerificationSha256": "a" * 64,
             "selectedClips": selected_clips, "selectionSha256": selection_hash,
             "rawSourceHashesVerified": True, "rawSourceVerificationSha256": selection_hash,
         }
@@ -119,7 +120,9 @@ class ContentContractTests(unittest.TestCase):
                                             "request_sha256": [item["request_sha256"] for item in inputs]}
                 qa_path = audio.with_suffix(".qa.json")
                 write_json(qa_path, {"decoded_mp3_qa": {"samples": 441000},
-                                     "coordinator_checks": {"sample_rate": 44100}, "warnings": [],
+                                     "technical_ceilings_and_format_checks_passed": True,
+                                     "coordinator_checks": {"sample_rate": 44100,
+                                         "duration_and_boundary_checks_passed": True}, "warnings": [],
                                      "master_identity_sha256": identity_hash})
                 outputs = {"mp3": content.file_hash(audio), "qa": content.file_hash(qa_path)}
                 checkpoint_path = audio.with_suffix(".checkpoint.json")
@@ -235,6 +238,42 @@ class ContentContractTests(unittest.TestCase):
             with self.subTest(change=change):
                 with self.assertRaisesRegex(content.ContentError, "raw source"):
                     content.validate_timing_map(track, dict(recording, **change), timing, require_approved=True)
+
+    def test_publication_rejects_missing_master_proof_or_old_proof_after_reencode(self):
+        track, recording, timing = self.timing_fixture()
+        for mutation in ["missing", "reencoded"]:
+            changed = copy.deepcopy(recording)
+            reviewed = copy.deepcopy(timing)
+            if mutation == "missing":
+                changed.pop("audioVerificationSha256")
+            else:
+                changed["sha256"] = "b" * 64
+                reviewed["audioSha256"] = changed["sha256"]
+            approved = {"status": "approved", "reviewer": "Fixture reviewer", "reviewedAt": "2026-10-10T12:00:00Z",
+                        "audioSha256": changed["sha256"], "textSha256": track["textSha256"]}
+            reviewed["approvals"] = {"content": dict(approved), "alignment": dict(approved)}
+            reviewed["approvals"]["alignment"]["timingSha256"] = content.timing_content_hash(reviewed)
+            with self.subTest(mutation=mutation):
+                with self.assertRaisesRegex(content.ContentError, "physical audio|audio.*verif"):
+                    content.validate_timing_map(track, changed, reviewed, require_approved=True)
+
+    def test_inventory_rejects_failed_or_missing_technical_qa_gate(self):
+        root, registry = self.production_fixture()
+        qa_path = root / "Audiobook/v7/mastered/chapter-001.qa.json"
+        original = json.loads(qa_path.read_text())
+        for field in ["technical_ceilings_and_format_checks_passed", "duration_and_boundary_checks_passed"]:
+            for value in [False, None]:
+                qa = copy.deepcopy(original)
+                target = qa if field.startswith("technical_") else qa["coordinator_checks"]
+                if value is None:
+                    target.pop(field)
+                else:
+                    target[field] = value
+                qa_path.write_text(json.dumps(qa))
+                self.refresh_fixture_containers(root)
+                with self.subTest(field=field, value=value):
+                    with self.assertRaisesRegex(content.ContentError, "technical QA"):
+                        content.load_recording_inventory(root, registry)
 
     def test_publication_recomputes_raw_proof_scope_after_selected_source_edit(self):
         track, recording, timing = self.timing_fixture()
@@ -685,6 +724,7 @@ class ContentContractTests(unittest.TestCase):
                      "audioHashVerified": False, "publicationStatus": "pending"}
         verified = content.verify_recording_file(recording, root)
         self.assertTrue(verified["audioHashVerified"])
+        self.assertEqual(verified["audioVerificationSha256"], recording["sha256"])
         self.assertEqual(verified["publicationStatus"], "pending")
         self.assertFalse(recording["audioHashVerified"])
         audio.write_bytes(b"different bytes!!!!!")
