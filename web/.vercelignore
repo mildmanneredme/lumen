@@ -11,8 +11,5 @@ assets/
 node_modules/
 server/README.md
 
-# Preserve the local pilot for historical tabs and tests; never publish its
-# complete prose or audio as an unauthenticated bypass of the private reader.
-dist/data/
-dist/assets/*.mp3
-
+# The next private-reader change removes legacy prose/audio from deployment.
+# Retain the existing pilot until that shell migration lands.

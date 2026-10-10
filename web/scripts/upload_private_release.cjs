@@ -113,7 +113,7 @@ async function verifyPrivateAPI({inventory,cookie,fetch=globalThis.fetch,byteBud
   const manifest=inventory.assets.find(asset=>asset.url.includes('/book-manifest.'));
   ensure(manifest,'Manifest is missing from private inventory');
   makePlan(inventory,manifest.url);
-  const needed=inventory.assets.reduce((sum,asset)=>sum+asset.samples.reduce((n,sample)=>n+sample.end-sample.start+1,0),0);
+  const needed=manifest.bytes+inventory.assets.reduce((sum,asset)=>sum+asset.samples.reduce((n,sample)=>n+sample.end-sample.start+1,0),0);
   ensure(safeBudget(byteBudget)&&needed<=byteBudget,'API verification byte budget is insufficient');
   const origin=inventory.appOrigin;
   const request=async(url,method='GET',extra={},authenticated=true)=>{
@@ -124,6 +124,12 @@ async function verifyPrivateAPI({inventory,cookie,fetch=globalThis.fetch,byteBud
   ensure(response.status===401,'Book manifest is anonymously accessible');await discard(response);
   response=await request(origin+'/api/book','GET',{Origin:'https://unauthorized.invalid'});
   ensure(response.status===403,'Cross-origin cookie access is allowed');await discard(response);
+  response=await request(origin+'/api/book');
+  ensure(response.status===200&&response.headers.get('content-length')===String(manifest.bytes)&&
+    (response.headers.get('content-type')||'').split(';')[0]===manifest.contentType&&
+    response.headers.get('etag')===`"sha256-${manifest.sha256}"`,'Authorized book manifest metadata differs');
+  const bookBytes=await boundedBytes(response.body,manifest.bytes);
+  ensure(bookBytes.length===manifest.bytes&&sha256(bookBytes)===manifest.sha256,'Authorized book manifest SHA-256 differs');
   const verified=[];
   for(const asset of inventory.assets) {
     response=await request(asset.url,'HEAD',{},false);ensure(response.status===401,'Asset metadata is anonymously accessible');await discard(response);
