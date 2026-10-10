@@ -2,7 +2,7 @@
 
 The reader is in `dist/`. The full release uses the existing mono, 192 kbps MP3s in both voices: female by default, with the last narrator remembered. It contains 89 story chapters plus opening and closing credits. The current production address remains [lumen-phi-five.vercel.app](https://lumen-phi-five.vercel.app/); release promotion is pending technical verification.
 
-Full prose, timings, audio and future paintings are delivered through authenticated `/api/` endpoints and a private Vercel Blob store. The public app shell contains no full-book prose or invite registry. Invitations establish a secure HttpOnly cookie. Sign out clears the displayed book and audio source while preserving this browser's listening bookmark. The local author audit remains outside the deployment.
+Full prose and timings use authenticated `/api/` endpoints backed by private Cloudflare R2. A Cloudflare Worker owns shared-code sessions and access policy; Vercel returns private redirects for audio and future paintings so media streams directly from Cloudflare. The public app shell contains no full-book prose or invite registry. Invitations establish a secure HttpOnly cookie. Sign out clears the displayed book and audio source while preserving this browser's listening bookmark. The local author audit remains outside the deployment.
 
 ## Listening
 
@@ -36,7 +36,10 @@ The browser fixture generates short audio in memory and supplies three chapters 
 
 After the private full release has been staged, `node tests/full-release-browser.cjs --registry /absolute/path/to/prepared-registry.json` checks all 182 payloads against canonical prose and briefly plays ten representative original MP3s in a loopback-only Chrome fixture. It verifies actual native seeking, chapter/voice changes, resume and explicit cue gaps. QA evidence stays in a private temporary directory. This check does not certify the hosted backend, physical phones or a full-book listening pass.
 
-The release pipeline and deployment steps are documented in `../docs/backlog/`: content contract, audio release, release exporter, media delivery, private release specification and backup recovery. `server/README.md` documents invitation and private Blob configuration.
+
+For hosted Chrome acceptance, `node tests/cloudflare-browser.cjs --self-test` checks its private-input and credential-redaction contract. The hosted mode requires explicit candidate/Worker origins, `LUMEN_QA_EXPECTED_RELEASE_ID`, the prepared raw `/api/book` byte hash in `LUMEN_QA_EXPECTED_MANIFEST_SHA256`, a privately supplied access code and a fresh owner-only output directory under `/private/tmp`. It requires installed Google Chrome and records its version. Portrait checks require a full-width timeline and nonzero simulated safe-area geometry; physical-phone acceptance remains separate. A protected preview may need an authorized temporary Vercel testing token; preserve deployment protection and revoke that token after testing. This suite checks representative native MP3 playback, seeking, resume, both voices, private-cache exclusion and phone/iPad/desktop layouts. Its self-test alone establishes none of those hosted behaviors. `node tests/cloudflare-browser.cjs --self-test-browser` additionally renders the actual reader HTML/CSS in installed Chrome with nonzero CDP safe-area overrides and blocked network requests. That offline geometry check does not test the protected Vercel candidate or physical hardware.
+
+The release pipeline and deployment steps are documented in `../docs/backlog/`: content contract, audio release, release exporter, media delivery, private release specification and backup recovery. `server/README.md` documents invitation configuration and the retained Blob fallback. [Cloudflare delivery](../docs/backlog/cloudflare-delivery.md) describes the selected hosting and its actual verification status.
 
 ## Release operation
 
