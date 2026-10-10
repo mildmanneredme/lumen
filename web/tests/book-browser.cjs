@@ -118,6 +118,99 @@ let browser;
   const ready=page=>page.waitForFunction(()=>window.LUMEN_CHAPTER && document.querySelector('#narration').readyState>=1);
   const choose=async(page,id)=>{await page.locator('#chapters-open').click();await page.locator('#chapter-list [data-track-id="'+id+'"]').click();};
   const reached=(page,id)=>page.waitForFunction(id=>window.LUMEN_CHAPTER?.chapterId===id && document.querySelector('#narration').readyState>=1,id);
+  const finished=storedPosition('chapter-001','autonoe',12);finished.completed=true;
+  const trailingSilence=JSON.parse(JSON.stringify(payloads.get('/fixture/chapter-001-charon.json')));
+  trailingSilence.paragraphs[0].end=7;trailingSilence.paragraphs[0].sentences[1].end=7;
+  const finishedReader=await fixtureContext({legacy:finished,overrides:new Map([['/fixture/chapter-001-charon.json',trailingSilence]])});
+  await finishedReader.page.goto(origin,{waitUntil:'domcontentloaded'});await ready(finishedReader.page);
+  await finishedReader.page.locator('#settings-open').click();await finishedReader.page.locator('#narrator').selectOption('charon');
+  await finishedReader.page.locator('#settings-close').click();
+  await finishedReader.page.waitForFunction(()=>window.LUMEN_CHAPTER.audio.narratorId==='charon' && document.querySelector('#narration').readyState>=1);
+  await finishedReader.page.waitForTimeout(100);
+  regression('a completed full chapter stays completed at the new narrator endpoint',await finishedReader.page.evaluate(()=>{
+    const audio=document.querySelector('#narration'),saved=JSON.parse(localStorage.getItem('lumen-book-v2')).lastPosition;
+    return audio.paused && Math.abs(audio.currentTime-8)<.04 && saved.completed && Math.abs(saved.audioTime-8)<.04;
+  }));
+  await finishedReader.context.close();
+  const rapidReader=await fixtureContext();
+  let heldChapter=false,heldRequested=false,releaseHeld;
+  await rapidReader.page.route('**/fixture/chapter-002-autonoe.json',async route=>{
+    if(heldChapter) {heldRequested=true;await new Promise(resolve=>releaseHeld=resolve);}
+    await route.fulfill({json:payloads.get('/fixture/chapter-002-autonoe.json')});
+  });
+  const holdNext=()=>{heldChapter=true;heldRequested=false;releaseHeld=undefined;};
+  const held=async()=>{for(let n=0;n<100&&!heldRequested;n++) await rapidReader.page.waitForTimeout(10);assert.ok(heldRequested,'deferred chapter request started');};
+  const releaseNext=async()=>{heldChapter=false;releaseHeld();await rapidReader.page.waitForTimeout(80);};
+  await rapidReader.page.goto(origin,{waitUntil:'domcontentloaded'});await ready(rapidReader.page);
+  await rapidReader.page.locator('#play').click();await rapidReader.page.waitForFunction(()=>!document.querySelector('#narration').paused);
+  holdNext();await choose(rapidReader.page,'chapter-002');await held();
+  await choose(rapidReader.page,'chapter-003');await reached(rapidReader.page,'chapter-003');await rapidReader.page.waitForTimeout(100);
+  regression('rapid chapter navigation inherits the pending listening intent',await rapidReader.page.evaluate(()=>!document.querySelector('#narration').paused));
+  await releaseNext();
+  regression('a superseded chapter response cannot stop the current listening choice',await rapidReader.page.evaluate(()=>
+    window.LUMEN_CHAPTER.chapterId==='chapter-003' && !document.querySelector('#narration').paused));
+  if(await rapidReader.page.evaluate(()=>document.querySelector('#narration').paused)) await rapidReader.page.locator('#play').click();
+  await choose(rapidReader.page,'chapter-001');await reached(rapidReader.page,'chapter-001');
+  holdNext();await choose(rapidReader.page,'chapter-002');await held();
+  await rapidReader.page.locator('#settings-open').click();await rapidReader.page.locator('#narrator').selectOption('charon');await rapidReader.page.locator('#settings-close').click();
+  await reached(rapidReader.page,'chapter-002');await rapidReader.page.waitForTimeout(100);
+  regression('a narrator choice for a loading chapter inherits the pending listening intent',await rapidReader.page.evaluate(()=>
+    window.LUMEN_CHAPTER.audio.narratorId==='charon' && !document.querySelector('#narration').paused));
+  await releaseNext();
+  await rapidReader.page.locator('#settings-open').click();await rapidReader.page.locator('#narrator').selectOption('autonoe');await rapidReader.page.locator('#settings-close').click();
+  await rapidReader.page.waitForFunction(()=>window.LUMEN_CHAPTER.audio.narratorId==='autonoe');
+  if(await rapidReader.page.evaluate(()=>document.querySelector('#narration').paused)) await rapidReader.page.locator('#play').click();
+  await choose(rapidReader.page,'chapter-001');await reached(rapidReader.page,'chapter-001');
+  holdNext();await choose(rapidReader.page,'chapter-002');await held();
+  await rapidReader.page.locator('#play').click();
+  regression('an explicit pause during loading leaves the old source paused',await rapidReader.page.evaluate(()=>document.querySelector('#narration').paused));
+  await choose(rapidReader.page,'chapter-003');await reached(rapidReader.page,'chapter-003');await rapidReader.page.waitForTimeout(100);
+  regression('an explicit pause overrides listening intent for a later chapter choice',await rapidReader.page.evaluate(()=>document.querySelector('#narration').paused));
+  await releaseNext();
+  if(await rapidReader.page.evaluate(()=>!document.querySelector('#narration').paused)) await rapidReader.page.locator('#play').click();
+  await choose(rapidReader.page,'chapter-001');await reached(rapidReader.page,'chapter-001');
+  holdNext();await choose(rapidReader.page,'chapter-002');await held();await choose(rapidReader.page,'chapter-003');
+  await reached(rapidReader.page,'chapter-003');await rapidReader.page.waitForTimeout(100);
+  regression('rapid navigation that starts paused stays paused',await rapidReader.page.evaluate(()=>document.querySelector('#narration').paused));
+  await releaseNext();await rapidReader.context.close();
+  const inviteContext=await browser.newContext({viewport:{width:390,height:844},serviceWorkers:'block'});
+  const inviteReader=await inviteContext.newPage();inviteReader.on('pageerror',error=>errors.push(String(error)));
+  const firstInvite='r'.repeat(43),replacementInvite='s'.repeat(43),invitePosts=[];
+  let inviteAuthenticated=false,inviteUnavailable=true;
+  await inviteReader.route('**/api/session',async route=>{
+    if(route.request().method()==='POST') {
+      invitePosts.push(JSON.parse(route.request().postData()).invite);
+      if(inviteUnavailable) return route.fulfill({status:503});
+      inviteAuthenticated=true;
+    }
+    if(route.request().method()==='DELETE') inviteAuthenticated=false;
+    await route.fulfill({json:{authenticated:inviteAuthenticated}});
+  });
+  await inviteReader.route('**/api/book',route=>route.fulfill({json:manifest}));await inviteReader.route('**/fixture/**',fixtureRoute);
+  await inviteReader.goto(origin+'/#invite='+firstInvite,{waitUntil:'domcontentloaded'});
+  await inviteReader.waitForFunction(()=>document.querySelector('#access-status').textContent.includes('could not be verified'));
+  regression('a failed invitation is immediately removed from the address bar',new URL(inviteReader.url()).hash==='');
+  inviteUnavailable=false;await inviteReader.locator('#invite-submit').click();await inviteReader.waitForTimeout(200);
+  regression('an empty invitation retry reuses the original fragment token',invitePosts.length===2 && invitePosts[1]===firstInvite);
+  const inviteRetried=await inviteReader.evaluate(()=>!!window.LUMEN_BOOK);
+  regression('a successful fragment retry opens the book without pasting the invitation again',inviteRetried);
+  if(!inviteRetried) {await inviteReader.locator('#invite-code').fill(firstInvite);await inviteReader.locator('#invite-submit').click();}
+  await ready(inviteReader);
+  regression('retained invitation tokens never enter browser storage',await inviteReader.evaluate(tokens=>
+    !Object.values(localStorage).some(value=>tokens.some(token=>value.includes(token))) &&
+    !Object.values(sessionStorage).some(value=>tokens.some(token=>value.includes(token))),[firstInvite,replacementInvite]));
+  await inviteReader.locator('#settings-open').click();await inviteReader.locator('#sign-out-settings').click();
+  await inviteReader.waitForFunction(()=>!document.body.classList.contains('authenticated'));
+  const postCount=invitePosts.length;await inviteReader.locator('#invite-submit').click();await inviteReader.waitForTimeout(100);
+  regression('sign out clears the retained invitation retry token',invitePosts.length===postCount);
+  inviteUnavailable=true;await inviteReader.evaluate(token=>{location.hash='invite='+token;},firstInvite);
+  await inviteReader.waitForFunction(()=>document.querySelector('#access-status').textContent.includes('could not be verified'));
+  await inviteReader.evaluate(token=>{location.hash='invite='+token;},replacementInvite);
+  for(let n=0;n<100&&invitePosts.at(-1)!==replacementInvite;n++) await inviteReader.waitForTimeout(10);
+  await inviteReader.waitForFunction(()=>!document.querySelector('#invite-submit').disabled);
+  inviteUnavailable=false;await inviteReader.locator('#invite-submit').click();await inviteReader.waitForTimeout(200);
+  regression('a new invitation replaces the prior token for an empty retry',invitePosts.at(-1)===replacementInvite && await inviteReader.evaluate(()=>!!window.LUMEN_BOOK));
+  await inviteContext.close();
   const failedNext=['/fixture/chapter-002-autonoe.json'];
   const endedReader=await fixtureContext({failures:failedNext});
   await endedReader.page.goto(origin,{waitUntil:'domcontentloaded'});await ready(endedReader.page);

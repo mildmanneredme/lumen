@@ -13,7 +13,7 @@
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
   let duration = chapter.duration, scenes = [];
   let book, manifest, transitionToken = 0, retryTransition = null, continuationToken = 0, committing = false;
-  let accessToken = 0;
+  let pendingTransition = null, accessToken = 0, inviteRequest = 0, retainedInvite = '';
   let automaticEndHandled = false;
   const descriptions = {
     'opening-room': 'Adrian sits in his Berkeley living room, watching a glass office tower on television; a cold coffee rests nearby.',
@@ -276,19 +276,29 @@
     $('seek-feedback').hidden = !waiting && !errorMessage;
     if (errorMessage) $('seek-feedback').textContent = errorMessage;
     else if (waiting) $('seek-feedback').textContent = 'Loading your place at ' + formatTime(pendingSeek) + '…';
-    const wantsPlayback = !audio.paused || (waiting && resumeAfterSeek);
+    const wantsPlayback = pendingTransition?.listen ?? (!audio.paused || (waiting && resumeAfterSeek));
     $('play-icon').textContent = wantsPlayback ? 'Ⅱ' : '▶';
-    play.setAttribute('aria-label', ended ? 'Replay audiobook' : wantsPlayback ? 'Pause audiobook' : 'Play audiobook');
+    play.setAttribute('aria-label', ended && !pendingTransition ? 'Replay audiobook' : wantsPlayback ? 'Pause audiobook' : 'Play audiobook');
     $('play-status').textContent = errorMessage || (ended ? endingLabel() : chapter.title + (audio.paused ? ' · paused' : ' · listening'));
     updateMediaSession(true);
   }
   async function startPlayback() {
     try { await audio.play(); } catch (_) { $('play-status').textContent = 'Playback could not start. Select Play to try again.'; }
   }
+  function setListeningIntent(listen) {
+    if (pendingTransition) pendingTransition.listen = listen;
+    if (retryTransition) retryTransition.options.listen = listen;
+  }
   async function togglePlayback() {
     if (!book?.getActive()) return;
     bookmarkDirty = true;
     $('resume-panel').hidden = true;
+    if (pendingTransition) {
+      setListeningIntent(!pendingTransition.listen);
+      setPlayState();
+      return;
+    }
+    setListeningIntent(audio.paused && !resumeAfterSeek);
     if (audio.error) {
       const retryAt = currentPosition();
       audio.load(); pendingSeek = retryAt; issuedSeek = null; resumeAfterSeek = false;
@@ -331,10 +341,11 @@
   });
   $('speed').addEventListener('change',() => { audio.playbackRate = Number($('speed').value); savePreferences(); render(); });
   function startOver(listen = false) {
+    setListeningIntent(listen);
     resumeAfterSeek = false;
     audio.pause(); setFollow(true); seekTo(0);
     pane.scrollTo({top:0,behavior:'auto'});
-    if (listen) { if (pendingSeek !== null) resumeAfterSeek = true; else startPlayback(); }
+    if (listen && !pendingTransition) { if (pendingSeek !== null) resumeAfterSeek = true; else startPlayback(); }
   }
   $('replay').addEventListener('click',() => startOver(true));
   $('start-over').addEventListener('click',() => startOver());
@@ -391,9 +402,9 @@
   }
   if ('mediaSession' in navigator) {
     const actions = {
-      play: () => { if (audio.paused && !resumeAfterSeek) togglePlayback(); },
-      pause: () => { resumeAfterSeek = false; audio.pause(); savePosition(true); setPlayState(); },
-      stop: () => { resumeAfterSeek = false; audio.pause(); savePosition(true); setPlayState(); },
+      play: () => { if (pendingTransition) { setListeningIntent(true); setPlayState(); } else if (audio.paused && !resumeAfterSeek) togglePlayback(); },
+      pause: () => { setListeningIntent(false); resumeAfterSeek = false; audio.pause(); savePosition(true); setPlayState(); },
+      stop: () => { setListeningIntent(false); resumeAfterSeek = false; audio.pause(); savePosition(true); setPlayState(); },
       seekbackward: details => seekTo(currentPosition() - (details.seekOffset || 15)),
       seekforward: details => seekTo(currentPosition() + (details.seekOffset || 15)),
       seekto: details => { if (Number.isFinite(details.seekTime)) seekTo(details.seekTime); },
@@ -511,8 +522,9 @@
   async function transitionTo(trackId,narratorId,options={}) {
     if (!book) return;
     const token = ++transitionToken, oldActive = book.getActive();
-    const listen = options.listen ?? (!audio.paused || resumeAfterSeek);
-    const resumePrevious = !audio.paused && !audio.ended && !completed;
+    const listen = options.listen ?? pendingTransition?.listen ?? (!audio.paused || resumeAfterSeek);
+    const resumePrevious = pendingTransition?.resumePrevious ?? (!audio.paused && !audio.ended && !completed);
+    pendingTransition = {listen,resumePrevious};
     const sameTrackVoice = options.reason === 'voice' && oldActive?.trackId === trackId;
     const bookmark = options.bookmark === undefined && sameTrackVoice ? book.capture(currentPosition(),{completed}) : options.bookmark;
     if (oldActive) savePosition(true);
@@ -520,18 +532,24 @@
     $('transition-panel').hidden = false; $('transition-status').textContent = 'Loading chapter…'; $('transition-retry').hidden = true;
     retryTransition = {trackId,narratorId,options:{...options,bookmark,listen}};
     narratorOptions(trackId,narratorId);
+    setPlayState();
     try {
       const result = await book.load(trackId,narratorId,{bookmark});
       if (result.status === 'stale' || token !== transitionToken) return;
-      commitChapter(result.chapter,result.position,{initial:options.initial,listen});
+      const requestedListening = pendingTransition.listen;
+      pendingTransition = null;
+      commitChapter(result.chapter,result.position,{initial:options.initial,listen:requestedListening});
       updateURL(trackId,narratorId,options.history || (sameTrackVoice || options.initial ? 'replace' : 'push'));
       $('transition-panel').hidden = true; retryTransition = null;
     } catch (error) {
       if (token !== transitionToken) return;
+      const requestedListening = pendingTransition.listen;
+      pendingTransition = null;
       $('transition-status').textContent = error.message || 'This chapter could not be loaded. Try again.';
       $('transition-retry').hidden = false;
       if (error.code === 'ACCESS_REQUIRED' || error.cause?.code === 'ACCESS_REQUIRED') { closeAccess(); return; }
-      if (oldActive && resumePrevious) startPlayback();
+      if (oldActive && resumePrevious && requestedListening) startPlayback();
+      setPlayState();
     }
   }
   function moveTrack(offset,listen) {
@@ -605,7 +623,8 @@
     return url;
   }
   function closeAccess() {
-    ++accessToken; ++transitionToken; ++sceneToken; ++continuationToken;
+    ++accessToken; ++inviteRequest; ++transitionToken; ++sceneToken; ++continuationToken;
+    retainedInvite = ''; pendingTransition = null; $('invite-code').required = true; $('invite-submit').disabled = false;
     resumeAfterSeek = false; savePosition(true); committing = true;
     audio.pause(); audio.removeAttribute('src'); audio.load();
     cancelAnimationFrame(animationFrame); clearTimeout(seekTimer); clearTimeout(sceneTimer);
@@ -628,9 +647,11 @@
     try { return new URLSearchParams(new URL(text).hash.slice(1)).get('invite') || ''; } catch (_) { return ''; }
   }
   async function activateInvite(value) {
-    const token = inviteToken(value);
+    if (value.trim()) retainedInvite = inviteToken(value);
+    const token = retainedInvite, attempt = ++accessToken, request = ++inviteRequest;
+    $('invite-code').required = !/^[A-Za-z0-9_-]{43}$/.test(token);
+    $('invite-submit').disabled = false;
     if (!/^[A-Za-z0-9_-]{43}$/.test(token)) { $('access-status').textContent = 'Open or paste the invitation link you received.'; return; }
-    const attempt = ++accessToken;
     $('invite-submit').disabled = true; $('access-status').textContent = 'Opening your reading room…';
     try {
       const response = await fetch('/api/session',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({invite:token})});
@@ -639,9 +660,10 @@
       const sessionState = await response.json();
       if (attempt !== accessToken) return;
       if (sessionState.authenticated !== true) throw new Error('This invitation could not be verified. Check the link and try again.');
-      $('invite-code').value = ''; await bootstrap();
-    } catch (error) { $('access-status').textContent = error.message || 'Your invitation could not be opened. Try again.'; }
-    finally { $('invite-submit').disabled = false; }
+      retainedInvite = ''; $('invite-code').required = true; $('invite-code').value = ''; await bootstrap();
+    } catch (error) {
+      if (attempt === accessToken && request === inviteRequest) $('access-status').textContent = error.message || 'Your invitation could not be opened. Try again.';
+    } finally { if (request === inviteRequest) $('invite-submit').disabled = false; }
   }
   $('invite-form').addEventListener('submit',event => { event.preventDefault(); activateInvite($('invite-code').value); });
   async function signOut() {
