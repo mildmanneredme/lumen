@@ -118,6 +118,63 @@ let browser;
   const ready=page=>page.waitForFunction(()=>window.LUMEN_CHAPTER && document.querySelector('#narration').readyState>=1);
   const choose=async(page,id)=>{await page.locator('#chapters-open').click();await page.locator('#chapter-list [data-track-id="'+id+'"]').click();};
   const reached=(page,id)=>page.waitForFunction(id=>window.LUMEN_CHAPTER?.chapterId===id && document.querySelector('#narration').readyState>=1,id);
+  const failedNext=['/fixture/chapter-002-autonoe.json'];
+  const endedReader=await fixtureContext({failures:failedNext});
+  await endedReader.page.goto(origin,{waitUntil:'domcontentloaded'});await ready(endedReader.page);
+  await endedReader.page.locator('#play').click();await endedReader.page.waitForTimeout(150);
+  await choose(endedReader.page,'chapter-002');await endedReader.page.locator('#transition-retry').waitFor({state:'visible'});
+  regression('failed transition resumes an old source that was actively playing',await endedReader.page.evaluate(()=>
+    window.LUMEN_CHAPTER.chapterId==='chapter-001' && !document.querySelector('#narration').paused));
+  await endedReader.page.locator('#play').click();
+  await endedReader.page.locator('#settings-open').click();await endedReader.page.locator('#auto-continue').check();await endedReader.page.locator('#settings-close').click();
+  await endedReader.page.locator('#seek').evaluate(el=>{el.value='11.9';el.dispatchEvent(new Event('input',{bubbles:true}));});
+  await endedReader.page.waitForFunction(()=>Math.abs(document.querySelector('#narration').currentTime-11.9)<.04);
+  await endedReader.page.evaluate(()=>{
+    window.fixtureEndedCount=0;document.querySelector('#narration').addEventListener('ended',()=>window.fixtureEndedCount++);
+  });
+  await endedReader.page.locator('#play').click();
+  await endedReader.page.waitForFunction(()=>window.fixtureEndedCount===1 && !document.querySelector('#transition-retry').hidden &&
+    document.querySelector('#transition-status').textContent.includes('could not be loaded'));
+  await endedReader.page.waitForTimeout(150);
+  regression('failed automatic continuation leaves completed narration stopped at its end',await endedReader.page.evaluate(()=>{
+    const audio=document.querySelector('#narration');return window.LUMEN_CHAPTER.chapterId==='chapter-001' && audio.paused && audio.ended && Math.abs(audio.currentTime-12)<.04;
+  }));
+  regression('failed automatic continuation preserves the completed end bookmark',await endedReader.page.evaluate(()=>{
+    const saved=JSON.parse(localStorage.getItem('lumen-book-v2')).history['chapter-001'].bookmark;
+    return saved.completed===true && Math.abs(saved.audioTime-12)<.04;
+  }));
+  failedNext.length=0;await endedReader.page.locator('#transition-retry').click();await reached(endedReader.page,'chapter-002');
+  await endedReader.page.waitForFunction(()=>!document.querySelector('#narration').paused);
+  regression('successful continuation retry starts the requested next chapter',await endedReader.page.evaluate(()=>
+    window.LUMEN_CHAPTER.chapterId==='chapter-002' && document.querySelector('#narration').currentTime<1));
+  await endedReader.context.close();
+  const introPayloads=new Map();
+  for(const [voice,start] of [['autonoe',4],['charon',2]]) {
+    const key='/fixture/chapter-001-'+voice+'.json',payload=JSON.parse(JSON.stringify(payloads.get(key)));
+    payload.paragraphs[0].start=payload.paragraphs[0].sentences[0].start=start;introPayloads.set(key,payload);
+  }
+  const introReader=await fixtureContext({overrides:introPayloads});
+  await introReader.page.goto(origin,{waitUntil:'domcontentloaded'});await ready(introReader.page);
+  await introReader.page.locator('#seek').evaluate(el=>{el.value='1';el.dispatchEvent(new Event('input',{bubbles:true}));});
+  await introReader.page.waitForFunction(()=>Math.abs(document.querySelector('#narration').currentTime-1)<.04);
+  await introReader.page.locator('#settings-open').click();await introReader.page.locator('#narrator').selectOption('charon');await introReader.page.locator('#settings-close').click();
+  await introReader.page.waitForFunction(()=>window.LUMEN_CHAPTER.audio.narratorId==='charon' ||
+    !document.querySelector('#transition-panel').hidden && !document.querySelector('#transition-retry').hidden);
+  await introReader.page.waitForTimeout(100);
+  regression('an unmeasured introduction voice change keeps the current source and exact position',await introReader.page.evaluate(()=>
+    window.LUMEN_CHAPTER.audio.narratorId==='autonoe' && Math.abs(document.querySelector('#narration').currentTime-1)<.04 && document.querySelector('#narration').paused));
+  regression('an introduction without an anchor reports unavailable narrator mapping',await introReader.page.evaluate(()=>
+    !document.querySelector('#transition-panel').hidden && document.querySelector('#transition-status').textContent.includes('could not be mapped')));
+  regression('the saved introductory position explicitly has no measured anchor',await introReader.page.evaluate(()=>{
+    const saved=JSON.parse(localStorage.getItem('lumen-book-v2')).lastPosition;
+    return saved.anchorMeasured===false && saved.audioTime===1 && saved.narratorId==='autonoe';
+  }));
+  await introReader.page.locator('#seek').evaluate(el=>{el.value='0';el.dispatchEvent(new Event('input',{bubbles:true}));});
+  await introReader.page.locator('#settings-open').click();await introReader.page.locator('#narrator').selectOption('charon');await introReader.page.locator('#settings-close').click();
+  await introReader.page.waitForFunction(()=>window.LUMEN_CHAPTER.audio.narratorId==='charon' && document.querySelector('#narration').readyState>=1);
+  regression('exact zero still switches voices at the start of the introduction',await introReader.page.evaluate(()=>
+    document.querySelector('#narration').currentTime===0 && document.querySelector('#narration').paused));
+  await introReader.context.close();
   const legacyReader=await fixtureContext({legacy:storedPosition('chapter-002','charon',3.2)});
   await legacyReader.page.goto(origin,{waitUntil:'domcontentloaded'});await ready(legacyReader.page);
   await legacyReader.page.waitForFunction(()=>Math.abs(document.querySelector('#narration').currentTime-3.2)<.25);
