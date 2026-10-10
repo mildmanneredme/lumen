@@ -78,7 +78,7 @@ class WebAudioTests(unittest.TestCase):
 
     def test_eighty_percent_boundary_retains_actual_word_intervals(self):
         track = content.make_track(1, "story", "Alpha bravo charlie delta echo.", "v6")
-        words = [(word, index + 1, index + 1.5) for index, word in enumerate(["Alpha", "bravo", "charlie", "delta"])]
+        words = [(word, index + 1, index + 1.5) for index, word in enumerate(["Alpha", "bravo", "delta", "echo"])]
         timing, report = audio.align_sentences(track, self.recording, words)
         self.assertIsNotNone(timing)
         self.assertEqual(timing["sentences"][0]["start"], 1)
@@ -88,6 +88,129 @@ class WebAudioTests(unittest.TestCase):
         self.assertIsNone(timing)
         self.assertEqual(report["measuredSentences"], [])
         self.assertEqual(report["lowConfidenceSentences"][0]["matchedFraction"], .6)
+
+    def test_internal_matches_cannot_truncate_missing_sentence_edges_even_at_eighty_percent(self):
+        tokens = "Alpha bravo charlie delta echo foxtrot golf hotel india juliet".split()
+        track = content.make_track(1, "story", " ".join(tokens) + ".", "v6")
+        sentence_id = content.sentences(track)[0]["id"]
+        for omitted, fraction, edges in [
+            ({0, 9}, .8, ["start", "end"]),
+            ({0, 1}, .8, ["start"]),
+            ({8, 9}, .8, ["end"]),
+            ({0}, .9, ["start"]),
+            ({9}, .9, ["end"]),
+        ]:
+            words = [(word, 1 + index * .5, 1.25 + index * .5)
+                     for index, word in enumerate(tokens) if index not in omitted]
+            with self.subTest(omitted=omitted):
+                timing, report = audio.align_sentences(track, self.recording, words)
+                self.assertIsNone(timing)
+                self.assertEqual(report["measuredSentences"], [])
+                self.assertEqual(report["lowConfidenceSentences"],
+                                 [{"sentenceId": sentence_id, "matchedFraction": fraction}])
+                self.assertEqual(report["unanchoredSentenceEdges"],
+                                 [{"sentenceId": sentence_id, "missingEdges": edges}])
+
+    def test_eighty_percent_internal_omissions_keep_both_actual_boundary_anchors(self):
+        tokens = "Alpha bravo charlie delta echo foxtrot golf hotel india juliet".split()
+        track = content.make_track(1, "story", " ".join(tokens) + ".", "v6")
+        words = [(word, 1 + index * .5, 1.25 + index * .5)
+                 for index, word in enumerate(tokens) if index not in {3, 6}]
+        timing, report = audio.align_sentences(track, self.recording, words)
+        self.assertIsNotNone(timing)
+        self.assertEqual((timing["sentences"][0]["start"], timing["sentences"][0]["end"]), (1, 5.75))
+        self.assertEqual(report["matchedFraction"], .8)
+        self.assertEqual(report["unanchoredSentenceEdges"], [])
+
+    def test_unanchored_edges_still_contribute_observed_overlap_watermark(self):
+        tokens = "Alpha bravo charlie delta echo foxtrot golf hotel india juliet".split()
+        track = content.make_track(1, "story", " ".join(tokens) + ". After.", "v6")
+        words = [(word, 1 + index * .2, 1.15 + index * .2)
+                 for index, word in enumerate(tokens) if index not in {0, 9}]
+        words[-1] = (words[-1][0], words[-1][1], 5.0)
+        words.append(("After.", 4.5, 4.8))
+        timing, report = audio.align_sentences(track, self.recording, words)
+        first, second = content.sentences(track)
+        self.assertIsNone(timing)
+        self.assertEqual(report["lowConfidenceSentences"], [{"sentenceId": first["id"], "matchedFraction": .8}])
+        self.assertEqual(report["overlappingSentences"], [second["id"]])
+        self.assertEqual([cue["sentenceId"] for cue in report["measuredSentences"]], [second["id"]])
+
+    def test_exact_number_and_contraction_edges_keep_complete_raw_word_spans(self):
+        for manuscript, spoken, expected in [
+            ("26 guards waited.", [("Twenty", 1, 1.2), ("six", 1.2, 1.5), ("guards", 2, 2.2), ("waited.", 2.2, 2.5)], (1, 2.5)),
+            ("They counted 26.", [("They", 1, 1.2), ("counted", 1.2, 1.5), ("twenty", 2, 2.2), ("six.", 2.2, 2.5)], (1, 2.5)),
+            ("Don’t wait here.", [("Dont", 1, 1.2), ("wait", 1.2, 1.5), ("here.", 2, 2.5)], (1, 2.5)),
+            ("They knew he shouldn’t.", [("They", 1, 1.2), ("knew", 1.2, 1.5), ("he", 2, 2.2), ("shouldnt.", 2.2, 2.5)], (1, 2.5)),
+        ]:
+            with self.subTest(manuscript=manuscript):
+                track = content.make_track(1, "story", manuscript, "v6")
+                timing, report = audio.align_sentences(track, self.recording, spoken)
+                self.assertIsNotNone(timing)
+                self.assertEqual((timing["sentences"][0]["start"], timing["sentences"][0]["end"]), expected)
+                self.assertEqual(report["unanchoredSentenceEdges"], [])
+
+    def test_number_or_contraction_edge_without_supported_anchor_remains_a_gap(self):
+        for manuscript, spoken, edge in [
+            ("26 guards waited here tonight.", "guards waited here tonight", "start"),
+            ("They counted until exactly 26.", "They counted until exactly", "end"),
+            ("Don’t wait near this door.", "do not wait near this door", "start"),
+            ("They all knew he shouldn’t.", "They all knew he should not", "end"),
+        ]:
+            with self.subTest(manuscript=manuscript):
+                track = content.make_track(1, "story", manuscript, "v6")
+                words = [(word, 1 + index * .3, 1.2 + index * .3) for index, word in enumerate(spoken.split())]
+                timing, report = audio.align_sentences(track, self.recording, words)
+                sentence_id = content.sentences(track)[0]["id"]
+                self.assertIsNone(timing)
+                self.assertEqual(report["measuredSentences"], [])
+                self.assertEqual(report["lowConfidenceSentences"], [{"sentenceId": sentence_id, "matchedFraction": .8}])
+                self.assertEqual(report["unanchoredSentenceEdges"], [{"sentenceId": sentence_id, "missingEdges": [edge]}])
+
+    def test_context_supported_spelling_is_a_reliable_sentence_edge_anchor(self):
+        for manuscript, spoken, target, interval in [
+            ("Before now. NovaMind glows softly. Then silence.",
+             "Before now. Novamine glows softly. Then silence.", "novamind", (1.6, 2.4)),
+            ("Before now. Bright screens show NovaMind. Then silence.",
+             "Before now. Bright screens show Novamine. Then silence.", "novamind", (1.6, 2.7)),
+        ]:
+            with self.subTest(manuscript=manuscript):
+                track = content.make_track(1, "story", manuscript, "v6")
+                words = [(word, 1 + index * .3, 1.2 + index * .3) for index, word in enumerate(spoken.split())]
+                timing, report = audio.align_sentences(track, self.recording, words)
+                self.assertIsNotNone(timing)
+                cue = timing["sentences"][1]
+                self.assertEqual((cue["start"], cue["end"]), interval)
+                self.assertEqual(report["contextualSubstitutions"][0]["expected"], target)
+                self.assertEqual(report["unanchoredSentenceEdges"], [])
+
+    def test_edge_spelling_without_required_context_never_promotes_internal_matches(self):
+        for manuscript, spoken, edge in [
+            ("NovaMind glows softly through midnight.", "Novamine glows softly through midnight", "start"),
+            ("Bright screens show the NovaMind.", "Bright screens show the Novamine", "end"),
+        ]:
+            with self.subTest(manuscript=manuscript):
+                track = content.make_track(1, "story", manuscript, "v6")
+                words = [(word, 1 + index * .3, 1.2 + index * .3) for index, word in enumerate(spoken.split())]
+                timing, report = audio.align_sentences(track, self.recording, words)
+                self.assertIsNone(timing)
+                self.assertEqual(report["contextualSubstitutions"], [])
+                self.assertEqual(report["unanchoredSentenceEdges"][0]["missingEdges"], [edge])
+
+    def test_existing_finalizer_makes_unanchored_edges_explicit_null_gaps(self):
+        import finalize_release_timings as finalizer
+        track = content.make_track(1, "story", "Alpha bravo charlie delta echo. After.", "v6")
+        recording = dict(self.recording, selectedClips=[{"id": "take-a"}])
+        words = [("bravo", 1, 1.2), ("charlie", 1.2, 1.4), ("delta", 1.4, 1.6), ("echo.", 1.6, 1.8), ("After.", 2, 2.5)]
+        report = finalizer.report_from_words(track, recording, words, [{"id": "take-a"}], {})
+        timing = finalizer.gap_timing(track, recording, report, {})
+        gap, measured = timing["sentences"]
+        self.assertEqual(gap["syncStatus"], "unavailable")
+        self.assertEqual(gap["reason"], "low-confidence-ASR-anchor")
+        self.assertIsNone(gap["start"]); self.assertIsNone(gap["end"])
+        self.assertEqual(gap["recheckWindow"]["start"], 0)
+        self.assertEqual(gap["recheckWindow"]["end"], measured["start"])
+        self.assertEqual(measured["syncStatus"], "measured")
 
     def test_missing_sentence_with_overlapping_measured_neighbors_has_only_a_recheck_region(self):
         track = content.make_track(1, "chapter", "Before. Missing. After.", "v6")

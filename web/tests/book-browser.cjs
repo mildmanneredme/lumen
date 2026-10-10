@@ -228,6 +228,91 @@ let browser;
   regression('continuation changes retain another tab\'s narrator and artwork preferences',await sharedPreferencesEqual(
     {narratorId:'charon',speed:2,textSize:26,artworkVisible:false,autoContinue:true}));
   await sharedPreferencesReader.context.close();
+  const unmappablePosition=id=>({...storedPosition(id,'autonoe',3),audioSha256:'c'.repeat(64),sentenceId:'v6:'+id+':p999-s01'});
+  const otherCompleted=storedPosition('chapter-003','autonoe',12);otherCompleted.completed=true;
+  const otherHistory={bookmark:otherCompleted,completed:true,completedAt:'2026-01-01T00:00:00.000Z'};
+  const initialBad=unmappablePosition('chapter-001'),initialRecoveryState={schemaVersion:2,bookId:'lumen',manuscriptVersion:'v6',releaseId:'old-release',
+    lastPosition:initialBad,history:{'chapter-001':{bookmark:initialBad,completed:true,completedAt:'2026-01-02T00:00:00.000Z'},'chapter-003':otherHistory}};
+  const initialRecoveryReader=await fixtureContext({saved:initialRecoveryState});
+  await initialRecoveryReader.page.goto(origin,{waitUntil:'domcontentloaded'});await initialRecoveryReader.page.locator('#transition-retry').waitFor({state:'visible'});
+  regression('an unmappable initial resume keeps the saved bookmark and completion without committing guessed prose',await initialRecoveryReader.page.evaluate(state=>
+    JSON.stringify(JSON.parse(localStorage.getItem('lumen-book-v2')))===JSON.stringify(state) && !window.LUMEN_BOOK.getActive() &&
+    document.querySelector('#prose').textContent==='',initialRecoveryState));
+  await initialRecoveryReader.page.locator('#transition-retry').click();
+  await initialRecoveryReader.page.waitForFunction(()=>!document.querySelector('#transition-retry').hidden && document.querySelector('#transition-status').textContent.includes('could not be mapped'));
+  regression('ordinary retry preserves the unmappable initial bookmark',await initialRecoveryReader.page.evaluate(state=>
+    JSON.stringify(JSON.parse(localStorage.getItem('lumen-book-v2')))===JSON.stringify(state),initialRecoveryState));
+  const initialStart=initialRecoveryReader.page.locator('#transition-start');
+  const initialCanStart=!!await initialStart.count() && await initialStart.isVisible();
+  regression('only an unmappable resume offers a deliberate accessible chapter start action',initialCanStart && await initialStart.evaluate(el=>
+    el.type==='button' && el.getBoundingClientRect().height>=44 && document.documentElement.scrollWidth<=innerWidth));
+  if(initialCanStart) {await initialStart.click();await reached(initialRecoveryReader.page,'chapter-001');}
+  regression('deliberate initial recovery starts at zero and preserves unrelated progress and completion evidence',initialCanStart && await initialRecoveryReader.page.evaluate(other=>{
+    const audio=document.querySelector('#narration'),saved=JSON.parse(localStorage.getItem('lumen-book-v2'));
+    return audio.paused && audio.currentTime===0 && window.LUMEN_CHAPTER.audio.narratorId==='autonoe' &&
+      document.querySelector('#prose').textContent==='The first sentence. The second sentence.' && saved.lastPosition.audioTime===0 &&
+      saved.lastPosition.audioSha256===window.LUMEN_CHAPTER.audio.sha256 && saved.history['chapter-001'].completed===true &&
+      saved.history['chapter-001'].completedAt==='2026-01-02T00:00:00.000Z' && JSON.stringify(saved.history['chapter-003'])===JSON.stringify(other);
+  },otherHistory));
+  await initialRecoveryReader.context.close();
+  const targetBad=unmappablePosition('chapter-002'),currentSaved=storedPosition('chapter-001','autonoe',3);
+  const targetRecoveryState={schemaVersion:2,bookId:'lumen',manuscriptVersion:'v6',releaseId:'old-release',lastPosition:currentSaved,
+    history:{'chapter-001':{bookmark:currentSaved,completed:false},'chapter-002':{bookmark:targetBad,completed:false},'chapter-003':otherHistory}};
+  const recoveryFailures=[],targetRecoveryReader=await fixtureContext({saved:targetRecoveryState,failures:recoveryFailures});
+  await targetRecoveryReader.page.goto(origin,{waitUntil:'domcontentloaded'});await ready(targetRecoveryReader.page);
+  await choose(targetRecoveryReader.page,'chapter-002');await targetRecoveryReader.page.locator('#transition-retry').waitFor({state:'visible'});
+  regression('an unmappable in-session target keeps its old bookmark and the current chapter',await targetRecoveryReader.page.evaluate(bad=>
+    window.LUMEN_CHAPTER.chapterId==='chapter-001' && JSON.stringify(JSON.parse(localStorage.getItem('lumen-book-v2')).history['chapter-002'].bookmark)===JSON.stringify(bad),targetBad));
+  const targetStart=targetRecoveryReader.page.locator('#transition-start'),targetCanStart=!!await targetStart.count() && await targetStart.isVisible();
+  recoveryFailures.push('/fixture/chapter-002-autonoe.json');
+  if(targetCanStart) {await targetStart.click();await targetRecoveryReader.page.locator('#transition-retry').waitFor({state:'visible'});}
+  regression('a failed deliberate start retains the unmappable target and hides recovery for a network failure',targetCanStart && await targetRecoveryReader.page.evaluate(bad=>
+    window.LUMEN_CHAPTER.chapterId==='chapter-001' && document.querySelector('#transition-start').hidden &&
+    JSON.stringify(JSON.parse(localStorage.getItem('lumen-book-v2')).history['chapter-002'].bookmark)===JSON.stringify(bad),targetBad));
+  recoveryFailures.length=0;
+  if(targetCanStart) {await targetRecoveryReader.page.locator('#transition-retry').click();await reached(targetRecoveryReader.page,'chapter-002');}
+  regression('retrying a deliberate start replaces only the affected target bookmark after successful commit',targetCanStart && await targetRecoveryReader.page.evaluate(other=>{
+    const saved=JSON.parse(localStorage.getItem('lumen-book-v2')),audio=document.querySelector('#narration');
+    return window.LUMEN_CHAPTER.chapterId==='chapter-002' && audio.currentTime===0 && audio.paused &&
+      saved.history['chapter-002'].bookmark.audioTime===0 && saved.history['chapter-002'].bookmark.audioSha256===window.LUMEN_CHAPTER.audio.sha256 &&
+      saved.history['chapter-001'].bookmark.audioTime===3 && JSON.stringify(saved.history['chapter-003'])===JSON.stringify(other);
+  },otherHistory));
+  await targetRecoveryReader.context.close();
+  const cancelledRecoveryReader=await fixtureContext({saved:targetRecoveryState});
+  let holdRecovery=false,recoveryRequested=false,releaseRecovery;
+  await cancelledRecoveryReader.page.route('**/fixture/chapter-002-autonoe.json',async route=>{
+    if(holdRecovery) {recoveryRequested=true;await new Promise(resolve=>releaseRecovery=resolve);}
+    await route.fulfill({json:payloads.get('/fixture/chapter-002-autonoe.json')});
+  });
+  await cancelledRecoveryReader.page.goto(origin,{waitUntil:'domcontentloaded'});await ready(cancelledRecoveryReader.page);
+  await choose(cancelledRecoveryReader.page,'chapter-002');await cancelledRecoveryReader.page.locator('#transition-retry').waitFor({state:'visible'});
+  const cancelledStart=cancelledRecoveryReader.page.locator('#transition-start'),canCancelStart=!!await cancelledStart.count() && await cancelledStart.isVisible();
+  if(canCancelStart) {
+    holdRecovery=true;await cancelledStart.click();
+    for(let n=0;n<100&&!recoveryRequested;n++)await cancelledRecoveryReader.page.waitForTimeout(10);
+    assert.ok(recoveryRequested,'deferred recovery request started');
+  }
+  regression('pending deliberate recovery does not discard the target bookmark',canCancelStart && await cancelledRecoveryReader.page.evaluate(bad=>
+    JSON.stringify(JSON.parse(localStorage.getItem('lumen-book-v2')).history['chapter-002'].bookmark)===JSON.stringify(bad),targetBad));
+  await choose(cancelledRecoveryReader.page,'chapter-003');await reached(cancelledRecoveryReader.page,'chapter-003');
+  if(canCancelStart) {releaseRecovery();await cancelledRecoveryReader.page.waitForTimeout(150);}
+  regression('a cancelled recovery response cannot commit its chapter or discard its old bookmark',canCancelStart && await cancelledRecoveryReader.page.evaluate(bad=>
+    window.LUMEN_CHAPTER.chapterId==='chapter-003' && document.querySelector('#transition-start').hidden &&
+    JSON.stringify(JSON.parse(localStorage.getItem('lumen-book-v2')).history['chapter-002'].bookmark)===JSON.stringify(bad),targetBad));
+  await cancelledRecoveryReader.context.close();
+  const historyRecoveryReader=await fixtureContext({saved:targetRecoveryState});
+  await historyRecoveryReader.page.goto(origin,{waitUntil:'domcontentloaded'});await ready(historyRecoveryReader.page);
+  await historyRecoveryReader.page.evaluate(()=>history.pushState({},'', '?chapter=chapter-002&voice=autonoe'));
+  await choose(historyRecoveryReader.page,'chapter-003');await reached(historyRecoveryReader.page,'chapter-003');
+  await historyRecoveryReader.page.goBack();await historyRecoveryReader.page.locator('#transition-retry').waitFor({state:'visible'});
+  regression('browser history preserves an unmappable target while retaining the active chapter',await historyRecoveryReader.page.evaluate(bad=>
+    window.LUMEN_CHAPTER.chapterId==='chapter-003' && JSON.stringify(JSON.parse(localStorage.getItem('lumen-book-v2')).history['chapter-002'].bookmark)===JSON.stringify(bad),targetBad));
+  const historyStart=historyRecoveryReader.page.locator('#transition-start'),historyCanStart=!!await historyStart.count() && await historyStart.isVisible();
+  if(historyCanStart) {await historyStart.click();await reached(historyRecoveryReader.page,'chapter-002');}
+  regression('browser-history recovery deliberately opens the target at zero without rewriting the history URL',historyCanStart && await historyRecoveryReader.page.evaluate(()=>
+    window.LUMEN_CHAPTER.chapterId==='chapter-002' && document.querySelector('#narration').currentTime===0 &&
+    new URL(location.href).searchParams.get('chapter')==='chapter-002'));
+  await historyRecoveryReader.context.close();
   const finished=storedPosition('chapter-001','autonoe',12);finished.completed=true;
   const trailingSilence=JSON.parse(JSON.stringify(payloads.get('/fixture/chapter-001-charon.json')));
   trailingSilence.paragraphs[0].end=7;trailingSilence.paragraphs[0].sentences[1].end=7;
