@@ -2,11 +2,16 @@
 from __future__ import annotations
 
 import copy
+from contextlib import redirect_stdout
+import io
 import json
 from pathlib import Path
 import shutil
+import subprocess
 import sys
+import tempfile
 import unittest
+from unittest.mock import PropertyMock, patch
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "web/scripts"))
@@ -63,6 +68,90 @@ class ReleaseExportTests(unittest.TestCase):
         entry = next(row for row in result["uploadInventory"]["assets"]
                      if row["url"] == result["manifest"]["tracks"][0]["recordings"]["charon"]["url"])
         return json.loads(Path(entry["sourcePath"]).read_text())
+
+    def run_fixture_cli(self, plan, staging=None):
+        inputs = self.root / "export-inputs"
+        inputs.mkdir(exist_ok=True)
+        argv = ["release_export.py", "--root", str(self.root)]
+        for name, value in [("registry", self.registry), ("inventory", self.inventory),
+                            ("timings", self.timings), ("plan", plan)]:
+            path = inputs / (name + ".json")
+            path.write_text(json.dumps(value))
+            argv += ["--" + name, str(path)]
+        if staging is not None:
+            argv += ["--out", str(staging)]
+        output = io.StringIO()
+        with patch.object(sys, "argv", argv), redirect_stdout(output):
+            release.main()
+        return json.loads(output.getvalue())
+
+    def assert_uploader_source_and_index_compatible(self, result):
+        # Exercise the real uploader's index validator and openOwned/sourceProof
+        # checks; the fake transport stops at the first post-validation get.
+        script = r"""
+const fs=require('node:fs');
+const {uploadPrivateRelease}=require(process.argv[1]);
+const values=JSON.parse(fs.readFileSync(0,'utf8'));
+const inventory=JSON.parse(fs.readFileSync(values.inventoryPath,'utf8'));
+const blob={put:async()=>{throw Error('unexpected transport mutation');},get:async()=>{throw Error('fixture sources and index accepted');}};
+uploadPrivateRelease({root:values.root,inventory,manifestURL:values.manifestURL,blob,maxUploadBytes:10000000,verifyByteBudget:10000000})
+  .then(()=>{throw Error('fixture must stop before transport');})
+  .catch(error=>{if(error.message!=='fixture sources and index accepted'){console.error(error.message);process.exitCode=1;}else console.log('accepted');});
+"""
+        result = subprocess.run(["node", "-e", script, str(ROOT / "web/scripts/upload_private_release.cjs")],
+                                input=json.dumps({"root": str(self.root),
+                                                  "inventoryPath": result["uploadInventoryPath"],
+                                                  "manifestURL": result["manifestURL"]}),
+                                text=True, capture_output=True, timeout=15)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.strip(), "accepted")
+
+    def test_private_cli_default_staging_matches_uploader_owned_source_boundary(self):
+        for access in ("private", "authenticated"):
+            release_id = "fixture-cli-" + access + "-" + release.hash_bytes(str(self.root).encode())[:12]
+            plan = dict(self.plan, accessModel=access, releaseId=release_id)
+            self.addCleanup(shutil.rmtree, Path("/private/tmp") / ("lumen-release-" + release_id), ignore_errors=True)
+            with self.subTest(access=access):
+                result = self.run_fixture_cli(plan)
+                self.assert_uploader_source_and_index_compatible(result)
+                expected = self.root / "Audiobook/author-audit" / ("lumen-release-" + release_id)
+                self.assertTrue(Path(result["manifestPath"]).is_relative_to(expected))
+
+    def test_incompatible_private_staging_rejects_before_source_verification_or_writes(self):
+        with tempfile.TemporaryDirectory(prefix="lumen-export-outside-") as directory:
+            outside = Path(directory).resolve()
+            alias = self.root / "outside-staging-link"
+            alias.symlink_to(outside, target_is_directory=True)
+            for access in ("private", "authenticated"):
+                for staging in (outside / access, alias / access):
+                    plan = dict(self.plan, accessModel=access)
+                    with self.subTest(access=access, staging=staging), \
+                            patch.object(release, "current_inventory", side_effect=AssertionError("Source verification began")) as verify:
+                        with self.assertRaisesRegex(release.content.ContentError, "owned project root"):
+                            self.run_fixture_cli(plan, staging)
+                        verify.assert_not_called()
+                        self.assertFalse((outside / access).exists())
+
+    def test_public_cli_outside_root_staging_remains_supported(self):
+        with tempfile.TemporaryDirectory(prefix="lumen-export-public-") as directory:
+            staging = Path(directory).resolve() / "public-release"
+            result = self.run_fixture_cli(dict(self.plan, accessModel="public"), staging)
+            self.assertTrue(Path(result["manifestPath"]).is_relative_to(staging))
+
+    def test_mapped_ipv6_origin_uses_browser_hex_on_dotted_platform_serializers(self):
+        for address, dotted, origin in [
+            ("::ffff:7f00:1", "::ffff:127.0.0.1", "https://[::ffff:7f00:1]"),
+            ("::ffff:c000:201", "::ffff:192.0.2.1", "https://[::ffff:c000:201]"),
+            ("::ffff:0:0", "::ffff:0.0.0.0", "https://[::ffff:0:0]"),
+        ]:
+            for host in (address, dotted):
+                with self.subTest(host=host), \
+                        patch.object(release.ipaddress.IPv6Address, "compressed", new_callable=PropertyMock, return_value=dotted):
+                    base = "https://[" + host + "]:443/api/assets/"
+                    self.assertEqual(release.url_base(base, "fixture"), (origin + "/api/assets/", origin))
+                    result = self.build(plan=dict(self.plan, appDataURLbase=base, mediaURLbase=base))
+                    self.assertEqual(result["manifest"]["appOrigin"], origin)
+                    self.assert_uploader_source_and_index_compatible(result)
 
     def test_subset_exports_faithful_ready_voice_and_honest_pending_voice(self):
         result = self.build()

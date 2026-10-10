@@ -68,7 +68,11 @@ def origin_of(url, origin_only=False):
         raise InventoryError("URL hosts must use canonical ASCII or explicit punycode")
     if ":" in host:
         try:
-            host = "[" + ipaddress.IPv6Address(host).compressed + "]"
+            address = ipaddress.IPv6Address(host)
+            mapped = address.ipv4_mapped
+            # Keep CORS origins in browser hex form across Python versions.
+            host = (f"[::ffff:{int(mapped) >> 16:x}:{int(mapped) & 0xffff:x}]" if mapped is not None
+                    else "[" + address.compressed + "]")
         except ipaddress.AddressValueError:
             raise InventoryError("URL host must be a canonical IPv6 address") from None
     else:

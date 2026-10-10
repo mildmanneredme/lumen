@@ -45,7 +45,12 @@ def url_base(value, name):
     host = parsed.hostname.lower()
     content.require(host.isascii(), "URL hosts must use ASCII or explicit punycode")
     if ":" in host:
-        host = "[" + ipaddress.IPv6Address(host).compressed + "]"
+        address = ipaddress.IPv6Address(host)
+        mapped = address.ipv4_mapped
+        # Some Python versions compress mapped addresses with dotted IPv4,
+        # but browser URL origins always serialize these final words as hex.
+        host = (f"[::ffff:{int(mapped) >> 16:x}:{int(mapped) & 0xffff:x}]" if mapped is not None
+                else "[" + address.compressed + "]")
     else:
         content.require(len(host.removesuffix(".")) <= 253, "URL DNS host exceeds its maximum length")
         try:
@@ -291,15 +296,23 @@ def reader_payload(registry, track, recording, timing, track_plan, plan, audio_u
             "paragraphs": paragraphs, "blocks": copy.deepcopy(track["blocks"]), "scenes": resolved}
 
 
+def validate_staging(root, plan, staging):
+    root, staging = Path(root).resolve(), Path(staging).resolve()
+    public_root = (root / "web/dist").resolve()
+    content.require(staging != public_root and public_root not in staging.parents,
+                    "Release assets require private staging outside public web/dist")
+    if isinstance(plan, dict) and plan.get("accessModel") in {"private", "authenticated"}:
+        content.require(staging == root or root in staging.parents,
+                        "Private staging must remain inside the uploader's owned project root")
+    return root, staging
+
+
 def build_release(root, registry, inventory, timing_maps, scenes_by_track, plan, staging):
     """Validate an explicit subset, freshly verify bytes, and stage immutable JSON.
 
     This is preparation only. Access control and remote promotion are separate.
     """
-    root, staging = Path(root).resolve(), Path(staging).resolve()
-    public_root = (root / "web/dist").resolve()
-    content.require(staging != public_root and public_root not in staging.parents,
-                    "Release assets require private staging outside public web/dist")
+    root, staging = validate_staging(root, plan, staging)
     content.validate_registry(registry)
     validate_aliases(registry)
     app_base, media_base, app_origin, media_origins = validate_plan(plan, registry)
@@ -392,11 +405,13 @@ def main():
     parser.add_argument("--timings", type=Path, required=True, help="Track ID -> narrator ID -> reviewed map")
     parser.add_argument("--scenes", type=Path, help="Track ID -> reviewed scene list; omission means text-only")
     parser.add_argument("--plan", type=Path, required=True)
-    parser.add_argument("--out", type=Path, help="Private staging; defaults to /private/tmp/lumen-release-<releaseId>")
+    parser.add_argument("--out", type=Path, help="Private/authenticated staging defaults to Audiobook/author-audit/lumen-release-<releaseId> under --root; public staging defaults to /private/tmp")
     args = parser.parse_args()
     plan = content.read_json(args.plan)
     content.require(safe_id(plan.get("releaseId")), "Unsafe releaseId")
-    staging = args.out or Path("/private/tmp") / ("lumen-release-" + plan["releaseId"])
+    parent = (args.root / "Audiobook/author-audit" if plan.get("accessModel") in {"private", "authenticated"}
+              else Path("/private/tmp"))
+    _, staging = validate_staging(args.root, plan, args.out or parent / ("lumen-release-" + plan["releaseId"]))
     result = build_release(args.root, content.read_json(args.registry), content.read_json(args.inventory),
                            content.read_json(args.timings), content.read_json(args.scenes) if args.scenes else {}, plan, staging)
     print(json.dumps({key: result[key] for key in ["manifestURL", "manifestPath", "manifestSha256",

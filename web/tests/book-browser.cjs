@@ -194,6 +194,40 @@ let browser;
     JSON.parse(localStorage.getItem('lumen-reader-preferences-v1')).narratorId==='charon' && window.LUMEN_CHAPTER.audio.narratorId==='charon' &&
     document.querySelector('#narrator').value==='charon' && JSON.parse(localStorage.getItem('lumen-book-v2')).lastPosition.narratorId==='charon'));
   await cancelledVoiceReader.context.close();
+  const sharedPreferencesReader=await fixtureContext(),staleSettingsPage=sharedPreferencesReader.page;
+  await staleSettingsPage.goto(origin,{waitUntil:'domcontentloaded'});await ready(staleSettingsPage);
+  const preferencePeer=await sharedPreferencesReader.context.newPage();preferencePeer.on('pageerror',e=>errors.push(String(e)));
+  await preferencePeer.route('**/api/session',r=>r.fulfill({json:{authenticated:true}}));
+  await preferencePeer.route('**/api/book',r=>r.fulfill({json:manifest}));
+  await preferencePeer.route('**/fixture/**',fixtureRoute);
+  await preferencePeer.goto(origin,{waitUntil:'domcontentloaded'});await ready(preferencePeer);
+  await preferencePeer.locator('#settings-open').click();await preferencePeer.locator('#narrator').selectOption('charon');
+  await preferencePeer.waitForFunction(()=>window.LUMEN_CHAPTER.audio.narratorId==='charon' && document.querySelector('#narration').readyState>=1);
+  assert.equal(await staleSettingsPage.evaluate(()=>window.LUMEN_CHAPTER.audio.narratorId),'autonoe','first tab retains its own female recording');
+  await staleSettingsPage.locator('#settings-open').click();
+  const changeTextSize=(page,value)=>page.locator('#text-size').evaluate((el,value)=>{
+    el.value=String(value);el.dispatchEvent(new Event('input',{bubbles:true}));
+  },value);
+  const sharedPreferencesEqual=expected=>staleSettingsPage.evaluate(expected=>{
+    const saved=JSON.parse(localStorage.getItem('lumen-reader-preferences-v1'));
+    return Object.entries(expected).every(([key,value])=>saved[key]===value);
+  },expected);
+  await preferencePeer.locator('#speed').selectOption('1.5');await changeTextSize(staleSettingsPage,24);
+  regression('text-size changes retain another tab\'s narrator and speed preferences',await sharedPreferencesEqual(
+    {narratorId:'charon',speed:1.5,textSize:24,artworkVisible:true,autoContinue:false}));
+  await changeTextSize(preferencePeer,26);await staleSettingsPage.locator('#speed').selectOption('2');
+  regression('speed changes retain another tab\'s narrator and text-size preferences',await sharedPreferencesEqual(
+    {narratorId:'charon',speed:2,textSize:26,artworkVisible:true,autoContinue:false}));
+  await preferencePeer.locator('#auto-continue').check();await staleSettingsPage.locator('#settings-close').click();
+  await staleSettingsPage.locator('#art-toggle').click();
+  regression('artwork changes retain another tab\'s narrator and continuation preferences',await sharedPreferencesEqual(
+    {narratorId:'charon',speed:2,textSize:26,artworkVisible:false,autoContinue:true}));
+  await staleSettingsPage.locator('#art-toggle').click();
+  await preferencePeer.locator('#settings-close').click();await preferencePeer.locator('#art-toggle').click();
+  await staleSettingsPage.locator('#settings-open').click();await staleSettingsPage.locator('#auto-continue').check();
+  regression('continuation changes retain another tab\'s narrator and artwork preferences',await sharedPreferencesEqual(
+    {narratorId:'charon',speed:2,textSize:26,artworkVisible:false,autoContinue:true}));
+  await sharedPreferencesReader.context.close();
   const finished=storedPosition('chapter-001','autonoe',12);finished.completed=true;
   const trailingSilence=JSON.parse(JSON.stringify(payloads.get('/fixture/chapter-001-charon.json')));
   trailingSilence.paragraphs[0].end=7;trailingSilence.paragraphs[0].sentences[1].end=7;

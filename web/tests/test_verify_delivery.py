@@ -7,7 +7,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 import threading
 import unittest
-from unittest.mock import patch
+from unittest.mock import PropertyMock, patch
 
 
 SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "verify_delivery.py"
@@ -380,6 +380,25 @@ class OriginPolicyTests(unittest.TestCase):
                 opened.assert_not_called()
                 self.assertEqual(delivery.validate_inventory(inventory, allowed, True, False, None)[0],
                                  inventory["appOrigin"])
+
+    def test_mapped_ipv6_cors_origin_is_portable_when_platform_compresses_to_dotted_ipv4(self):
+        for address, dotted, origin in [
+            ("::ffff:7f00:1", "::ffff:127.0.0.1", "https://[::ffff:7f00:1]"),
+            ("::ffff:c000:201", "::ffff:192.0.2.1", "https://[::ffff:c000:201]"),
+            ("::ffff:0:0", "::ffff:0.0.0.0", "https://[::ffff:0:0]"),
+        ]:
+            for host in (address, dotted):
+                with self.subTest(host=host), \
+                        patch.object(delivery.ipaddress.IPv6Address, "compressed", new_callable=PropertyMock, return_value=dotted):
+                    raw_origin = "https://[" + host + "]:443"
+                    self.assertEqual(delivery.origin_of(raw_origin + "/audio.mp3"), origin)
+                    inventory = self.inventory()
+                    inventory["appOrigin"] = raw_origin
+                    inventory["mediaOrigins"] = [raw_origin]
+                    inventory["assets"][0]["url"] = raw_origin + "/audio.mp3"
+                    app, assets, _ = delivery.validate_inventory(inventory, [raw_origin], True, False, None)
+                    self.assertEqual(app, origin)
+                    self.assertEqual(delivery.origin_of(assets[0]["url"]), origin)
 
     def test_browser_invalid_authorities_cannot_normalize_into_an_allowlisted_origin(self):
         for malformed, canonical in [
