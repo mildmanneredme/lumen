@@ -117,6 +117,29 @@ def require_owned_path(path, parent_identity, file_identity, label):
                        f"{label} logical file changed during publication")
 
 
+def readback_owned_json(path, payload, parent_identity, owned_file, expected_identity=None):
+    """Perform one bounded exact-byte read, retaining owned logical bindings."""
+    with backup.opened_parent(path) as (parent, name):
+        parent_info = os.fstat(parent)
+        backup.require((parent_info.st_dev, parent_info.st_ino) == parent_identity,
+                       "Completion sidecar parent changed after write error")
+        descriptor = os.open(name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=parent)
+        with os.fdopen(descriptor, "rb") as incoming:
+            before = os.fstat(incoming.fileno())
+            backup.require(stat.S_ISREG(before.st_mode) and (before.st_dev, before.st_ino) == owned_file,
+                           "Completion sidecar ownership changed after write error")
+            backup.require(expected_identity is None or identity(before) == expected_identity,
+                           "Completion sidecar identity changed before error readback")
+            backup.require(before.st_size == len(payload) and incoming.read(len(payload) + 1) == payload,
+                           "Completion sidecar bytes differ after write error")
+            backup.require(identity(os.fstat(incoming.fileno())) == identity(before) ==
+                           identity(os.stat(name, dir_fd=parent, follow_symlinks=False)),
+                           "Completion sidecar changed during error readback")
+    # A pinned old directory can survive a logical-path replacement.
+    require_owned_path(path, parent_identity, identity(before), "Completion sidecar")
+    return identity(before)
+
+
 def write_exclusive_json(path, value):
     """Publish exclusively; reconcile a late I/O error against owned bytes.
 
@@ -144,6 +167,7 @@ def write_exclusive_json(path, value):
                 outgoing.flush()
                 os.fsync(outgoing.fileno())
                 final_identity = identity(os.fstat(outgoing.fileno()))
+        require_owned_path(path, owned_parent, final_identity, "Completion sidecar")
     except OSError as error:
         if owned_file is None:
             raise
@@ -151,28 +175,11 @@ def write_exclusive_json(path, value):
         # recovery is bounded by the expected payload and pinned to this call's
         # exclusively created regular file, not any preexisting completion file.
         try:
-            with backup.opened_parent(path) as (parent, name):
-                parent_info = os.fstat(parent)
-                backup.require((parent_info.st_dev, parent_info.st_ino) == owned_parent,
-                               "Completion sidecar parent changed after write error")
-                descriptor = os.open(name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=parent)
-                with os.fdopen(descriptor, "rb") as incoming:
-                    before = os.fstat(incoming.fileno())
-                    backup.require(stat.S_ISREG(before.st_mode) and (before.st_dev, before.st_ino) == owned_file,
-                                   "Completion sidecar ownership changed after write error")
-                    backup.require(before.st_size == len(payload) and incoming.read(len(payload) + 1) == payload,
-                                   "Completion sidecar bytes differ after write error")
-                    backup.require(identity(os.fstat(incoming.fileno())) == identity(before) ==
-                                   identity(os.stat(name, dir_fd=parent, follow_symlinks=False)),
-                                   "Completion sidecar changed during error readback")
-            # A pinned old directory can survive a logical-path replacement.
-            # Bind the returned path back to these exact bytes as well.
-            require_owned_path(path, owned_parent, identity(before), "Completion sidecar")
+            final_identity = readback_owned_json(path, payload, owned_parent, owned_file, final_identity)
         except (OSError, backup.BackupError) as failure:
             raise backup.BackupError(f"Completion sidecar write failed and exact owned-byte readback failed: {failure}") from error
-        return {"parentIdentity": owned_parent, "fileIdentity": identity(before),
+        return {"parentIdentity": owned_parent, "fileIdentity": final_identity,
                 "diagnostic": {"status": "exact-readback-after-write-error", "durabilityVerified": False, "error": str(error)}}
-    require_owned_path(path, owned_parent, final_identity, "Completion sidecar")
     return {"parentIdentity": owned_parent, "fileIdentity": final_identity, "diagnostic": None}
 
 
@@ -268,8 +275,25 @@ def archive_snapshot(root, destination, plan, *, maximum_archive_bytes,
         publication = write_exclusive_json(checksum_path, sidecar)
         backup.require(publication["parentIdentity"] == output_parent_identity,
                        "Completion sidecar parent differs from its archive")
-        require_owned_path(destination, output_parent_identity, archive_identity, "Backup archive")
-        require_owned_path(checksum_path, output_parent_identity, publication["fileIdentity"], "Completion sidecar")
+        try:
+            require_owned_path(destination, output_parent_identity, archive_identity, "Backup archive")
+            require_owned_path(checksum_path, output_parent_identity, publication["fileIdentity"], "Completion sidecar")
+        except OSError as error:
+            # The marker has already been exclusively published. Reconcile one
+            # transient final-check I/O error, never a changed identity or an
+            # unbounded stream of retries; no source/audio hashes are repeated.
+            try:
+                require_owned_path(destination, output_parent_identity, archive_identity, "Backup archive")
+                readback_owned_json(checksum_path, backup.encoded(sidecar), output_parent_identity,
+                                    publication["fileIdentity"][:2], publication["fileIdentity"])
+                require_owned_path(destination, output_parent_identity, archive_identity, "Backup archive")
+            except (OSError, backup.BackupError) as failure:
+                raise backup.BackupError(f"Published archive final check and exact owned-byte reconciliation failed: {failure}") from error
+            diagnostic = {"status": "exact-readback-after-write-error", "durabilityVerified": False,
+                          "error": str(error), "phase": "post-publication-identity-check"}
+            if publication["diagnostic"]:
+                diagnostic["priorPublicationError"] = publication["diagnostic"]["error"]
+            publication["diagnostic"] = diagnostic
         return dict(sidecar, completionPublication=publication["diagnostic"]) if publication["diagnostic"] else sidecar
     except (OSError, backup.BackupError, zipfile.BadZipFile, RuntimeError) as exc:
         raise backup.BackupError(f"Archive remains incomplete without a completion sidecar: {exc}") from exc

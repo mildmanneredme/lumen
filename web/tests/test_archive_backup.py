@@ -141,6 +141,66 @@ class ArchiveBackupTests(unittest.TestCase):
                 self.assertEqual(report["completionPublication"]["status"], "exact-readback-after-write-error")
                 self.assertEqual(archive.verify_archive(self.destination)["manifestSha256"], report["manifestSha256"])
 
+    def test_transient_post_publication_stat_failure_reconciles_complete_owned_bytes_once(self):
+        for phase in ["writer-final-marker", "snapshot-final-archive", "snapshot-final-marker"]:
+            with self.subTest(phase=phase):
+                self.destination = self.base / phase / "lumen-backup-fixture.zip"
+                self.destination.parent.mkdir()
+                checksum = archive.sidecar_path(self.destination)
+                original_stat, original_fdopen = archive.os.stat, archive.os.fdopen
+                marker_checks, faults, readbacks = [], [], []
+                def one_transient_stat(name, *args, **kwargs):
+                    if kwargs.get("dir_fd") is not None and name == checksum.name:
+                        marker_checks.append(True)
+                        selected = (phase == "writer-final-marker" and len(marker_checks) == 1) or \
+                                   (phase == "snapshot-final-marker" and len(marker_checks) == 2)
+                    else:
+                        selected = kwargs.get("dir_fd") is not None and name == self.destination.name and \
+                                   phase == "snapshot-final-archive" and checksum.exists()
+                    if selected and not faults:
+                        faults.append(True)
+                        raise OSError("fixture one transient post-publication stat failure")
+                    return original_stat(name, *args, **kwargs)
+                def count_marker_readback(descriptor, mode, *args, **kwargs):
+                    if mode == "rb" and checksum.exists() and os.fstat(descriptor).st_ino == checksum.stat().st_ino:
+                        readbacks.append(True)
+                    return original_fdopen(descriptor, mode, *args, **kwargs)
+                error = None
+                with patch.object(archive.os, "stat", side_effect=one_transient_stat), \
+                     patch.object(archive.os, "fdopen", side_effect=count_marker_readback):
+                    try:
+                        report = self.create()
+                    except archive.backup.BackupError as failure:
+                        error = failure
+                proof = archive.verify_archive(self.destination)
+                self.assertEqual(len(faults), 1)
+                self.assertIsNone(error, "the complete owned marker already passes current-byte verification")
+                self.assertEqual(len(readbacks), 1, "exact marker reconciliation is bounded to one readback")
+                self.assertEqual(report["copyStatus"], "complete")
+                self.assertEqual(report["manifestSha256"], proof["manifestSha256"])
+                self.assertEqual(report["completionPublication"]["status"], "exact-readback-after-write-error")
+
+    def test_post_publication_reconciliation_stays_bounded_and_rejects_changed_identity(self):
+        for failure_type in [OSError, archive.backup.BackupError]:
+            with self.subTest(failure_type=failure_type):
+                self.destination = self.base / failure_type.__name__ / "lumen-backup-fixture.zip"
+                self.destination.parent.mkdir()
+                checksum = archive.sidecar_path(self.destination)
+                original = archive.require_owned_path
+                failures = []
+                def reject_final_archive(path, parent_identity, file_identity, label):
+                    if Path(path) == self.destination and checksum.exists():
+                        failures.append(True)
+                        raise failure_type("fixture persistent I/O or changed output identity")
+                    return original(path, parent_identity, file_identity, label)
+                with patch.object(archive, "require_owned_path", side_effect=reject_final_archive):
+                    with self.assertRaisesRegex(archive.backup.BackupError, "persistent I/O or changed output identity"):
+                        self.create()
+                self.assertEqual(len(failures), 2 if failure_type is OSError else 1)
+                self.assertTrue(self.destination.exists()); self.assertTrue(checksum.exists())
+                for name in self.paths:
+                    self.assertEqual((self.root / name).read_bytes(), self.original[name])
+
     def test_partial_malformed_or_pre_marker_failures_remain_unverifiable_and_preserve_older_backup(self):
         self.create()
         older = self.destination

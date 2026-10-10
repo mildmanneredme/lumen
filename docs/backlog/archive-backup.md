@@ -95,7 +95,7 @@ source also receives a SHA-256 hash in the internal manifest.
 
 A successful ZIP has a sibling `REVIEWED-BACKUP-ID.zip.checksums.json` with
 its byte count, SHA-256, MD5, source byte count, plan hash, and manifest hash.
-Both records explicitly say that remote sync is pending. If flush, fsync or close reports an error after the exclusive sidecar write, the writer accepts completion only after reading back the exact expected bytes from that same regular file and original directory. Its result then includes `completionPublication.durabilityVerified: false`; current readable bytes do not establish crash durability. Failed creation, partial writes, substituted files and different JSON remain failures. Normal and error publication both recheck the logical archive and marker paths against their original directory and full file identities. Verify all original entries locally, then restore a small explicit sample outside `web/dist`:
+Both records explicitly say that remote sync is pending. If flush, fsync or close reports an error after the exclusive sidecar write, the writer accepts completion only after reading back the exact expected bytes from that same regular file and original directory. Its result then includes `completionPublication.durabilityVerified: false`; current readable bytes do not establish crash durability. Failed creation, partial writes, substituted files and different JSON remain failures. Normal and error publication both recheck the logical archive and marker paths against their original directory and full file identities. A transient I/O error in a final publication check receives one bounded exact-byte readback and identity recheck; changed identities or persistent unverifiable errors still fail. Verify all original entries locally, then restore a small explicit sample outside `web/dist`:
 
 ```text
 python3 web/scripts/archive_backup.py --verify /PRIVATE/PATH/BACKUP.zip
@@ -141,7 +141,7 @@ does not establish cloud durability.
 python3 -m unittest discover -s web/tests -p test_archive_backup.py
 ```
 
-Thirty-three archive fixtures and 52 backup fixtures verify original bytes, ZIP64 streaming, deterministic paths
+Thirty-five archive fixtures and 52 backup fixtures verify original bytes, ZIP64 streaming, deterministic paths
 and timestamps, checksum binding, full verification, sample restore, exclusive
 files, public-path and symlink defenses, source identity changes, reserve and
 size-cap failures, malformed entries, source replacement after planning,
