@@ -53,6 +53,23 @@ def available_bytes(directory_descriptor):
     return usage.f_bavail * usage.f_frsize
 
 
+def require_available_space(directory_descriptor, minimum_free_bytes, requested_bytes=0, *,
+                            current_bytes=0, new_entries=0):
+    """Budget the pinned filesystem's allocation units and new directory entries."""
+    require(all(type(value) is int and value >= 0 for value in
+                (minimum_free_bytes, requested_bytes, current_bytes, new_entries)), "Invalid capacity budget")
+    usage = os.fstatvfs(directory_descriptor)
+    unit = max(usage.f_frsize, getattr(usage, "f_bsize", usage.f_frsize))
+    require(type(unit) is int and unit > 0 and type(usage.f_frsize) is int and usage.f_frsize > 0,
+            "Invalid filesystem allocation unit")
+    def rounded(value):
+        return ((value + unit - 1) // unit) * unit
+    needed = (rounded(minimum_free_bytes) + rounded(current_bytes + requested_bytes)
+              - rounded(current_bytes) + new_entries * unit)
+    require(usage.f_bavail * usage.f_frsize >= needed,
+            "Insufficient local free space for allocation plus reserve")
+
+
 def require(condition, message):
     if not condition:
         raise BackupError(message)
@@ -243,28 +260,36 @@ def existing_directory(path):
 
 
 @contextmanager
-def opened_parent(path, *, create=False):
+def opened_parent(path, *, create=False, root_descriptor=None, relative_path=None, before_create=None):
     """Pin every ancestor before opening bytes or writing a snapshot file.
 
     Callers resolve the selected project/sync roots once. Owned descendants
     stay logical paths, so a later symlink cannot redirect a copy or restore.
     """
-    path = Path(path).absolute()
-    require(path.name and all(part not in (".", "..") and "\x00" not in part
-                              for part in path.parts[1:]), "Unsafe backup file path")
+    if root_descriptor is None:
+        require(relative_path is None, "Pinned backup relative path requires its directory descriptor")
+        path = Path(path).absolute()
+        require(path.name and all(part not in (".", "..") and "\x00" not in part
+                                  for part in path.parts[1:]), "Unsafe backup file path")
+        parts = path.parts[1:]
+    else:
+        parts = safe_relative(relative_path).parts
     descriptors = []
     try:
-        descriptors.append(os.open(path.anchor, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW))
-        for part in path.parts[1:-1]:
+        descriptors.append(os.open(path.anchor, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+                           if root_descriptor is None else os.dup(root_descriptor))
+        for part in parts[:-1]:
             if create:
                 try:
+                    if before_create:
+                        before_create()
                     os.mkdir(part, 0o700, dir_fd=descriptors[-1])
                     os.fsync(descriptors[-1])
                 except FileExistsError:
                     pass
             descriptors.append(os.open(part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW,
                                        dir_fd=descriptors[-1]))
-        yield descriptors[-1], path.name
+        yield descriptors[-1], parts[-1]
     finally:
         close_descriptors(reversed(descriptors))
 
@@ -318,11 +343,12 @@ def create_snapshot_directory(destination, *, files=False):
     _create_snapshot_directory(destination, files=files)
 
 
-def write_json(path, value, *, exclusive=False, created=None, published=None):
+def write_json(path, value, *, exclusive=False, created=None, published=None,
+               root_descriptor=None, relative_path=None):
     """Replace mutable state, or exclusively create an immutable final marker."""
     temporary = path.name + ".tmp-" + uuid.uuid4().hex
     payload = encoded(value)
-    with opened_parent(path) as (parent, name):
+    with opened_parent(path, root_descriptor=root_descriptor, relative_path=relative_path) as (parent, name):
         try:
             descriptor = os.open(name if exclusive else temporary, os.O_CREAT | os.O_EXCL | os.O_WRONLY | os.O_NOFOLLOW,
                                  0o600, dir_fd=parent)
@@ -370,7 +396,7 @@ def file_digest(path):
 
 
 def copy_hashed(source, destination, *, maximum_bytes=None, expected_source=None, before_write=None,
-                completed_output=None):
+                completed_output=None, destination_root=None, destination_relative=None, before_create=None):
     """Copy at most the approved byte count; reject growth before writing it."""
     require(maximum_bytes is None or type(maximum_bytes) is int and maximum_bytes >= 0,
             "Invalid backup copy byte limit")
@@ -386,7 +412,10 @@ def copy_hashed(source, destination, *, maximum_bytes=None, expected_source=None
             limit = before.st_size if maximum_bytes is None else maximum_bytes
             if before_write:
                 before_write(0)
-            with opened_parent(destination, create=True) as (outgoing_parent, outgoing_name):
+            with opened_parent(destination, create=True, root_descriptor=destination_root,
+                               relative_path=destination_relative, before_create=before_create) as (outgoing_parent, outgoing_name):
+                if before_create:
+                    before_create()
                 destination_fd = os.open(outgoing_name, os.O_CREAT | os.O_EXCL | os.O_WRONLY | os.O_NOFOLLOW,
                                          0o600, dir_fd=outgoing_parent)
                 # Unbuffered chunk writes let flush/fsync preserve the recorded
@@ -469,27 +498,38 @@ def _copy_snapshot(root, destination, plan, *, capacity_descriptor, minimum_free
     require(destination.name == plan["backupId"], "Backup destination name must equal the reviewed backup ID")
     for row in rows:
         check_source_clock(root, row)
-    require(available_bytes(capacity_descriptor) >= plan["totalBytes"] + minimum_free_bytes,
-            "Insufficient local free space for the backup plus reserve")
+    require_available_space(capacity_descriptor, minimum_free_bytes, plan["totalBytes"], new_entries=2)
     directory_binding = _create_snapshot_directory(destination, files=True)
     pinned_parent = os.fstat(capacity_descriptor)
     require(directory_binding[0] == (pinned_parent.st_dev, pinned_parent.st_ino),
             "Backup destination parent changed after capacity pinning")
+    snapshot_descriptor = os.open(destination.name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW,
+                                  dir_fd=capacity_descriptor)
+    verified_root = False
     copied, outputs, owned_marker, published = [], [], [], []
     state = {"schemaVersion": 1, "backupId": plan["backupId"], "planSha256": plan["planSha256"],
              "copyStatus": "incomplete", "remoteSyncStatus": "pending", "files": copied,
              "totalBytes": plan["totalBytes"], "copiedBytes": 0}
     remaining = plan["totalBytes"]
     manifest = None
+    def close_snapshot():
+        nonlocal snapshot_descriptor
+        if snapshot_descriptor is not None:
+            descriptor, snapshot_descriptor = snapshot_descriptor, None
+            close_descriptors([descriptor])
     def check_capacity(copied=0):
-        require(available_bytes(capacity_descriptor) >= remaining - copied + minimum_free_bytes,
-                "Insufficient local free space during backup; incomplete copy retained")
+        require_available_space(capacity_descriptor, minimum_free_bytes, remaining - copied, current_bytes=copied)
+    def check_new_entry():
+        require_available_space(capacity_descriptor, minimum_free_bytes, remaining, new_entries=1)
     def write_metadata(path, value, **options):
         # Replacement state needs its full temporary payload while the prior
         # file still exists; final manifests need their full exclusive payload.
-        require(available_bytes(capacity_descriptor) >= remaining + minimum_free_bytes + len(encoded(value)),
-                "Insufficient local free space for backup metadata; incomplete copy retained")
-        write_json(path, value, **options)
+        try:
+            require_available_space(capacity_descriptor, minimum_free_bytes, remaining + len(encoded(value)), new_entries=1)
+        except BackupError as exc:
+            raise BackupError(f"Insufficient local free space for backup metadata: {exc}") from exc
+        write_json(path, value, root_descriptor=snapshot_descriptor,
+                   relative_path=path.relative_to(destination).as_posix(), **options)
     def check_outputs():
         require_directory_binding(destination, directory_binding)
         for path, binding in outputs:
@@ -507,15 +547,21 @@ def _copy_snapshot(root, destination, plan, *, capacity_descriptor, minimum_free
             if published:
                 require_file_binding(marker, published[0], "Published backup manifest")
             check_outputs()
-    write_metadata(destination / "backup-state.json", state)
     try:
+        opened_root = os.fstat(snapshot_descriptor)
+        require((opened_root.st_dev, opened_root.st_ino) == directory_binding[1],
+                "Backup created snapshot root identity changed before opening")
+        verified_root = True
+        write_metadata(destination / "backup-state.json", state)
         for row in rows:
             check_capacity()
             source = check_source_clock(root, row)
             written = []
             count, source_hash = copy_hashed(source, destination / "files" / row["path"],
                                              maximum_bytes=row["bytes"], expected_source=row,
-                                             before_write=check_capacity, completed_output=written.append)
+                                             before_write=check_capacity, completed_output=written.append,
+                                             destination_root=snapshot_descriptor, destination_relative="files/" + row["path"],
+                                             before_create=check_new_entry)
             require(count == row["bytes"], f"Backup source byte count changed: {row['path']}")
             check_source_clock(root, row)
             require(row.get("expectedSha256", source_hash) == source_hash, f"Backup production hash differs: {row['path']}")
@@ -545,6 +591,7 @@ def _copy_snapshot(root, destination, plan, *, capacity_descriptor, minimum_free
         write_metadata(destination / "backup-manifest.json", manifest, exclusive=True,
                        created=owned_marker.append, published=published.append)
         check_publication()
+        close_snapshot()
         completed(check_publication)
         return manifest
     except (OSError, BackupError) as exc:
@@ -563,12 +610,15 @@ def _copy_snapshot(root, destination, plan, *, capacity_descriptor, minimum_free
                                                            "durabilityVerified": False})
         state["copyStatus"] = "incomplete"
         state["error"] = str(exc)
-        try:
-            write_metadata(destination / "backup-state.json", state)
-        except (OSError, BackupError):
-            # Diagnostic persistence is best effort; preserve the primary error.
-            pass
+        if verified_root:
+            try:
+                write_metadata(destination / "backup-state.json", state)
+            except (OSError, BackupError):
+                # Diagnostic persistence is best effort; preserve the primary error.
+                pass
         raise BackupError(f"Backup remains incomplete: {exc}") from exc
+    finally:
+        close_snapshot()
 
 
 @contextmanager
@@ -674,21 +724,27 @@ def _restore_sample(root, snapshot, destination, paths, *, capacity_descriptor, 
     require(destination != public_root and public_root not in destination.parents,
             "Restore destination cannot be public web/dist")
     report = verify_snapshot(snapshot, paths)
+    restore_descriptor = None
     try:
         with pinned_manifest(snapshot, paths) as (snapshot, manifest, rows, check_manifest):
             require(manifest["manifestSha256"] == report["manifestSha256"],
                     "Backup manifest changed after sample verification")
             remaining = sum(row["bytes"] for row in rows)
-            require(available_bytes(capacity_descriptor) >= remaining + minimum_free_bytes,
-                    "Insufficient local free space for restored sample plus reserve")
+            require_available_space(capacity_descriptor, minimum_free_bytes, remaining, new_entries=1)
             directory_binding = _create_snapshot_directory(destination)
             pinned_parent = os.fstat(capacity_descriptor)
             require(directory_binding[0] == (pinned_parent.st_dev, pinned_parent.st_ino),
                     "Restore destination parent changed after capacity pinning")
+            restore_descriptor = os.open(destination.name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW,
+                                         dir_fd=capacity_descriptor)
+            opened_root = os.fstat(restore_descriptor)
+            require((opened_root.st_dev, opened_root.st_ino) == directory_binding[1],
+                    "Restore created root identity changed before opening")
             outputs, sources = [], []
             def check_capacity(copied=0):
-                require(available_bytes(capacity_descriptor) >= remaining - copied + minimum_free_bytes,
-                        "Insufficient local free space during restore; incomplete sample retained")
+                require_available_space(capacity_descriptor, minimum_free_bytes, remaining - copied, current_bytes=copied)
+            def check_new_entry():
+                require_available_space(capacity_descriptor, minimum_free_bytes, remaining, new_entries=1)
             for row in rows:
                 check_capacity()
                 check_manifest()
@@ -698,7 +754,8 @@ def _restore_sample(root, snapshot, destination, paths, *, capacity_descriptor, 
                 written = []
                 count, source_hash = copy_hashed(source, destination / row["path"], maximum_bytes=row["bytes"],
                                                  expected_source=source_binding[1], before_write=check_capacity,
-                                                 completed_output=written.append)
+                                                 completed_output=written.append, before_create=check_new_entry,
+                                                 destination_root=restore_descriptor, destination_relative=row["path"])
                 require(count == row["bytes"] and source_hash == row["sha256"], f"Restore source changed during copy: {row['path']}")
                 require_file_binding(source, source_binding, "Restore source")
                 restored = owned_file(destination, row["path"])
@@ -715,6 +772,9 @@ def _restore_sample(root, snapshot, destination, paths, *, capacity_descriptor, 
             return dict(report, verificationScope="local-restored-sample")
     except (OSError, BackupError) as exc:
         raise BackupError(f"Restore remains incomplete: {exc}") from exc
+    finally:
+        if restore_descriptor is not None:
+            close_descriptors([restore_descriptor])
 
 
 def collect_release_fileset(root, backup_id):
@@ -824,7 +884,10 @@ def main(argv=None):
                 with os.fdopen(descriptor, "wb") as stream:
                     stream.write(encoded(plan)); stream.flush(); os.fsync(stream.fileno())
             print(json.dumps({"plan": str(args.plan.resolve()), "files": len(plan["files"]), "bytes": plan["totalBytes"],
-                              "planSha256": plan["planSha256"], "minimumFreeBytes": plan["totalBytes"] + args.minimum_free_bytes}))
+                              "planSha256": plan["planSha256"],
+                              "sourceBytesPlusReserveFloor": plan["totalBytes"] + args.minimum_free_bytes,
+                              "destinationPreflightRequired": True,
+                              "floorExcludes": ["metadataPayloads", "filesystemAllocationRounding", "directoryEntryHeadroom"]}))
         elif args.copy:
             require(args.destination is not None, "--copy requires --destination")
             last = [0.0]

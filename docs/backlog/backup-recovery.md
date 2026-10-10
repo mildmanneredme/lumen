@@ -28,7 +28,7 @@ python3 web/scripts/backup_release.py \
   --backup-id lumen-backup-20261010-v1
 ```
 
-Review the explicit file list, production hash bindings, exclusions, byte total, available disk space, exact cloud destination and remaining account quota. After review, copy directly into the verified Lumen desktop sync mount:
+The planning CLI reports `sourceBytesPlusReserveFloor`, with `destinationPreflightRequired: true`; it excludes metadata, allocation rounding and directory entries. This floor is not a sufficient destination-space guarantee. Review the explicit file list, production hash bindings, exclusions, byte total, available disk space, exact cloud destination and remaining account quota. After review, copy directly into the verified Lumen desktop sync mount:
 
 ```sh
 python3 web/scripts/backup_release.py \
@@ -42,7 +42,7 @@ The script streams each source once into a newly created file, calculates its SH
 
 Both the local state and final manifest keep `remoteSyncStatus: pending`. Copy completion and a matching local restore are not proof of cloud upload. Reports must distinguish these states.
 
-Every directory progress, prepared-state, completion-manifest and diagnostic JSON write also reserves its full encoded payload, including the temporary replacement while the old state exists. Copy and restore reserve checks use `fstatvfs` on the original open destination-directory descriptor. A renamed or replaced logical path cannot redirect capacity measurements to another filesystem. Restored files and their containing directory entries are synced before success is recorded.
+Every directory progress, prepared-state, completion-manifest and diagnostic JSON write also reserves its full encoded payload, including the temporary replacement while the old state exists. Reserve checks round file growth and the remaining reserve to the destination filesystem's allocation unit and include headroom for newly created entries. Copy and restore use `fstatvfs` on the original open destination-directory descriptor. All writes remain relative to the verified original snapshot descriptor, including diagnostic writes; a renamed or replaced logical path cannot redirect private bytes or capacity measurements. Restored files and their containing directory entries are synced before success is recorded.
 
 ## Remote verification and restore proof
 
@@ -74,6 +74,6 @@ For disaster recovery, fetch the complete cloud snapshot into a fresh directory,
 python3 -m unittest discover -s web/tests -p test_backup_release.py -v
 ```
 
-The 81 backup fixtures use tiny temporary files and cover exact copying, production hash mismatch, source changes and same-size replacements after planning, nonblocking FIFO rejection, OAuth and parent-directory credential/receipt and generated-directory exclusions, symlink rejection, snapshot and restore disk-space reserves, earlier-backup preservation, immutable manifests, and verified sample restore/tamper failure. Manifest descriptors remain bound throughout verification and restore, and success checks recheck earlier files and the logical restored destination. Flush, fsync, close, short-write and directory-sync fixtures exercise publication diagnostics and output identities without extra production hash reads. They do not upload files or read production audio bodies. A further 50 fixtures verify the archive route described in [archive-backup.md](archive-backup.md).
+The 88 backup fixtures use tiny temporary files and cover exact copying, production hash mismatch, source changes and same-size replacements after planning, nonblocking FIFO rejection, OAuth and parent-directory credential/receipt and generated-directory exclusions, symlink rejection, snapshot and restore disk-space reserves, earlier-backup preservation, immutable manifests, and verified sample restore/tamper failure. Manifest descriptors remain bound throughout verification and restore, and success checks recheck earlier files and the logical restored destination. Flush, fsync, close, short-write and directory-sync fixtures exercise publication diagnostics and output identities without extra production hash reads. They do not upload files or read production audio bodies. A further 54 fixtures verify the archive route described in [archive-backup.md](archive-backup.md).
 
 Destination discovery and engineering preparation are complete. The actual versioned copy, cloud-sync confirmation, remote inventory/checksum evidence, and production restore sample remain pending until their recorded checks have finished.

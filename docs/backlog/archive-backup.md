@@ -74,7 +74,7 @@ nothing. Each ZIP source keeps exactly its reviewed relative path, without
 invented directory names or renaming audio files. `backup-manifest.json` is
 reserved for the manifest inside the archive.
 
-During writing and restoration, reserve checks measure the original open output filesystem with `fstatvfs`; replacing a logical directory cannot substitute another volume's free-space reading. Restoration syncs each file and its containing directory before recording successful completion.
+During writing and restoration, reserve checks measure the original open output filesystem with `fstatvfs`, round growth and the remaining reserve to its allocation unit, and include creation headroom for directory entries. Replacing a logical directory cannot substitute another volume's free-space reading. Restoration binds the newly created root to its original creation identity before opening it, writes relative to that verified descriptor, and syncs each file and its containing directory before recording successful completion.
 
 After review, create the archive with these explicit arguments:
 
@@ -143,7 +143,7 @@ does not establish cloud durability.
 python3 -m unittest discover -s web/tests -p test_archive_backup.py
 ```
 
-Fifty archive fixtures and 81 backup fixtures verify original bytes, ZIP64 streaming, deterministic paths
+Fifty-four archive fixtures and 88 backup fixtures verify original bytes, ZIP64 streaming, deterministic paths
 and timestamps, checksum binding, full verification, sample restore, exclusive
 files, public-path and symlink defenses, source identity changes, reserve and
 size-cap failures, malformed entries, source replacement after planning,
