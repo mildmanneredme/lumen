@@ -612,7 +612,7 @@
         const record = manifest.tracks.find(track => track.id === trackId)?.recordings[narratorId];
         if (window.LUMEN_CHAPTER === pilot && trackId === pilot.chapterId && narratorId === pilot.audio.narratorId && record?.audioSha256 === pilot.audio.sha256) return pilot;
         const loaded = await fetch(localAssetURL(url),{signal,cache:'no-store'});
-        if (loaded.status === 401) { const error = new Error('Your invitation needs to be reopened.'); error.code = 'ACCESS_REQUIRED'; throw error; }
+        if (loaded.status === 401) { const error = new Error('Enter your access code again to continue.'); error.code = 'ACCESS_REQUIRED'; throw error; }
         if (!loaded.ok) throw new Error('Chapter response ' + loaded.status);
         return loaded.json();
       }});
@@ -656,12 +656,22 @@
     for (const dialog of [$('settings'),$('chapters')]) if (dialog.open) dialog.close();
     $('resume-panel').hidden = $('transition-panel').hidden = true; $('sign-out').hidden = $('sign-out-settings').hidden = true;
     document.body.classList.remove('authenticated'); committing = false;
-    $('access-status').textContent = 'Use your invitation to open the book. Your listening place is saved on this browser.';
+    $('access-status').textContent = 'Use your access code to open the book. Your listening place is saved on this browser.';
+  }
+  function canonicalAccessCode(value) {
+    if (value.length > 256) return '';
+    const words = value.trim().toLowerCase().split(/[\s\u2010-\u2015-]+/);
+    return words.length === 6 && words.every(word => /^[a-z]{3,5}$/.test(word)) ? words.join('-') : '';
   }
   function inviteToken(value) {
     const text = value.trim();
     if (/^[A-Za-z0-9_-]{43}$/.test(text)) return text;
-    try { return new URLSearchParams(new URL(text).hash.slice(1)).get('invite') || ''; } catch (_) { return ''; }
+    const code = canonicalAccessCode(value);
+    if (code) return code;
+    try {
+      const invited = new URLSearchParams(new URL(text).hash.slice(1)).get('invite') || '';
+      return /^[A-Za-z0-9_-]{43}$/.test(invited) ? invited : canonicalAccessCode(invited);
+    } catch (_) { return ''; }
   }
   function cancelSessionExchange() {
     const exchange = sessionExchange;
@@ -682,12 +692,12 @@
   }
   async function activateInvite(value) {
     if (value.trim()) retainedInvite = inviteToken(value);
-    const token = retainedInvite, valid = /^[A-Za-z0-9_-]{43}$/.test(token);
+    const token = retainedInvite, valid = /^[A-Za-z0-9_-]{43}$/.test(token) || !!canonicalAccessCode(token);
     $('invite-code').required = !valid;
     $('invite-submit').disabled = false;
     if (!valid) {
       if (sessionExchange?.method === 'POST') { ++accessToken; ++inviteRequest; cancelSessionExchange(); }
-      $('access-status').textContent = 'Open or paste the invitation link you received.';
+      $('access-status').textContent = 'Enter the six-word access code you received, or paste your invitation link.';
       return;
     }
     const attempt = ++accessToken, request = ++inviteRequest, canceled = cancelSessionExchange();
@@ -697,11 +707,11 @@
       if (attempt !== accessToken || request !== inviteRequest) return;
       const {response,state:sessionState} = await exchangeSession({method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({invite:token})});
       if (attempt !== accessToken) return;
-      if (!response.ok) throw new Error('This invitation could not be verified. Check the link and try again.');
-      if (sessionState.authenticated !== true) throw new Error('This invitation could not be verified. Check the link and try again.');
+      if (!response.ok) throw new Error('This access code could not be verified. Check the code or link and try again.');
+      if (sessionState.authenticated !== true) throw new Error('This access code could not be verified. Check the code or link and try again.');
       retainedInvite = ''; $('invite-code').required = true; $('invite-code').value = ''; await bootstrap();
     } catch (error) {
-      if (attempt === accessToken && request === inviteRequest) $('access-status').textContent = error.message || 'Your invitation could not be opened. Try again.';
+      if (attempt === accessToken && request === inviteRequest) $('access-status').textContent = error.message || 'Your access code could not be verified. Try again.';
     } finally { if (request === inviteRequest) $('invite-submit').disabled = false; }
   }
   $('invite-form').addEventListener('submit',event => { event.preventDefault(); activateInvite($('invite-code').value); });

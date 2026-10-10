@@ -37,6 +37,81 @@ async function login(f) {
   assert.equal(response.status,200);
   return response.headers.get('set-cookie').split(';')[0];
 }
+const sharedCode='acorn-blend-choir-drift-eager-flock';
+function shared(f,changes={}) {
+  const invite={id:'shared-readers',tokenHash:digest(sharedCode),version:1,expiresAt:1_900_000_000,revoked:false,...changes};
+  f.env.LUMEN_INVITES_JSON=JSON.stringify([...JSON.parse(f.env.LUMEN_INVITES_JSON),invite]);return invite;
+}
+const exchange=(f,value,headers={})=>f.reader(f.request('/api/session','POST',
+  {Origin:origin,'Content-Type':'application/json',...headers},{invite:value}));
+test('one shared code opens independent reader sessions with case, spaces and common dashes',async()=>{
+  const f=fixture();shared(f);
+  for(const value of [sharedCode,'ACORN BLEND CHOIR DRIFT EAGER FLOCK',
+    '  Acorn\tblend  choir\nDrift eager flock  ','acorn—blend–choir‑drift-eager flock']) {
+    const response=await exchange(f,value);assert.equal(response.status,200);
+    const cookie=response.headers.get('set-cookie');
+    for(const attribute of ['HttpOnly','Secure','SameSite=Lax','Path=/','Max-Age=2592000'])assert.ok(cookie.includes(attribute));
+    assert.ok(!cookie.includes(sharedCode));assert.deepEqual(await response.json(),{authenticated:true});
+    assert.equal((await f.reader(f.request('/api/book','GET',{Cookie:cookie.split(';')[0]}))).status,200);
+    const range=await f.reader(f.request('/api/assets/'+audioPath,'GET',{Cookie:cookie.split(';')[0],Range:'bytes=2-6'}));
+    assert.equal(range.status,206);assert.equal(await range.text(),'23456');
+  }
+  assert.ok(!f.env.LUMEN_INVITES_JSON.includes(sharedCode));
+});
+test('shared access expires and revokes every code session without changing legacy invite access',async()=>{
+  for(const change of [{revoked:true},{version:2},{expiresAt:1_700_000_000}]) {
+    const f=fixture(),entry=shared(f),legacy=await login(f),response=await exchange(f,sharedCode);
+    assert.equal(response.status,200);const cookie=response.headers.get('set-cookie').split(';')[0];
+    f.env.LUMEN_INVITES_JSON=JSON.stringify([JSON.parse(f.env.LUMEN_INVITES_JSON)[0],{...entry,...change}]);
+    assert.equal((await f.reader(f.request('/api/book','GET',{Cookie:cookie}))).status,401);
+    assert.equal((await f.reader(f.request('/api/book','GET',{Cookie:legacy}))).status,200);
+  }
+});
+test('shared-code cookie lifetime is capped by its grant and never exceeds thirty days',async()=>{
+  const f=fixture();shared(f,{expiresAt:1_800_000_060});
+  const response=await exchange(f,sharedCode);assert.equal(response.status,200);
+  assert.ok(response.headers.get('set-cookie').includes('Max-Age=60'));
+  const cookie=response.headers.get('set-cookie').split(';')[0];f.setNow(1_800_000_060_000);
+  assert.equal((await f.reader(f.request('/api/book','GET',{Cookie:cookie}))).status,401);
+  assert.equal((await exchange(f,sharedCode)).status,401);
+});
+test('malformed codes and wrong words stay locked and never echo submitted credentials',async()=>{
+  const f=fixture();shared(f);
+  for(const value of ['acorn blend choir drift eager','acorn blend choir drift eager flock ghost',
+    'acorn/b​​lend/choir/drift/eager/flock','acorn blend choir drift eager flöck','acorn blend choir drift eager fl0ck',
+    'acorn blend choir drift eager fl','acorn blend choir drift eager flock\u0000',' '.repeat(300)+sharedCode,42,null]) {
+    const response=await exchange(f,value);assert.equal(response.status,400);assert.equal(response.headers.get('set-cookie'),null);
+    const text=await response.text();if(typeof value==='string')assert.ok(!text.includes(value));
+  }
+  const response=await exchange(f,'acorn-blend-choir-drift-eager-ghost');assert.equal(response.status,401);
+  assert.equal(f.calls.length,0);
+});
+test('a shared code keeps CSRF, preview origin and logout protections',async()=>{
+  const f=fixture();shared(f);
+  for(const headers of [{Origin:'https://evil.example'},{Origin:origin,'Sec-Fetch-Site':'cross-site'},{Origin:''}])
+    assert.equal((await exchange(f,sharedCode,headers)).status,403);
+  Object.assign(f.env,{VERCEL_ENV:'preview',VERCEL_URL:previewHost});
+  const response=await f.reader(previewRequest('/api/session','POST',{Origin:previewOrigin,'Content-Type':'application/json'},{invite:sharedCode}));
+  assert.equal(response.status,200);const cookie=response.headers.get('set-cookie').split(';')[0];
+  assert.equal((await f.reader(previewRequest('/api/book','GET',{Cookie:cookie}))).status,200);
+  const logout=await f.reader(previewRequest('/api/session','DELETE',{Origin:previewOrigin,Cookie:cookie}));
+  assert.ok(logout.headers.get('set-cookie').includes('Max-Age=0'));
+});
+test('opaque legacy credentials retain exact case and bytes even when they resemble spaced code words',async()=>{
+  const f=fixture();shared(f);assert.equal((await exchange(f,token)).status,200);
+  assert.equal((await exchange(f,token.toLowerCase())).status,401);
+  const special='acorn---blend---choir---drift--eager--clang';
+  assert.equal(special.length,43);assert.equal(Buffer.from(special,'base64url').toString('base64url'),special);
+  f.env.LUMEN_INVITES_JSON=JSON.stringify([...JSON.parse(f.env.LUMEN_INVITES_JSON),
+    {id:'legacy-words',tokenHash:digest(special),version:1,expiresAt:1_900_000_000,revoked:false},
+    {id:'shared-words',tokenHash:digest('acorn-blend-choir-drift-eager-clang'),version:1,expiresAt:1_900_000_000,revoked:false}]);
+  const legacy=await exchange(f,special);assert.equal(legacy.status,200);
+  const claims=JSON.parse(Buffer.from(legacy.headers.get('set-cookie').split('=')[1].split('.')[0],'base64url').toString());
+  assert.equal(claims.i,'legacy-words');
+  const typed=await exchange(f,special.toUpperCase());assert.equal(typed.status,200);
+  const typedClaims=JSON.parse(Buffer.from(typed.headers.get('set-cookie').split('=')[1].split('.')[0],'base64url').toString());
+  assert.equal(typedClaims.i,'shared-words');
+});
 test('private prose and audio reject guests before index or Blob reads',async()=>{
   let reads=0; const f=fixture({loadIndex:async()=>{reads++;return index;}});
   for(const path of ['/api/book','/api/assets/'+manifestPath,'/api/assets/'+audioPath]) {

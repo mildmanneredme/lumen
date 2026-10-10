@@ -243,7 +243,7 @@ async function run() {
   }
   const guest = await contextFor({width:390,height:844}, true, false);
   await guest.page.goto(origin, {waitUntil:'domcontentloaded'});
-  await guest.page.waitForFunction(() => document.querySelector('#access-status').textContent.includes('Use your invitation'));
+  await guest.page.waitForFunction(() => document.querySelector('#access-status').textContent.includes('Use your access code'));
   check('guest Chrome receives no private prose or audio source', await guest.page.evaluate(() =>
     !window.LUMEN_BOOK && !document.querySelector('#prose').textContent && !document.querySelector('#narration').getAttribute('src')));
   await guest.context.close();

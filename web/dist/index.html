@@ -39,13 +39,16 @@
     <div class="access-mark" aria-hidden="true">L</div>
     <p class="chapter-kicker">A private reading room</p>
     <h1 id="access-title">Welcome to Lumen</h1>
-    <p>Open your invitation link to read and listen.</p>
+    <p>Enter your access code to read and listen.</p>
     <form id="invite-form">
-      <label for="invite-code">Invitation link or code</label>
-      <input id="invite-code" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" required>
+      <label for="invite-code">Access code</label>
+      <input id="invite-code" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" aria-describedby="access-hint" required>
       <button id="invite-submit" class="continue-button" type="submit">Open the book</button>
     </form>
-    <p id="access-status" role="status">Checking your invitation…</p>
+    <p id="access-hint">Spaces or dashes work; capital letters are fine. Invitation links work too.</p>
+    <p id="access-status" role="status">Checking your access…</p>
+    <p>For help or feedback, contact the person who shared your access code.</p>
+    <p>AI-generated narration. Illustrations are in preparation.</p>
   </section>
   <aside id="resume-panel" class="resume-panel" aria-label="Your listening position" hidden>
     <p id="resume-message">Your place is saved on this browser.</p>
@@ -81,7 +84,7 @@
           <button id="chapter-continue" class="text-button" type="button" hidden>Continue to next chapter</button>
           <button id="replay" class="text-button" type="button">Listen again</button>
         </section>
-        <p class="narration-credit">Narration generated using Gemini. Illustrations created with GPT image generation.</p>
+        <p class="narration-credit">AI-generated narration. Illustrations are in preparation.</p>
       </div>
     </section>
   </main>
@@ -122,6 +125,6 @@
     <nav id="chapter-list" aria-label="Book chapters"></nav>
   </dialog>
   <audio id="narration" preload="metadata" crossorigin="anonymous"></audio>
-  <noscript><p class="no-script">Enable JavaScript to use your invitation and open the book.</p></noscript>
+  <noscript><p class="no-script">Enable JavaScript to use your access code and open the book.</p></noscript>
 </body>
 </html>
