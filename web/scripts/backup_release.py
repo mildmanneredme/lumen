@@ -47,6 +47,12 @@ class BackupIOError(BackupError):
     """A backup validation operation failed because of its underlying IO."""
 
 
+def available_bytes(directory_descriptor):
+    """Read user-available space on the pinned output filesystem."""
+    usage = os.fstatvfs(directory_descriptor)
+    return usage.f_bavail * usage.f_frsize
+
+
 def require(condition, message):
     if not condition:
         raise BackupError(message)
@@ -429,6 +435,28 @@ def check_source_clock(root, row):
 
 
 def copy_snapshot(root, destination, plan, *, minimum_free_bytes=DEFAULT_RESERVE_BYTES, progress=None):
+    require(type(minimum_free_bytes) is int and minimum_free_bytes >= 0, "Invalid free-space reserve")
+    destination = Path(destination).absolute()
+    parent = existing_directory(destination.parent)
+    result, completion_checks = None, []
+    try:
+        with opened_parent(parent / destination.name) as (capacity_descriptor, name):
+            result = _copy_snapshot(root, parent / name, plan, capacity_descriptor=capacity_descriptor,
+                                    minimum_free_bytes=minimum_free_bytes, progress=progress,
+                                    completed=completion_checks.append)
+        return result
+    except OSError as exc:
+        if result is not None and len(completion_checks) == 1:
+            try:
+                completion_checks[0]()
+            except (OSError, BackupError):
+                raise BackupError(f"Backup completion cannot be reconciled after capacity cleanup: {exc}") from exc
+            return dict(result, completionPublication={"status": "exact-readback-after-write-error",
+                                                      "durabilityVerified": False})
+        raise
+
+
+def _copy_snapshot(root, destination, plan, *, capacity_descriptor, minimum_free_bytes, progress, completed):
     root = Path(root).resolve()
     rows = validate_fileset(plan, require_source_identity=True)
     require(type(minimum_free_bytes) is int and minimum_free_bytes >= 0, "Invalid free-space reserve")
@@ -441,9 +469,12 @@ def copy_snapshot(root, destination, plan, *, minimum_free_bytes=DEFAULT_RESERVE
     require(destination.name == plan["backupId"], "Backup destination name must equal the reviewed backup ID")
     for row in rows:
         check_source_clock(root, row)
-    require(shutil.disk_usage(parent).free >= plan["totalBytes"] + minimum_free_bytes,
+    require(available_bytes(capacity_descriptor) >= plan["totalBytes"] + minimum_free_bytes,
             "Insufficient local free space for the backup plus reserve")
     directory_binding = _create_snapshot_directory(destination, files=True)
+    pinned_parent = os.fstat(capacity_descriptor)
+    require(directory_binding[0] == (pinned_parent.st_dev, pinned_parent.st_ino),
+            "Backup destination parent changed after capacity pinning")
     copied, outputs, owned_marker, published = [], [], [], []
     state = {"schemaVersion": 1, "backupId": plan["backupId"], "planSha256": plan["planSha256"],
              "copyStatus": "incomplete", "remoteSyncStatus": "pending", "files": copied,
@@ -452,7 +483,7 @@ def copy_snapshot(root, destination, plan, *, minimum_free_bytes=DEFAULT_RESERVE
     remaining = plan["totalBytes"]
     manifest = None
     def check_capacity(copied=0):
-        require(shutil.disk_usage(parent).free >= remaining - copied + minimum_free_bytes,
+        require(available_bytes(capacity_descriptor) >= remaining - copied + minimum_free_bytes,
                 "Insufficient local free space during backup; incomplete copy retained")
     def check_outputs():
         require_directory_binding(destination, directory_binding)
@@ -508,6 +539,7 @@ def copy_snapshot(root, destination, plan, *, minimum_free_bytes=DEFAULT_RESERVE
         write_json(destination / "backup-manifest.json", manifest, exclusive=True,
                    created=owned_marker.append, published=published.append)
         check_publication()
+        completed(check_publication)
         return manifest
     except (OSError, BackupError) as exc:
         io_failure = isinstance(exc, OSError) or (isinstance(exc, BackupIOError)
@@ -520,6 +552,7 @@ def copy_snapshot(root, destination, plan, *, minimum_free_bytes=DEFAULT_RESERVE
             else:
                 # Exact owned bytes establish local completion, with durability
                 # explicitly unconfirmed after a late write/flush/cleanup error.
+                completed(lambda: check_publication(require_final=False))
                 return dict(manifest, completionPublication={"status": "exact-readback-after-write-error",
                                                            "durabilityVerified": False})
         state["copyStatus"] = "incomplete"
@@ -617,6 +650,15 @@ def verify_snapshot(snapshot, paths=None):
 
 def restore_sample(root, snapshot, destination, paths, *, minimum_free_bytes=DEFAULT_RESERVE_BYTES):
     require(type(minimum_free_bytes) is int and minimum_free_bytes >= 0, "Invalid free-space reserve")
+    destination = Path(destination).absolute()
+    parent = existing_directory(destination.parent)
+    with opened_parent(parent / destination.name) as (capacity_descriptor, name):
+        return _restore_sample(root, snapshot, parent / name, paths, capacity_descriptor=capacity_descriptor,
+                               minimum_free_bytes=minimum_free_bytes)
+
+
+def _restore_sample(root, snapshot, destination, paths, *, capacity_descriptor, minimum_free_bytes):
+    require(type(minimum_free_bytes) is int and minimum_free_bytes >= 0, "Invalid free-space reserve")
     root = Path(root).resolve()
     destination = Path(destination).absolute()
     require(not destination.exists() and not destination.is_symlink(), "Restore destination already exists")
@@ -631,12 +673,15 @@ def restore_sample(root, snapshot, destination, paths, *, minimum_free_bytes=DEF
             require(manifest["manifestSha256"] == report["manifestSha256"],
                     "Backup manifest changed after sample verification")
             remaining = sum(row["bytes"] for row in rows)
-            require(shutil.disk_usage(parent).free >= remaining + minimum_free_bytes,
+            require(available_bytes(capacity_descriptor) >= remaining + minimum_free_bytes,
                     "Insufficient local free space for restored sample plus reserve")
             directory_binding = _create_snapshot_directory(destination)
+            pinned_parent = os.fstat(capacity_descriptor)
+            require(directory_binding[0] == (pinned_parent.st_dev, pinned_parent.st_ino),
+                    "Restore destination parent changed after capacity pinning")
             outputs, sources = [], []
             def check_capacity(copied=0):
-                require(shutil.disk_usage(parent).free >= remaining - copied + minimum_free_bytes,
+                require(available_bytes(capacity_descriptor) >= remaining - copied + minimum_free_bytes,
                         "Insufficient local free space during restore; incomplete sample retained")
             for row in rows:
                 check_capacity()

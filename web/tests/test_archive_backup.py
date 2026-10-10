@@ -826,7 +826,7 @@ class ArchiveBackupTests(unittest.TestCase):
             archive.verify_archive(self.destination)
 
     def test_insufficient_space_for_explicit_cap_keeps_destination_untouched(self):
-        with patch.object(archive.shutil, "disk_usage", return_value=type("Usage", (), {"free": 100})()):
+        with patch.object(archive.backup, "available_bytes", return_value=100):
             with self.assertRaisesRegex(archive.backup.BackupError, "space"):
                 self.create()
         self.assertFalse(self.destination.exists())
@@ -842,12 +842,154 @@ class ArchiveBackupTests(unittest.TestCase):
         calls = []
         def free_space(_):
             calls.append(1)
-            return type("Usage", (), {"free": 2_000_000 if len(calls) < 5 else 0})()
-        with patch.object(archive.shutil, "disk_usage", side_effect=free_space):
+            return 2_000_000 if len(calls) < 5 else 0
+        with patch.object(archive.backup, "available_bytes", side_effect=free_space):
             with self.assertRaisesRegex(archive.backup.BackupError, "space"):
                 self.create()
         self.assertGreaterEqual(len(calls), 5)
         self.assertFalse(archive.sidecar_path(self.destination).exists())
+
+    def test_archive_capacity_stays_on_opened_filesystem_after_parent_path_replacement(self):
+        original_write = archive.GuardedOutput.write
+        moved = self.destination.parent.with_name("capacity-original-parent")
+        changes, checks = [], []
+        def replace_parent_then_write(output, payload):
+            if not changes:
+                self.destination.parent.rename(moved)
+                self.destination.parent.mkdir()
+                changes.append(True)
+            return original_write(output, payload)
+        def pinned_space(descriptor):
+            info = os.fstat(descriptor)
+            self.assertTrue(stat.S_ISDIR(info.st_mode))
+            checks.append((info.st_dev, info.st_ino))
+            return type("Space", (), {"f_bavail": 0 if changes else 2_000_000, "f_frsize": 1})()
+        abundant_alias = type("Usage", (), {"free": 2_000_000})()
+        with patch.object(archive.GuardedOutput, "write", new=replace_parent_then_write), \
+             patch.object(archive.os, "fstatvfs", side_effect=pinned_space), \
+             patch.object(archive.backup.shutil, "disk_usage", return_value=abundant_alias):
+            with self.assertRaisesRegex(archive.backup.BackupError, "space"):
+                archive.archive_snapshot(self.root, self.destination, self.plan(), maximum_archive_bytes=1_000_000,
+                                         minimum_free_bytes=1)
+        self.assertEqual(len(changes), 1)
+        original_parent = moved.stat()
+        self.assertTrue(checks)
+        self.assertTrue(all(check == (original_parent.st_dev, original_parent.st_ino) for check in checks))
+        self.assertEqual((moved / self.destination.name).stat().st_size, 0,
+                         "no bytes may reach the opened filesystem once its reserve is exhausted")
+        self.assertFalse(archive.sidecar_path(moved / self.destination.name).exists())
+
+    def test_restore_capacity_stays_on_opened_filesystem_after_parent_path_replacement(self):
+        self.create()
+        restore_parent = self.base / "restore-capacity-parent"
+        restore_parent.mkdir()
+        restored = restore_parent / "sample"
+        moved = self.base / "restore-capacity-original-parent"
+        original_write = archive.GuardedOutput.write
+        changes, checks = [], []
+        def replace_parent_then_write(output, payload):
+            if not changes:
+                restore_parent.rename(moved)
+                restore_parent.mkdir()
+                changes.append(True)
+            return original_write(output, payload)
+        def pinned_space(descriptor):
+            info = os.fstat(descriptor)
+            self.assertTrue(stat.S_ISDIR(info.st_mode))
+            checks.append((info.st_dev, info.st_ino))
+            return type("Space", (), {"f_bavail": 0 if changes else 2_000_000, "f_frsize": 1})()
+        abundant_alias = type("Usage", (), {"free": 2_000_000})()
+        with patch.object(archive.GuardedOutput, "write", new=replace_parent_then_write), \
+             patch.object(archive.os, "fstatvfs", side_effect=pinned_space), \
+             patch.object(archive.backup.shutil, "disk_usage", return_value=abundant_alias):
+            with self.assertRaisesRegex(archive.backup.BackupError, "space"):
+                archive.restore_sample(self.root, self.destination, restored, [self.paths[0]], minimum_free_bytes=1)
+        self.assertEqual(len(changes), 1)
+        original_output = moved / restored.name / self.paths[0]
+        self.assertEqual(original_output.stat().st_size, 0)
+        output_parent = original_output.parent.stat()
+        self.assertIn((output_parent.st_dev, output_parent.st_ino), checks)
+        self.assertTrue(self.destination.exists())
+
+    def test_final_sidecar_capacity_uses_live_pinned_parent_after_bulk_writer_closes(self):
+        original_hash = archive.hash_stream
+        finished, checks = [], []
+        parent = self.destination.parent.stat()
+        def finish_bulk_hash(stream):
+            result = original_hash(stream)
+            finished.append(True)
+            return result
+        def pinned_space(descriptor):
+            info = os.fstat(descriptor)
+            self.assertTrue(stat.S_ISDIR(info.st_mode))
+            self.assertEqual((info.st_dev, info.st_ino), (parent.st_dev, parent.st_ino))
+            if finished:
+                checks.append(True)
+            return type("Space", (), {"f_bavail": 0 if finished else 2_000_000, "f_frsize": 1})()
+        with patch.object(archive, "hash_stream", side_effect=finish_bulk_hash), \
+             patch.object(archive.os, "fstatvfs", side_effect=pinned_space):
+            with self.assertRaisesRegex(archive.backup.BackupError, "space"):
+                self.create()
+        self.assertEqual(len(finished), 1)
+        self.assertEqual(len(checks), 1)
+        self.assertTrue(self.destination.exists())
+        self.assertFalse(archive.sidecar_path(self.destination).exists())
+
+    def test_late_capacity_descriptor_close_reconciles_only_complete_owned_archive(self):
+        original_available, original_close = archive.backup.available_bytes, archive.os.close
+        capacity_descriptor, failures = [], []
+        def track_capacity_descriptor(descriptor):
+            if not capacity_descriptor:
+                capacity_descriptor.append(descriptor)
+            return original_available(descriptor)
+        def close_then_fail(descriptor):
+            result = original_close(descriptor)
+            if capacity_descriptor and descriptor == capacity_descriptor[0] and not failures:
+                failures.append(True)
+                raise OSError("fixture completed archive capacity descriptor close failure")
+            return result
+        with patch.object(archive.backup, "available_bytes", side_effect=track_capacity_descriptor), \
+             patch.object(archive.os, "close", side_effect=close_then_fail):
+            report = self.create()
+        self.assertEqual(len(failures), 1)
+        self.assertEqual(report["copyStatus"], "complete")
+        self.assertFalse(report["completionPublication"]["durabilityVerified"])
+        self.assertEqual(report["completionPublication"]["phase"], "output-parent-close")
+        self.assertEqual(archive.verify_archive(self.destination)["manifestSha256"], report["manifestSha256"])
+
+    def test_restore_syncs_the_containing_output_directory_after_the_file(self):
+        self.create()
+        restored = self.base / "restore-directory-sync"
+        original_fsync, calls = archive.os.fsync, []
+        def track_fsync(descriptor):
+            info = os.fstat(descriptor)
+            calls.append((stat.S_ISDIR(info.st_mode), info.st_dev, info.st_ino))
+            return original_fsync(descriptor)
+        with patch.object(archive.os, "fsync", side_effect=track_fsync):
+            report = archive.restore_sample(self.root, self.destination, restored, [self.paths[0]], minimum_free_bytes=0)
+        output = restored / self.paths[0]
+        info, parent = output.stat(), output.parent.stat()
+        file_sync = calls.index((False, info.st_dev, info.st_ino))
+        self.assertEqual(calls[file_sync + 1], (True, parent.st_dev, parent.st_ino))
+        self.assertEqual(report["verificationScope"], "local-restored-archive-sample")
+
+    def test_restore_directory_sync_failure_retains_sample_without_reporting_success(self):
+        self.create()
+        restored = self.base / "restore-directory-sync-failure"
+        original_fsync, faults = archive.os.fsync, []
+        def fail_output_parent_sync(descriptor):
+            info = os.fstat(descriptor)
+            output = restored / self.paths[0]
+            if output.exists() and stat.S_ISDIR(info.st_mode) and info.st_ino == output.parent.stat().st_ino:
+                faults.append(True)
+                raise OSError("fixture restored output directory sync failure")
+            return original_fsync(descriptor)
+        with patch.object(archive.os, "fsync", side_effect=fail_output_parent_sync):
+            with self.assertRaisesRegex(archive.backup.BackupError, "directory sync failure"):
+                archive.restore_sample(self.root, self.destination, restored, [self.paths[0]], minimum_free_bytes=0)
+        self.assertEqual(len(faults), 1)
+        self.assertEqual((restored / self.paths[0]).read_bytes(), self.original[self.paths[0]])
+        self.assertEqual(archive.verify_archive(self.destination)["verifiedFiles"], len(self.paths))
 
     def test_source_change_after_earlier_entry_prevents_completed_sidecar(self):
         plan = self.plan()
