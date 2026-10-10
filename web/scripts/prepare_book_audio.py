@@ -238,6 +238,71 @@ def cache_words(record, item, clip, qa):
     return words
 
 
+def _lcs_prefix_rows(expected, heard):
+    """Compact exact-token LCS prefix lengths, one bit per observed token."""
+    masks = {}
+    for index, token in enumerate(heard):
+        masks[token] = masks.get(token, 0) | (1 << index)
+    rows = [0]
+    for token in expected:
+        previous = rows[-1]
+        union = previous | masks.get(token, 0)
+        rows.append(union & ~(union - ((previous << 1) | 1)))
+    return rows
+
+
+def ambiguous_boundary_anchors(expected, heard, offsets, matched):
+    """Reject boundary occurrences with equally supported monotone matches.
+
+    SequenceMatcher chooses one repeated block arbitrarily. An exact-token
+    pair is supported by the surrounding measured context only when its
+    prefix + pair + suffix can participate in a longest common subsequence.
+    Check both directions: one canonical boundary may fit several observed
+    occurrences, or one observed interval may fit several canonical tokens.
+    The compact rows stay scoped to this track, not the full manuscript.
+    """
+    if expected == heard:
+        return {}
+    expected_positions, heard_positions = {}, {}
+    for index, token in enumerate(expected):
+        expected_positions.setdefault(token, []).append(index)
+    for index, token in enumerate(heard):
+        heard_positions.setdefault(token, []).append(index)
+    boundaries = {index for first, last in offsets for index in (first, last - 1) if first < last}
+    repeated = {expected[index] for index in boundaries
+                if len(expected_positions[expected[index]]) > 1 or len(heard_positions.get(expected[index], [])) > 1}
+    if not repeated:
+        return {}
+    forward = _lcs_prefix_rows(expected, heard)
+    reverse = _lcs_prefix_rows(expected[::-1], heard[::-1])
+    # Python 3.9 remains supported by the clean-checkout preparation tool.
+    bit_count = getattr(int, "bit_count", lambda value: bin(value).count("1"))
+    length = bit_count(forward[-1])
+    observed_count = len(heard)
+    candidates, owners = {}, {}
+    for token in repeated:
+        for left in expected_positions[token]:
+            options = []
+            for right in heard_positions.get(token, []):
+                prefix = bit_count(forward[left] & ((1 << right) - 1))
+                suffix = bit_count(reverse[len(expected) - left - 1] & ((1 << (observed_count - right - 1)) - 1))
+                if prefix + 1 + suffix == length:
+                    options.append(right)
+                    owners.setdefault(right, []).append(left)
+            candidates[left] = options
+    result = {}
+    for index in sorted(boundaries):
+        if expected[index] not in repeated:
+            continue
+        options = candidates[index]
+        shared = [right for right in options if len(owners[right]) > 1]
+        selected = matched.get(index)
+        if len(options) > 1 or shared or (selected is not None and selected not in options):
+            result[index] = {"expectedTokenIndex": index, "observedTokenIndexes": options,
+                             "sharedObservedTokenIndexes": shared, "selectedObservedTokenIndex": selected}
+    return result
+
+
 def align_sentences(track, recording, words):
     previous_start = -1.0
     heard, times, pieces, spans, cursor = [], [], [], [], 0
@@ -279,9 +344,22 @@ def align_sentences(track, recording, words):
             substitutions.append({"expected": expected[a], "heard": heard[c], "expectedTokenIndex": a,
                                   "start": times[c][0], "end": times[c][1],
                                   "scope": "Measured ASR interval with adjacent exact context; spelling agreement is approximate"})
-    cues, missing, missing_intervals, overlap, low, edge_gaps = [], [], [], [], [], []
+    # Context-supported spelling substitutions retain their observed intervals;
+    # use the same supported token equivalence in the occurrence check only.
+    # This never changes the ASR transcript, exact-match count, or word clock.
+    supported_heard = list(heard)
+    for substitution in substitutions:
+        index = substitution["expectedTokenIndex"]
+        supported_heard[matched[index]] = expected[index]
+    ambiguous = ambiguous_boundary_anchors(expected, supported_heard, offsets, matched)
+    cues, missing, missing_intervals, overlap, low, edge_gaps, ambiguous_sentences = [], [], [], [], [], [], []
     previous_end = 0.0
     for sentence, (first, last) in zip(sentences, offsets):
+        uncertain_edges = [dict(ambiguous[index], edge=edge)
+                           for edge, index in [("start", first), ("end", last - 1)] if index in ambiguous]
+        if uncertain_edges:
+            ambiguous_sentences.append({"sentenceId": sentence["id"], "edges": uncertain_edges,
+                "scope": "Canonical occurrence is not uniquely established by measured monotone word context; no cue inferred"})
         anchors = [matched[index] for index in range(first, last) if index in matched]
         if not anchors:
             missing.append(sentence["id"])
@@ -312,7 +390,7 @@ def align_sentences(track, recording, words):
         # Interior agreement cannot locate omitted sentence boundaries. Exact
         # normalized tokens and the contextual substitutions above are the only
         # supported measured edge anchors; never infer their missing seconds.
-        if fraction < .8 or missing_edges:
+        if fraction < .8 or missing_edges or uncertain_edges:
             low.append({"sentenceId": sentence["id"], "matchedFraction": round(fraction, 4)})
             continue
         cues.append({"sentenceId": sentence["id"], "start": round(start, 6), "end": round(end, 6)})
@@ -323,6 +401,7 @@ def align_sentences(track, recording, words):
               "decodedDuration": recording["decodedDuration"],
               "unanchoredSentences": missing, "overlappingSentences": overlap, "lowConfidenceSentences": low,
               "unanchoredSentenceEdges": edge_gaps,
+              "ambiguousSentenceAnchors": ambiguous_sentences,
               "unanchoredIntervals": missing_intervals, "contextualSubstitutions": substitutions,
               "humanAlignmentApproval": "pending", "sentenceCount": len(sentences)}
     if missing or overlap or low:
