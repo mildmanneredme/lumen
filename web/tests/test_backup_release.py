@@ -1888,7 +1888,115 @@ else:
         self.assertIn("web/art-direction/models/portrait.png", names)
         self.assertTrue(set(excluded).isdisjoint(names))
         self.assertFalse(any(name.endswith((".m4b", ".zip")) or "receipts" in name or "unselected" in name or ".env" in name or "node_modules" in name or ".npmrc" in name for name in names))
-        self.assertEqual(sum("expectedSha256" in row for row in plan["files"]), 3)
+        self.assertEqual(sum("expectedSha256" in row for row in plan["files"] if row["path"].endswith((".mp3", ".wav"))), 3)
+
+    def selection_input_fixture(self):
+        sys.path.insert(0, str(SCRIPT.parent))
+        self.addCleanup(lambda: sys.path.remove(str(SCRIPT.parent)))
+        import book_content as content
+        mp3, raw = self.root / self.paths[2], self.root / self.paths[1]
+        other_raw = raw.with_name("chapter-001-002.wav")
+        other_raw.write_bytes(b"alternative selected take")
+        raw.with_suffix(".json").write_text('{"status":"complete"}')
+        other_raw.with_suffix(".json").write_text('{"status":"complete"}')
+        lossless = mp3.with_suffix(".wav")
+        lossless.write_bytes(b"lossless fixture")
+        checkpoint = {"output_sha256": {"lossless_wav": hashlib.sha256(lossless.read_bytes()).hexdigest()}}
+        inputs = ["Draft/v6/part1.md", "web/data/chapter-001.json"]
+        for edition in ["v7", "v8"]:
+            inputs += ["Audiobook/" + edition + "/" + name for name in
+                       ["generation-manifest.json", "chapters.json", "delivery/delivery-manifest.json",
+                        "mastered/mastering-report.json", "mastered/chapter-001.checkpoint.json", "mastered/chapter-001.qa.json"]]
+        for name in inputs:
+            path = self.root / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            if path.suffix == ".md":
+                continue
+            value = checkpoint if name.endswith(".checkpoint.json") else {"revision": "original"}
+            if name.endswith("generation-manifest.json"):
+                value = dict(value, selected=self.paths[1])
+            path.write_bytes(backup.encoded(value))
+        def registry_loader(root):
+            content.read_project_json(root, root / "Audiobook/v8/generation-manifest.json")
+            return {"tracks": [{"id": "chapter-001"}]}
+        def inventory_loader(root, registry):
+            selected = content.read_project_json(root, root / "Audiobook/v8/generation-manifest.json")["selected"]
+            return {"recordings": [{"sourcePath": self.paths[2], "sha256": hashlib.sha256(mp3.read_bytes()).hexdigest(),
+                                    "selectedClips": [{"sourcePath": selected,
+                                                       "rawAudioSha256": hashlib.sha256((root / selected).read_bytes()).hexdigest()}]}]}
+        return content, registry_loader, inventory_loader, inputs, other_raw.relative_to(self.root).as_posix()
+
+    def test_collector_rejects_atomic_selected_take_change_through_plan_signing(self):
+        content, registry_loader, inventory_loader, inputs, other_raw = self.selection_input_fixture()
+        generation = self.root / "Audiobook/v8/generation-manifest.json"
+        original_prepare = backup.prepare_fileset
+        for phase in ["after-inventory", "before-plan-stats", "after-plan-signed"]:
+            with self.subTest(phase=phase):
+                generation.write_bytes(backup.encoded({"revision": "original", "selected": self.paths[1]}))
+                changes = []
+                def switch_selection():
+                    temporary = generation.with_suffix(".replacement.json")
+                    temporary.write_bytes(backup.encoded({"revision": "replaced", "selected": other_raw}))
+                    os.replace(temporary, generation)
+                    changes.append(True)
+                def inventory_then_switch(root, registry):
+                    inventory = inventory_loader(root, registry)
+                    if phase == "after-inventory":
+                        switch_selection()
+                    return inventory
+                def prepare_then_switch(*args, **kwargs):
+                    if phase == "before-plan-stats":
+                        switch_selection()
+                    result = original_prepare(*args, **kwargs)
+                    if phase == "after-plan-signed":
+                        switch_selection()
+                    return result
+                with patch.object(content, "load_project_registry", side_effect=registry_loader), \
+                     patch.object(content, "load_recording_inventory", side_effect=inventory_then_switch), \
+                     patch.object(backup, "prepare_fileset", side_effect=prepare_then_switch):
+                    with self.assertRaisesRegex(backup.BackupError, "selection input.*changed|Selection input.*changed"):
+                        backup.collect_release_fileset(self.root, "lumen-backup-fixture")
+                self.assertEqual(changes, [True])
+                self.assertEqual(backup.read_json(generation)["selected"], other_raw)
+                self.assertFalse(self.destination.exists())
+
+    def test_collector_rechecks_all_registry_and_inventory_selection_inputs(self):
+        content, registry_loader, inventory_loader, inputs, _ = self.selection_input_fixture()
+        for name in inputs:
+            with self.subTest(name=name):
+                path = self.root / name
+                original_bytes = path.read_bytes()
+                def inventory_then_replace(root, registry):
+                    inventory = inventory_loader(root, registry)
+                    temporary = path.with_name(path.name + ".replacement")
+                    # Identical bytes isolate the selected input's identity binding.
+                    temporary.write_bytes(original_bytes)
+                    os.replace(temporary, path)
+                    return inventory
+                with patch.object(content, "load_project_registry", side_effect=registry_loader), \
+                     patch.object(content, "load_recording_inventory", side_effect=inventory_then_replace):
+                    with self.assertRaisesRegex(backup.BackupError, "selection input.*changed|Selection input.*changed"):
+                        backup.collect_release_fileset(self.root, "lumen-backup-fixture")
+                self.assertEqual(path.read_bytes(), original_bytes)
+
+    def test_collector_binds_unchanged_selection_metadata_without_hashing_audio(self):
+        content, registry_loader, inventory_loader, inputs, other_raw = self.selection_input_fixture()
+        original_hash = backup.file_digest
+        hashed = []
+        def metadata_digest(path):
+            hashed.append(Path(path).relative_to(self.root).as_posix())
+            self.assertIn(Path(path).suffix, {".json", ".md"})
+            return original_hash(path)
+        with patch.object(content, "load_project_registry", side_effect=registry_loader), \
+             patch.object(content, "load_recording_inventory", side_effect=inventory_loader), \
+             patch.object(backup, "file_digest", side_effect=metadata_digest):
+            plan = backup.collect_release_fileset(self.root, "lumen-backup-fixture")
+        rows = {row["path"]: row for row in plan["files"]}
+        self.assertIn(self.paths[1], rows)
+        self.assertNotIn(other_raw, rows)
+        self.assertEqual(set(hashed), set(inputs))
+        for name in inputs:
+            self.assertEqual(rows[name]["expectedSha256"], hashlib.sha256((self.root / name).read_bytes()).hexdigest())
 
     def test_art_direction_exempts_only_exact_model_sources_and_skips_nested_caches(self):
         sys.path.insert(0, str(SCRIPT.parent))
