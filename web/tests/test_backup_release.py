@@ -517,10 +517,13 @@ else:
                      "Audiobook/v8/delivery/redundant.zip", "web/.env.local", "web/node_modules/module.js",
                      "web/.npmrc", "Audiobook/v8/raw/unselected.wav", "token.json", "refresh_token.json",
                      "client_secret_lumen.json", "web/client_secrets.json", "web/env/site.py",
-                     "web/models/weights.bin", "docs/cache/proof.json", "Audiobook/author-audit/env/config.py"]
+                     "web/models/weights.bin", "docs/cache/proof.json", "Audiobook/author-audit/env/config.py",
+                     "web/.cache/weights.bin", "web/.pytest_cache/cache.json", "web/downloaded_models/weights.bin",
+                     "web/.mypy_cache/meta.json", "web/.ruff_cache/meta.json", "web/.tox/site.py", "web/.nox/site.py"]
         for name in excluded:
             path = self.root / name; path.parent.mkdir(parents=True, exist_ok=True); path.write_text("excluded")
         (self.root / "web/env/linked.py").symlink_to(self.root / self.paths[0])
+        (self.root / "web/.cache/linked.py").symlink_to(self.root / self.paths[0])
         cast = self.root / "web/art-direction/models/portrait.png"
         cast.parent.mkdir(parents=True); cast.write_bytes(b"approved portrait fixture")
         docs = self.root / "docs/backlog/roadmap.md"; docs.parent.mkdir(parents=True); docs.write_text("restore me")

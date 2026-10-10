@@ -31,6 +31,9 @@ BLOCKED_PARTS = {".git", ".vercel", ".aws", ".ssh", ".codex", ".agents", "receip
 BLOCKED_SUFFIXES = {".pem", ".key", ".p12", ".pfx", ".jks", ".keystore", ".pyc", ".lock"}
 BLOCKED_FILES = {".netrc", ".npmrc", ".pypirc", ".git-credentials", ".ds_store",
                  "id_rsa", "id_ed25519", "id_ecdsa", "id_dsa"}
+GENERATED_DIRECTORIES = {"env", "venv", "models", "cache", "caches", "checkpoints",
+                         "downloaded-models", "models-cache", "pytest-cache", "mypy-cache",
+                         "ruff-cache", "tox", "nox"}
 
 
 class BackupError(ValueError):
@@ -453,7 +456,7 @@ def collect_release_fileset(root, backup_id):
             # Inspect directories directly below every selected root too;
             # approved character models are intentional source references.
             if (not path.is_relative_to(root / "web/art-direction") and
-                    any(part.lower() in {"env", "models", "cache", "checkpoints"}
+                    any(part.lower().lstrip(".").replace("_", "-") in GENERATED_DIRECTORIES
                         for part in path.relative_to(directory).parts[:-1])):
                 continue
             if not path.is_file():
