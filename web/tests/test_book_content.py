@@ -63,9 +63,14 @@ class ContentContractTests(unittest.TestCase):
     def timing_fixture(self):
         registry = self.registry()
         track = registry["tracks"][1]
+        selected_clips = [{"id": "chapter-001-001", "sourcePath": "Audiobook/v8/raw/chapter-001-001.wav",
+                           "rawAudioSha256": "c" * 64, "rawBytes": 24}]
+        selection_hash = content.object_hash(selected_clips)
         recording = {
             "trackId": track["id"], "narratorId": "charon", "sha256": "a" * 64,
             "bytes": 128, "decodedDuration": 8.0, "audioHashVerified": True,
+            "selectedClips": selected_clips, "selectionSha256": selection_hash,
+            "rawSourceHashesVerified": True, "rawSourceVerificationSha256": selection_hash,
         }
         cues = [{"sentenceId": sentence["id"], "start": index + 1.0, "end": index + 1.6}
                 for index, sentence in enumerate(content.sentences(track))]
@@ -90,6 +95,11 @@ class ContentContractTests(unittest.TestCase):
             manifest_path = job / "generation-manifest.json"
             chapters_path = job / "chapters.json"
             report_path = job / "mastered/mastering-report.json"
+            for item in manifest["items"]:
+                raw = job / "raw" / (item["id"] + ".wav")
+                raw.parent.mkdir(parents=True, exist_ok=True)
+                raw.write_bytes(("raw:" + edition + item["id"]).encode())
+                item["output"] = str(raw)
             write_json(manifest_path, manifest)
             chapters = {}
             write_json(report_path, {"complete": True, "generation_manifest_sha256": content.file_hash(manifest_path)})
@@ -160,6 +170,85 @@ class ContentContractTests(unittest.TestCase):
         self.refresh_fixture_containers(root, update_report_generation=True)
         with self.assertRaisesRegex(content.ContentError, "selected.*identity|identity.*selected"):
             content.load_recording_inventory(root, registry)
+
+    def test_selected_raw_output_must_match_expected_portable_clip_path(self):
+        variants = ["/historical/Audiobook/v7/raw/chapter-001-001-take2.wav",
+                    "/outside/new-take.wav", "../../Audiobook/v7/raw/chapter-001-001.wav"]
+        for output in variants:
+            root, registry = self.production_fixture()
+            path = root / "Audiobook/v7/generation-manifest.json"
+            manifest = json.loads(path.read_text()); manifest["items"][1]["output"] = output
+            path.write_text(json.dumps(manifest))
+            self.refresh_fixture_containers(root, update_report_generation=True)
+            with self.subTest(output=output):
+                with self.assertRaisesRegex(content.ContentError, "raw.*path|path.*raw"):
+                    content.load_recording_inventory(root, registry)
+
+    def test_selected_raw_file_must_exist_inside_selected_root(self):
+        for kind in ["missing", "outside-symlink"]:
+            root, registry = self.production_fixture()
+            path = root / "Audiobook/v7/raw/chapter-001-001.wav"
+            original = path.read_bytes(); path.unlink()
+            if kind == "outside-symlink":
+                outside = Path(self.temp.name) / "outside-raw.wav"
+                outside.write_bytes(original); path.symlink_to(outside)
+            with self.subTest(kind=kind):
+                with self.assertRaisesRegex(content.ContentError, "raw|escapes selected root"):
+                    content.load_recording_inventory(root, registry)
+
+    def test_delivery_raw_input_binding_matches_checkpoint_identity(self):
+        root, registry = self.production_fixture()
+        path = root / "Audiobook/v7/delivery/delivery-manifest.json"
+        original = json.loads(path.read_text())
+        for field, value in [("audio_sha256", "b" * 64), ("request_sha256", "c" * 64),
+                             ("path", "/old/Audiobook/v7/raw/a-different-take.wav")]:
+            changed = copy.deepcopy(original)
+            changed["chapters"][1]["source_binding"]["raw_inputs"][0][field] = value
+            path.write_text(json.dumps(changed))
+            with self.subTest(field=field):
+                with self.assertRaisesRegex(content.ContentError, "raw input binding"):
+                    content.load_recording_inventory(root, registry)
+
+    def test_raw_source_verification_is_pending_and_checks_current_selected_bytes(self):
+        root, registry = self.production_fixture()
+        inventory = content.load_recording_inventory(root, registry)
+        recording = next(recording for recording in inventory["recordings"]
+                         if recording["trackId"] == "chapter-001" and recording["narratorId"] == "autonoe")
+        self.assertFalse(recording["rawSourceHashesVerified"])
+        verified = content.verify_recording_sources(recording, root)
+        self.assertTrue(verified["rawSourceHashesVerified"])
+        self.assertEqual(verified["rawSourceVerificationSha256"], recording["selectionSha256"])
+        self.assertFalse(recording["rawSourceHashesVerified"])
+        selected = recording["selectedClips"][0]
+        path = root / selected["sourcePath"]
+        path.write_bytes(b"x" * selected["rawBytes"])
+        with self.assertRaisesRegex(content.ContentError, "raw source.*hash"):
+            content.verify_recording_sources(recording, root)
+
+    def test_publication_requires_raw_proof_bound_to_current_selection(self):
+        track, recording, timing = self.timing_fixture()
+        approved = {"status": "approved", "reviewer": "Rob Xie", "reviewedAt": "2026-10-10T12:00:00Z",
+                    "audioSha256": recording["sha256"], "textSha256": track["textSha256"]}
+        timing["approvals"] = {"content": dict(approved), "alignment": dict(approved)}
+        timing["approvals"]["alignment"]["timingSha256"] = content.timing_content_hash(timing)
+        for change in [{"rawSourceHashesVerified": False}, {"rawSourceVerificationSha256": "f" * 64}]:
+            with self.subTest(change=change):
+                with self.assertRaisesRegex(content.ContentError, "raw source"):
+                    content.validate_timing_map(track, dict(recording, **change), timing, require_approved=True)
+
+    def test_publication_recomputes_raw_proof_scope_after_selected_source_edit(self):
+        track, recording, timing = self.timing_fixture()
+        approved = {"status": "approved", "reviewer": "Rob Xie", "reviewedAt": "2026-10-10T12:00:00Z",
+                    "audioSha256": recording["sha256"], "textSha256": track["textSha256"]}
+        timing["approvals"] = {"content": dict(approved), "alignment": dict(approved)}
+        timing["approvals"]["alignment"]["timingSha256"] = content.timing_content_hash(timing)
+        for field, value in [("sourcePath", "Audiobook/v8/raw/chapter-001-001-take2.wav"),
+                             ("rawAudioSha256", "f" * 64), ("rawBytes", 25)]:
+            changed = copy.deepcopy(recording)
+            changed["selectedClips"][0][field] = value
+            with self.subTest(field=field):
+                with self.assertRaisesRegex(content.ContentError, "raw source"):
+                    content.validate_timing_map(track, changed, timing, require_approved=True)
 
     def test_mastering_report_must_be_complete_and_bind_current_generation(self):
         for change in [{"complete": False}, {"generation_manifest_sha256": "b" * 64}]:

@@ -517,6 +517,13 @@ def validate_timing_map(track, recording, timing, *, require_approved=False):
         require(timing["approvals"]["alignment"].get("timingSha256") == timing_content_hash(timing),
                 "Missing/stale alignment timing content hash")
         require(recording.get("audioHashVerified") is True, "Final physical audio bytes are not hash verified")
+        selected_clips = recording.get("selectedClips")
+        require(isinstance(selected_clips, list) and bool(selected_clips)
+                and all(isinstance(clip, dict) for clip in selected_clips)
+                and object_hash(selected_clips) == recording.get("selectionSha256")
+                and recording.get("rawSourceHashesVerified") is True and valid_hash(recording.get("selectionSha256"))
+                and recording.get("rawSourceVerificationSha256") == recording["selectionSha256"],
+                "Selected raw source hashes are pending or bound to a stale selection")
     return True
 
 
@@ -565,6 +572,26 @@ def recording_path(root, edition, track_id, declared_path):
         require(root in path.resolve().parents, f"{edition}/{track_id}: local MP3 path escapes root")
     except (OSError, RuntimeError) as exc:
         raise ContentError(f"{edition}/{track_id}: cannot resolve local MP3 path: {exc}") from exc
+    return path
+
+
+def raw_source_path(root, edition, item_id, declared_path):
+    """Reconcile historical raw paths without following files outside root."""
+    require(isinstance(item_id, str) and re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*", item_id) is not None,
+            "Unsafe selected raw source ID")
+    logical = Path("Audiobook") / edition / "raw" / (item_id + ".wav")
+    require(isinstance(declared_path, str) and bool(declared_path) and "\x00" not in declared_path,
+            f"{edition}/{item_id}: invalid selected raw source path")
+    declared = Path(declared_path)
+    require(".." not in declared.parts and
+            ((declared.is_absolute() and declared.parts[-len(logical.parts):] == logical.parts)
+             or (not declared.is_absolute() and declared.parts == logical.parts)),
+            f"{edition}/{item_id}: selected raw source path differs from logical clip")
+    path = root / logical
+    try:
+        project_file(root, path)
+    except ContentError as exc:
+        raise ContentError(f"{edition}/{item_id}: selected raw source path is unavailable: {exc}") from exc
     return path
 
 
@@ -627,6 +654,16 @@ def load_recording_inventory(root, registry):
                     and [(item.get("id"), item.get("request_sha256")) for item in inputs]
                     == [(item["id"], item["request_sha256"]) for item in source_items],
                     f"{edition}/{track['id']}: selected takes differ from ordered master identity inputs")
+            require(binding.get("raw_inputs") == [{key: item.get(key) for key in ("path", "request_sha256", "audio_sha256")}
+                                                   for item in inputs],
+                    f"{edition}/{track['id']}: delivery raw input binding differs from checkpoint")
+            for clip, item, raw_input in zip(selected_clips, source_items, inputs):
+                raw_path = raw_source_path(root, edition, item["id"], item.get("output"))
+                checkpoint_raw = raw_source_path(root, edition, item["id"], raw_input.get("path"))
+                require(raw_path == checkpoint_raw and valid_hash(raw_input.get("audio_sha256")),
+                        f"{edition}/{track['id']}: selected raw source path/hash differs from master")
+                clip.update(sourcePath=str(raw_path.relative_to(root)), rawAudioSha256=raw_input["audio_sha256"],
+                            rawBytes=raw_path.stat().st_size)
             require(path.is_file() and path.stat().st_size == row.get("bytes"),
                     f"{edition}/{track['id']}: local MP3 path/size differs")
             require(valid_hash(row.get("sha256")) and checkpoint.get("output_sha256", {}).get("mp3") == row["sha256"]
@@ -645,6 +682,7 @@ def load_recording_inventory(root, registry):
                                "generationManifestSha256": manifest_hash, "selectedClips": selected_clips,
                                "masterIdentitySha256": identity_hash,
                                "selectionSha256": object_hash(selected_clips),
+                               "rawSourceHashesVerified": False, "rawSourceVerificationSha256": None,
                                "textSha256": track["textSha256"], "warnings": qa.get("warnings", []),
                                "publicationStatus": "pending", "contentApproval": "pending",
                                "timingApproval": "pending", "audioHashVerified": False})
@@ -660,6 +698,23 @@ def verify_recording_file(recording, root):
             "Unexpected audio path/byte count")
     require(file_hash(path) == recording["sha256"], "Final audio file hash changed")
     return dict(recording, audioHashVerified=True)
+
+
+def verify_recording_sources(recording, root):
+    """Verify this chapter's selected raw bytes; never scan unrelated raw files."""
+    root = Path(root).resolve()
+    clips = recording.get("selectedClips")
+    require(isinstance(clips, list) and bool(clips) and all(isinstance(clip, dict) for clip in clips)
+            and object_hash(clips) == recording.get("selectionSha256"), "Selected raw source scope digest changed")
+    edition = recording.get("productionEdition")
+    require(edition in {"v7", "v8"}, "Invalid raw source production edition")
+    for clip in clips:
+        path = raw_source_path(root, edition, clip.get("id"), clip.get("sourcePath"))
+        require(path.stat().st_size == clip.get("rawBytes") and valid_hash(clip.get("rawAudioSha256")),
+                "Selected raw source size/hash metadata changed")
+        require(project_file_hash(root, path) == clip["rawAudioSha256"], "Selected raw source current-byte hash differs")
+    return dict(recording, rawSourceHashesVerified=True,
+                rawSourceVerificationSha256=recording["selectionSha256"])
 
 
 def export_asset(destination, track_id, kind, value):

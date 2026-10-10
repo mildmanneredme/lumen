@@ -90,8 +90,9 @@ records, checking generation/delivery/mastering metadata hashes, selected
 narration identity, MP3 paths and byte counts, checkpoint/QA bindings, and the
 decoded MP3 sample clock. Each recording includes its narrator ID, SHA-256,
 decoded duration, byte count, warnings, and private relative production path.
-It also records ordered `selectedClips` (IDs, exact request SHA-256s, and raw
-UTF-8 text SHA-256s), `selectionSha256`, `generationManifestSha256`, and
+It also records ordered `selectedClips` (IDs, exact request SHA-256s, raw
+UTF-8 text SHA-256s, logical raw source paths, expected raw audio SHA-256s, and
+current byte counts), `selectionSha256`, `generationManifestSha256`, and
 `masterIdentitySha256` for that edition. Shared narration hashes depend on
 ordered faithful prose rather than selected clip IDs or chunk topology.
 
@@ -104,6 +105,14 @@ across the checkpoint, delivery binding, and QA. The mastering report must be
 complete and bind the current generation manifest. Merely refreshing outer
 container hashes cannot relabel an old master as a new selected take; a retake
 requires an affected chapter rebuild and coherent provenance.
+
+Each selected manifest output and checkpoint input path must name the same
+logical `Audiobook/<edition>/raw/<selected-id>.wav` file. Historical absolute
+paths are reconciled against the caller's root without reading their old
+locations. The current file must exist inside that root. Delivery
+`source_binding.raw_inputs` must equal the checkpoint's ordered path, request
+hash, and raw audio hash bindings. A changed output filename, missing raw take,
+or external symlink cannot inherit an earlier take's master lineage.
 
 The caller's `root` owns the current logical asset path:
 `Audiobook/<edition>/mastered/<track>.mp3`. Historical absolute paths retained in
@@ -123,14 +132,25 @@ permission to read files outside the selected project root.
 
 The duration comes from decoded MP3 samples, rather than the lossless assembly
 clock used by historical delivery-manifest fields. Records initially have
-`audioHashVerified: false`, `contentApproval: pending`, `timingApproval: pending`,
-and `publicationStatus: pending`. This metadata inspection does not read 2.66 GB
-of audio or imply that a reviewer listened to it.
+`audioHashVerified: false`, `rawSourceHashesVerified: false`,
+`rawSourceVerificationSha256: null`, `contentApproval: pending`,
+`timingApproval: pending`, and `publicationStatus: pending`. This metadata
+inspection checks raw file ownership, existence, and size, without reading all
+raw audio or 2.66 GB of mastered audio. Matching metadata or byte counts alone
+does not prove that the current raw bytes still match their master inputs.
 
 `verify_recording_file(recording, root)` verifies the actual file byte count and
 streams its SHA-256, returning a copy with `audioHashVerified: true`. It does not
 grant content approval. Re-encoding a chapter creates a new recording identity;
 its final encoded bytes must be inventoried and aligned again.
+
+`verify_recording_sources(recording, root)` streams only that recording's
+selected raw files and compares their sizes and SHA-256s with the inventoried
+master inputs. It returns a copy with `rawSourceHashesVerified: true` and
+`rawSourceVerificationSha256` bound to the current `selectionSha256`; the
+original inventory remains unchanged. Same-size tampering fails this check.
+This focused verification can run for one rebuilt chapter without rescanning
+unrelated takes. It grants neither listening approval nor publication approval.
 
 ## Timing map validation
 
@@ -146,8 +166,11 @@ prove that a spoken introduction or tail has correct content.
 For a publication gate, use `require_approved=True`. Both `approvals.content`
 and `approvals.alignment` must be explicit reviewer records bound to the same
 audio and text hashes, with a timezone-bearing review timestamp. An
-`accepted-with-note` disposition needs a nonempty note. The actual audio hash
-must also have been verified. The alignment approval additionally stores
+`accepted-with-note` disposition needs a nonempty note. The actual mastered audio
+hash must have been verified, and the selected raw source proof must be verified
+and bound to the recomputed current selection hash, including source paths,
+expected audio hashes, and byte counts. Missing or stale source proof keeps the
+recording pending. The alignment approval additionally stores
 `timingSha256`, computed with `timing_content_hash(timing)`. This digest includes
 every field of the timing map except its `approvals` metadata. Editing a sentence
 cue, coverage interval, clock offset, or other map field invalidates alignment
@@ -187,8 +210,9 @@ function does not grant artwork, identity, or reveal approval.
 ## Remaining roadmap gates
 
 - Complete author listening decisions and scoped regeneration/rechecks.
-- Freeze approved encoded files, verify every physical hash, and create/review
-  each voice's independent final-file timing maps.
+- Freeze approved encoded files, verify their physical hashes and each selected
+  raw source's selection-bound proof, and create/review each voice's independent
+  final-file timing maps.
 - Choose the publication/access policy, storage account, and funded media
   budget before uploading the full unpublished book.
 - Implement the reader's chapter/narrator controller and verified bookmark
