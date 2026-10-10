@@ -9,6 +9,7 @@ import io
 import json
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import tempfile
 import sys
@@ -60,6 +61,18 @@ class BackupReleaseTests(unittest.TestCase):
             parts = Path(path).parts
             entries.update("/".join(parts[:index]) for index in range(1, len(parts) + 1))
         return len(entries)
+
+    def minimal_selection_metadata(self):
+        """Supply required containers explicitly when content loaders are mocked."""
+        names = ["web/data/chapter-001.json"]
+        for edition in ["v7", "v8"]:
+            names += [f"Audiobook/{edition}/{name}" for name in
+                      ["generation-manifest.json", "chapters.json", "delivery/delivery-manifest.json", "mastered/mastering-report.json"]]
+        for name in names:
+            path = self.root / name
+            if not path.exists():
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(backup.encoded({"fixture": "mocked selection container"}))
 
     def metadata_allocation_fixture(self, plan):
         # Observe real JSON payloads on an independent tiny copy rather than
@@ -888,6 +901,7 @@ class BackupReleaseTests(unittest.TestCase):
         sys.path.insert(0, str(SCRIPT.parent))
         self.addCleanup(lambda: sys.path.remove(str(SCRIPT.parent)))
         import book_content as content
+        self.minimal_selection_metadata()
         with patch.object(content, "load_project_registry", return_value={}), \
              patch.object(content, "load_recording_inventory", return_value={"recordings": []}):
             collected = backup.collect_release_fileset(self.root, "lumen-backup-fixture")
@@ -908,6 +922,7 @@ class BackupReleaseTests(unittest.TestCase):
         sys.path.insert(0, str(SCRIPT.parent))
         self.addCleanup(lambda: sys.path.remove(str(SCRIPT.parent)))
         import book_content as content
+        self.minimal_selection_metadata()
         with patch.object(content, "load_project_registry", return_value={}), \
              patch.object(content, "load_recording_inventory", return_value={"recordings": []}):
             collected = backup.collect_release_fileset(self.root, "lumen-backup-fixture")
@@ -1840,6 +1855,7 @@ else:
         sys.path.insert(0, str(SCRIPT.parent))
         self.addCleanup(lambda: sys.path.remove(str(SCRIPT.parent)))
         import book_content as content
+        self.minimal_selection_metadata()
         raw = self.root / self.paths[1]
         mp3 = self.root / self.paths[2]
         lossless = mp3.with_suffix(".wav"); lossless.write_bytes(b"lossless fixture")
@@ -1894,6 +1910,7 @@ else:
         sys.path.insert(0, str(SCRIPT.parent))
         self.addCleanup(lambda: sys.path.remove(str(SCRIPT.parent)))
         import book_content as content
+        self.minimal_selection_metadata()
         mp3, raw = self.root / self.paths[2], self.root / self.paths[1]
         other_raw = raw.with_name("chapter-001-002.wav")
         other_raw.write_bytes(b"alternative selected take")
@@ -1998,10 +2015,109 @@ else:
         for name in inputs:
             self.assertEqual(rows[name]["expectedSha256"], hashlib.sha256((self.root / name).read_bytes()).hexdigest())
 
+    def test_missing_required_generation_input_cannot_appear_then_change_unbound(self):
+        content, registry_loader, inventory_loader, inputs, other_raw = self.selection_input_fixture()
+        generation = self.root / "Audiobook/v8/generation-manifest.json"
+        original = generation.read_bytes()
+        generation.unlink()
+        def create_then_read_registry(root):
+            generation.write_bytes(original)
+            return registry_loader(root)
+        def inventory_then_replace(root, registry):
+            inventory = inventory_loader(root, registry)
+            temporary = generation.with_suffix(".replacement.json")
+            temporary.write_bytes(backup.encoded({"revision": "replaced", "selected": other_raw}))
+            os.replace(temporary, generation)
+            return inventory
+        with patch.object(content, "load_project_registry", side_effect=create_then_read_registry) as registry_call, \
+             patch.object(content, "load_recording_inventory", side_effect=inventory_then_replace) as inventory_call:
+            with self.assertRaisesRegex(backup.BackupError, "Missing required backup selection input"):
+                backup.collect_release_fileset(self.root, "lumen-backup-fixture")
+        self.assertEqual(registry_call.call_count, 0)
+        self.assertEqual(inventory_call.call_count, 0)
+        self.assertFalse(generation.exists())
+        self.assertFalse(self.destination.exists())
+
+    def test_collector_requires_each_loader_input_before_it_can_be_consumed(self):
+        content, registry_loader, inventory_loader, inputs, _ = self.selection_input_fixture()
+        for name in inputs:
+            with self.subTest(name=name):
+                path = self.root / name
+                original = path.read_bytes()
+                path.unlink()
+                try:
+                    with patch.object(content, "load_project_registry", side_effect=registry_loader) as registry_call, \
+                         patch.object(content, "load_recording_inventory", side_effect=inventory_loader) as inventory_call:
+                        with self.assertRaisesRegex(backup.BackupError, "Missing required backup selection input"):
+                            backup.collect_release_fileset(self.root, "lumen-backup-fixture")
+                    self.assertEqual(inventory_call.call_count, 0)
+                    expected_registry_reads = 1 if name.endswith((".qa.json", ".checkpoint.json")) else 0
+                    self.assertEqual(registry_call.call_count, expected_registry_reads)
+                finally:
+                    path.write_bytes(original)
+
+    def test_new_optional_manuscript_part_cannot_appear_outside_bound_input_inventory(self):
+        content, registry_loader, inventory_loader, _, _ = self.selection_input_fixture()
+        new_part = self.root / "Draft/v6/part2.md"
+        self.assertFalse(new_part.exists())
+        def inventory_then_add_part(root, registry):
+            inventory = inventory_loader(root, registry)
+            new_part.write_text("New manuscript part after selection.\n")
+            return inventory
+        with patch.object(content, "load_project_registry", side_effect=registry_loader), \
+             patch.object(content, "load_recording_inventory", side_effect=inventory_then_add_part):
+            with self.assertRaisesRegex(backup.BackupError, "selection input inventory changed"):
+                backup.collect_release_fileset(self.root, "lumen-backup-fixture")
+        self.assertEqual(new_part.read_text(), "New manuscript part after selection.\n")
+
+    def test_temporary_input_directory_swap_cannot_change_consumed_raw_selection(self):
+        content, registry_loader, inventory_loader, _, other_raw = self.selection_input_fixture()
+        job = self.root / "Audiobook/v8"
+        alternate = self.base / "alternate-v8"
+        retained = job.with_name("v8-retained")
+        shutil.copytree(job, alternate)
+        (alternate / "generation-manifest.json").write_bytes(backup.encoded({"revision": "alternate", "selected": other_raw}))
+        consumed = []
+        def inventory_during_directory_swap(root, registry):
+            job.rename(retained)
+            alternate.rename(job)
+            try:
+                inventory = inventory_loader(root, registry)
+                consumed.append(inventory["recordings"][0]["selectedClips"][0]["sourcePath"])
+                return inventory
+            finally:
+                job.rename(alternate)
+                retained.rename(job)
+        original_generation = (job / "generation-manifest.json").read_bytes()
+        with patch.object(content, "load_project_registry", side_effect=registry_loader), \
+             patch.object(content, "load_recording_inventory", side_effect=inventory_during_directory_swap):
+            plan = backup.collect_release_fileset(self.root, "lumen-backup-fixture")
+        self.assertEqual(consumed, [self.paths[1]])
+        self.assertEqual((job / "generation-manifest.json").read_bytes(), original_generation)
+        rows = {row["path"]: row for row in plan["files"]}
+        self.assertIn(self.paths[1], rows)
+        self.assertNotIn(other_raw, rows)
+        self.assertEqual(rows["Audiobook/v8/generation-manifest.json"]["expectedSha256"], hashlib.sha256(original_generation).hexdigest())
+
+    def test_selection_loader_rejects_unbound_metadata_read(self):
+        content, registry_loader, inventory_loader, _, _ = self.selection_input_fixture()
+        unexpected = self.root / "docs/unbound-selection.json"
+        unexpected.parent.mkdir()
+        unexpected.write_bytes(backup.encoded({"selected": self.paths[1]}))
+        def registry_using_unbound_input(root):
+            content.read_project_json(root, unexpected)
+            return registry_loader(root)
+        with patch.object(content, "load_project_registry", side_effect=registry_using_unbound_input), \
+             patch.object(content, "load_recording_inventory", side_effect=inventory_loader):
+            with self.assertRaisesRegex((backup.BackupError, content.ContentError), "Unbound backup selection input"):
+                backup.collect_release_fileset(self.root, "lumen-backup-fixture")
+        self.assertFalse(self.destination.exists())
+
     def test_art_direction_exempts_only_exact_model_sources_and_skips_nested_caches(self):
         sys.path.insert(0, str(SCRIPT.parent))
         self.addCleanup(lambda: sys.path.remove(str(SCRIPT.parent)))
         import book_content as content
+        self.minimal_selection_metadata()
         references = ["web/art-direction/models/adrian-marsh-v1.png",
                       "web/art-direction/models/daniel-yoon-v1.png",
                       "web/art-direction/approved-cast-v1/images/adrian-marsh-portrait-v1.webp"]
@@ -2028,6 +2144,7 @@ else:
         sys.path.insert(0, str(SCRIPT.parent))
         self.addCleanup(lambda: sys.path.remove(str(SCRIPT.parent)))
         import book_content as content
+        self.minimal_selection_metadata()
         mp3 = self.root / self.paths[2]
         mp3.with_suffix(".wav").write_bytes(b"lossless fixture")
         mp3.with_suffix(".qa.json").write_text('{"warnings":[]}')

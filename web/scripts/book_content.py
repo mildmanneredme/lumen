@@ -8,6 +8,8 @@ The CLI exports to staging only; the current pilot runtime remains independent.
 from __future__ import annotations
 
 import argparse
+from contextlib import contextmanager
+from contextvars import ContextVar
 import hashlib
 import json
 import math
@@ -18,6 +20,9 @@ import uuid
 from datetime import datetime
 
 
+_INPUT_READER = ContextVar("lumen_content_input_reader", default=None)
+
+
 class ContentError(ValueError):
     """A source or release asset fails the publication contract."""
 
@@ -25,6 +30,36 @@ class ContentError(ValueError):
 def require(condition, message):
     if not condition:
         raise ContentError(message)
+
+
+@contextmanager
+def scoped_input_reader(reader):
+    """Route file inputs through reader(Path)->bytes in this context only.
+
+    The caller supplies and validates the bound bytes. Nested scopes restore
+    their previous reader, including when loading fails; concurrent threads
+    and async tasks keep independent context state. No file IO is replaced
+    process-wide, and ordinary callers retain their existing read behavior.
+    """
+    require(callable(reader), "Scoped input reader must be callable")
+    token = _INPUT_READER.set(reader)
+    try:
+        yield
+    finally:
+        _INPUT_READER.reset(token)
+
+
+def _input_bytes(path):
+    value = _INPUT_READER.get()(Path(path))
+    require(isinstance(value, bytes), "Scoped input reader must return immutable bytes")
+    return value
+
+
+def _read_text(path):
+    if _INPUT_READER.get() is None:
+        return Path(path).read_text(encoding="utf-8")
+    # Match TextIOWrapper's universal newlines while hashing raw bytes.
+    return _input_bytes(path).decode("utf-8").replace("\r\n", "\n").replace("\r", "\n")
 
 
 def json_bytes(value):
@@ -52,6 +87,8 @@ def selected_request_hash(item):
 
 
 def file_hash(path):
+    if _INPUT_READER.get() is not None:
+        return hashlib.sha256(_input_bytes(path)).hexdigest()
     digest = hashlib.sha256()
     with Path(path).open("rb") as stream:
         for block in iter(lambda: stream.read(1024 * 1024), b""):
@@ -61,7 +98,7 @@ def file_hash(path):
 
 def read_json(path):
     try:
-        value = json.loads(Path(path).read_text(encoding="utf-8"))
+        value = json.loads(_read_text(path))
     except (OSError, ValueError) as exc:
         raise ContentError(f"Cannot read JSON {path}: {exc}") from exc
     require(isinstance(value, dict), f"Expected JSON object: {path}")
@@ -303,7 +340,7 @@ def build_registry(manuscript_directory, generation_manifests, *, manuscript_ver
                     f"Edition narration differs: {voice}/chapter-{number:03d}")
     story = []
     for part_number, path in enumerate(source_files, 1):
-        source = path.read_text(encoding="utf-8")
+        source = _read_text(path)
         headings = list(re.finditer(r"^## Chapter ([0-9]+)[ \t]*$", source, re.M))
         for index, heading in enumerate(headings):
             number = int(heading.group(1))
@@ -334,7 +371,7 @@ def build_registry(manuscript_directory, generation_manifests, *, manuscript_ver
             story.append(track)
     require([t["number"] for t in story] == list(range(1, expected_chapters + 1)),
             "Canonical chapters are missing, duplicated, or out of order")
-    opening = make_track(0, "opening-credits", opening_credit_body(selected[0], source_files[0].read_text(encoding="utf-8")), manuscript_version)
+    opening = make_track(0, "opening-credits", opening_credit_body(selected[0], _read_text(source_files[0])), manuscript_version)
     closing = make_track(expected_chapters + 1, "closing-credits",
                          spoken_comparison("\n\n".join(i["text"] for i in selected[expected_chapters + 1])), manuscript_version)
     for number, track in enumerate([opening] + story + [closing]):
