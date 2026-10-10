@@ -300,6 +300,27 @@ let browser;
     window.LUMEN_CHAPTER.chapterId==='chapter-001' && document.querySelector('#narration').getAttribute('src')===old.src &&
     document.querySelector('#prose').textContent===old.prose && !document.querySelector('#transition-retry').hidden,oldBlockState));
   await blockReader.context.close();
+  const validEmphasis=JSON.parse(JSON.stringify(payloads.get('/fixture/chapter-002-autonoe.json'))),emphasisParagraph=validEmphasis.paragraphs[0];
+  emphasisParagraph.emphasis=[{start:0,end:4},{start:4,end:22,kind:'bold'},{start:22,end:emphasisParagraph.text.length,kind:'italic'}];
+  const invalidEmphasis=JSON.parse(JSON.stringify(payloads.get('/fixture/chapter-003-autonoe.json')));
+  const emphasisReader=await fixtureContext({overrides:new Map([['/fixture/chapter-002-autonoe.json',validEmphasis],['/fixture/chapter-003-autonoe.json',invalidEmphasis]])});
+  await emphasisReader.page.goto(origin,{waitUntil:'domcontentloaded'});await ready(emphasisReader.page);
+  await choose(emphasisReader.page,'chapter-002');await reached(emphasisReader.page,'chapter-002');
+  regression('adjacent emphasis across sentence boundaries displays the manuscript exactly once',await emphasisReader.page.evaluate(text=>
+    document.querySelector('#prose').textContent===text && document.querySelectorAll('.sentence strong').length===2 &&
+    document.querySelectorAll('.sentence em').length===2,emphasisParagraph.text));
+  const oldEmphasisState=await emphasisReader.page.evaluate(()=>({src:document.querySelector('#narration').getAttribute('src'),prose:document.querySelector('#prose').textContent}));
+  for(const [name,spans] of [
+    ['overlapping',[{start:0,end:12,kind:'italic'},{start:8,end:20,kind:'bold'}]],
+    ['out-of-order',[{start:20,end:25,kind:'bold'},{start:0,end:5,kind:'italic'}]]
+  ]) {
+    invalidEmphasis.paragraphs[0].emphasis=spans;
+    await choose(emphasisReader.page,'chapter-003');await emphasisReader.page.waitForTimeout(150);
+    regression(name+' emphasis is rejected before changing prose or its audio source',await emphasisReader.page.evaluate(old=>
+      window.LUMEN_CHAPTER.chapterId==='chapter-002' && document.querySelector('#narration').getAttribute('src')===old.src &&
+      document.querySelector('#prose').textContent===old.prose && !document.querySelector('#transition-retry').hidden,oldEmphasisState));
+  }
+  await emphasisReader.context.close();
   const failedNext=['/fixture/chapter-002-autonoe.json'];
   const endedReader=await fixtureContext({failures:failedNext});
   await endedReader.page.goto(origin,{waitUntil:'domcontentloaded'});await ready(endedReader.page);
