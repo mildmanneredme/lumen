@@ -20,7 +20,7 @@ const {values} = parseArgs({options:{
   staging:{type:'string'}, recordings:{type:'string'}
 }});
 const staging = path.resolve(values.staging || path.join(root,
-  'Audiobook/author-audit/web-release/staging/lumen-private-192-v3'));
+  'Audiobook/author-audit/web-release/staging/lumen-private-192-v4'));
 const output = path.resolve(values.out || '/private/tmp/lumen-full-release-qa');
 const tmpRoot = fs.realpathSync(os.tmpdir());
 assert.ok(output.startsWith('/private/tmp/') || output.startsWith(tmpRoot + path.sep),

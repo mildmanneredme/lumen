@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 import copy
+from functools import lru_cache
 import hashlib
+import itertools
 import json
 from pathlib import Path
 import shutil
@@ -211,6 +213,174 @@ class WebAudioTests(unittest.TestCase):
         self.assertEqual(gap["recheckWindow"]["start"], 0)
         self.assertEqual(gap["recheckWindow"]["end"], measured["start"])
         self.assertEqual(measured["syncStatus"], "measured")
+
+    def test_one_heard_adrian_cannot_select_between_adjacent_canonical_occurrences(self):
+        track = content.make_track(1, "story",
+            '"Professor Marsh?"\n\n"Adrian."\n\n"Adrian." The boy hesitated. "Do you really think we can do this?"', "v6")
+        spoken = "Professor Marsh Adrian The boy hesitated Do you really think we can do this".split()
+        words = [(word, .5 + index * .3, .7 + index * .3) for index, word in enumerate(spoken)]
+        timing, report = audio.align_sentences(track, self.recording, words)
+        sentences = content.sentences(track)
+        duplicate_ids = {sentence["id"] for sentence in sentences if content.spoken_comparison(sentence["text"]).strip('". ') == "Adrian"}
+        self.assertEqual(len(duplicate_ids), 2)
+        self.assertIsNone(timing)
+        self.assertTrue(duplicate_ids.isdisjoint(cue["sentenceId"] for cue in report["measuredSentences"]))
+        self.assertEqual({row["sentenceId"] for row in report["ambiguousSentenceAnchors"]}, duplicate_ids)
+        self.assertEqual({cue["sentenceId"] for cue in report["measuredSentences"]},
+                         {sentence["id"] for sentence in sentences} - duplicate_ids)
+
+    def test_missing_repeated_multiword_prose_has_no_selected_duplicate_cue(self):
+        for copies, spoken_copies in [(2, 1), (3, 1), (3, 2)]:
+            with self.subTest(copies=copies, spoken_copies=spoken_copies):
+                track = content.make_track(1, "story", "He said no. " * copies + "Then silence.", "v6")
+                spoken = ("He said no " * spoken_copies + "Then silence").split()
+                words = [(word, .5 + index * .3, .7 + index * .3) for index, word in enumerate(spoken)]
+                timing, report = audio.align_sentences(track, self.recording, words)
+                sentences = content.sentences(track)
+                self.assertIsNone(timing)
+                self.assertEqual([cue["sentenceId"] for cue in report["measuredSentences"]], [sentences[-1]["id"]])
+                self.assertEqual({row["sentenceId"] for row in report["ambiguousSentenceAnchors"]},
+                                 {sentence["id"] for sentence in sentences[:-1]})
+
+    def test_fully_observed_repeated_prose_keeps_chronological_occurrences(self):
+        for manuscript, spoken in [
+            ("He said no. He said no. Then silence.", "He said no He said no Then silence"),
+            ("26 guards don't wait. Twenty-six guards don’t wait. Then silence.",
+             "twenty six guards dont wait twenty six guards dont wait Then silence"),
+            ("Alpha bravo charlie delta echo. Alpha bravo charlie delta echo. Then silence.",
+             "Alpha bravo delta echo Alpha charlie delta echo Then silence"),
+        ]:
+            with self.subTest(manuscript=manuscript):
+                track = content.make_track(1, "story", manuscript, "v6")
+                words = [(word, .5 + index * .3, .7 + index * .3) for index, word in enumerate(spoken.split())]
+                timing, report = audio.align_sentences(track, self.recording, words)
+                self.assertIsNotNone(timing)
+                self.assertEqual(len(timing["sentences"]), 3)
+                self.assertEqual(report["ambiguousSentenceAnchors"], [])
+                self.assertLess(timing["sentences"][0]["end"], timing["sentences"][1]["start"])
+
+    def test_measured_unique_context_resolves_a_repeated_occurrence(self):
+        track = content.make_track(1, "story", "Adrian. He opened the door. Adrian. The boy hesitated.", "v6")
+        first, context, second, after = content.sentences(track)
+        for spoken, measured_id, missing_id in [
+            ("He opened the door Adrian The boy hesitated", second["id"], first["id"]),
+            ("Adrian He opened the door The boy hesitated", first["id"], second["id"]),
+        ]:
+            with self.subTest(spoken=spoken):
+                words = [(word, .5 + index * .3, .7 + index * .3) for index, word in enumerate(spoken.split())]
+                timing, report = audio.align_sentences(track, self.recording, words)
+                self.assertIsNone(timing)
+                self.assertEqual(report["unanchoredSentences"], [missing_id])
+                self.assertEqual(report["ambiguousSentenceAnchors"], [])
+                self.assertEqual({cue["sentenceId"] for cue in report["measuredSentences"]},
+                                 {context["id"], measured_id, after["id"]})
+
+    def test_ambiguous_observed_prose_still_contributes_overlap_watermark(self):
+        track = content.make_track(1, "story", "Before. Adrian. Adrian. After.", "v6")
+        timing, report = audio.align_sentences(track, self.recording,
+            [("Before", 1, 1.2), ("Adrian", 2, 5), ("After", 4.5, 4.8)])
+        before, first, second, after = content.sentences(track)
+        self.assertIsNone(timing)
+        self.assertEqual(report["overlappingSentences"], [after["id"]])
+        self.assertTrue({first["id"], second["id"]}.isdisjoint(
+            cue["sentenceId"] for cue in report["measuredSentences"]))
+        self.assertIn(before["id"], [cue["sentenceId"] for cue in report["measuredSentences"]])
+
+    def test_existing_finalizer_keeps_every_ambiguous_duplicate_as_a_null_gap(self):
+        import finalize_release_timings as finalizer
+        track = content.make_track(1, "story", "Before. He said no. He said no. After.", "v6")
+        recording = dict(self.recording, selectedClips=[{"id": "take-a"}])
+        words = [(word, .5 + index * .3, .7 + index * .3)
+                 for index, word in enumerate("Before He said no After".split())]
+        report = finalizer.report_from_words(track, recording, words, [{"id": "take-a"}], {})
+        timing = finalizer.gap_timing(track, recording, report, {})
+        self.assertEqual(len(timing["sentences"]), 4)
+        before, first, second, after = timing["sentences"]
+        self.assertEqual((before["syncStatus"], after["syncStatus"]), ("measured", "measured"))
+        for row in [first, second]:
+            self.assertEqual(row["syncStatus"], "unavailable")
+            self.assertIsNone(row["start"]); self.assertIsNone(row["end"])
+            self.assertEqual(row["recheckWindow"], first["recheckWindow"])
+            self.assertEqual(row["recheckWindow"]["start"], before["end"])
+            self.assertEqual(row["recheckWindow"]["end"], after["start"])
+
+    def test_an_extra_heard_occurrence_cannot_choose_the_canonical_boundary(self):
+        track = content.make_track(1, "story", "Before. Adrian. After.", "v6")
+        words = [(word, .5 + index * .3, .7 + index * .3)
+                 for index, word in enumerate("Before Adrian Adrian After".split())]
+        timing, report = audio.align_sentences(track, self.recording, words)
+        before, middle, after = content.sentences(track)
+        self.assertIsNone(timing)
+        self.assertEqual([cue["sentenceId"] for cue in report["measuredSentences"]], [before["id"], after["id"]])
+        self.assertEqual([row["sentenceId"] for row in report["ambiguousSentenceAnchors"]], [middle["id"]])
+        self.assertEqual(report["ambiguousSentenceAnchors"][0]["edges"][0]["observedTokenIndexes"], [1, 2])
+
+    def test_repeated_phrase_in_different_sentences_cannot_borrow_another_boundary(self):
+        track = content.make_track(1, "story", "He said no. He said no softly. Then silence.", "v6")
+        words = [(word, .5 + index * .3, .7 + index * .3)
+                 for index, word in enumerate("He said no softly Then silence".split())]
+        timing, report = audio.align_sentences(track, self.recording, words)
+        first, second, last = content.sentences(track)
+        self.assertIsNone(timing)
+        self.assertEqual([cue["sentenceId"] for cue in report["measuredSentences"]], [last["id"]])
+        self.assertEqual({row["sentenceId"] for row in report["ambiguousSentenceAnchors"]}, {first["id"], second["id"]})
+
+    def test_context_supported_spellings_do_not_hide_repeated_occurrence_uncertainty(self):
+        track = content.make_track(1, "story", "Before now. NovaMind glows softly. NovaMind glows softly. Then silence.", "v6")
+        for spoken, complete in [
+            ("Before now Novamine glows softly Novamine glows softly Then silence", True),
+            ("Before now Novamine glows softly Then silence", False),
+        ]:
+            with self.subTest(complete=complete):
+                words = [(word, .5 + index * .3, .7 + index * .3) for index, word in enumerate(spoken.split())]
+                timing, report = audio.align_sentences(track, self.recording, words)
+                first, duplicate_a, duplicate_b, last = content.sentences(track)
+                if complete:
+                    self.assertIsNotNone(timing)
+                    self.assertEqual(len(report["contextualSubstitutions"]), 2)
+                    self.assertEqual(report["ambiguousSentenceAnchors"], [])
+                else:
+                    self.assertIsNone(timing)
+                    self.assertEqual([cue["sentenceId"] for cue in report["measuredSentences"]], [first["id"], last["id"]])
+                    self.assertEqual({row["sentenceId"] for row in report["ambiguousSentenceAnchors"]},
+                                     {duplicate_a["id"], duplicate_b["id"]})
+
+    def test_repeated_internal_phrase_does_not_hide_unique_measured_sentence_edges(self):
+        track = content.make_track(1, "story", "Before dawn he said no and then he said no after dusk at home tonight.", "v6")
+        words = [(word, .5 + index * .3, .7 + index * .3)
+                 for index, word in enumerate("Before dawn and then he said no after dusk at home tonight".split())]
+        timing, report = audio.align_sentences(track, self.recording, words)
+        self.assertIsNotNone(timing)
+        self.assertEqual(report["ambiguousSentenceAnchors"], [])
+        self.assertEqual((timing["sentences"][0]["start"], timing["sentences"][0]["end"]), (.5, 4.0))
+
+    def test_compact_occurrence_check_agrees_with_all_optimal_small_monotone_alignments(self):
+        # Enumerate real alternative monotone pairings independently of the
+        # compact bitset calculation, including deletions and repeated tokens.
+        sequences = [tuple(tokens) for length in range(1, 4)
+                     for tokens in itertools.product(("adrian", "no"), repeat=length)]
+        for expected in sequences:
+            for heard in sequences:
+                @lru_cache(None)
+                def alignments(left, right):
+                    if left == len(expected) or right == len(heard):
+                        return frozenset([()])
+                    options = set(alignments(left + 1, right)) | set(alignments(left, right + 1))
+                    if expected[left] == heard[right]:
+                        options.update(((left, right),) + suffix for suffix in alignments(left + 1, right + 1))
+                    longest = max(map(len, options))
+                    return frozenset(option for option in options if len(option) == longest)
+                optimal = alignments(0, 0)
+                possible = set(pair for option in optimal for pair in option)
+                selected = dict(min(optimal))
+                ambiguous = {left for left in range(len(expected))
+                    if len({right for first, right in possible if first == left}) > 1
+                    or any(len({first for first, second in possible if second == right}) > 1
+                           for first, right in possible if first == left)}
+                with self.subTest(expected=expected, heard=heard):
+                    result = audio.ambiguous_boundary_anchors(list(expected), list(heard),
+                        [(index, index + 1) for index in range(len(expected))], selected)
+                    self.assertEqual(set(result), ambiguous)
 
     def test_missing_sentence_with_overlapping_measured_neighbors_has_only_a_recheck_region(self):
         track = content.make_track(1, "chapter", "Before. Missing. After.", "v6")

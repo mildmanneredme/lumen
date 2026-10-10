@@ -185,20 +185,20 @@ verification gates pass.
 
 ## Prepared private release
 
-The local `lumen-private-192-v3` export is complete: 91 tracks in both voices,
-365 assets totaling 2,667,475,591 bytes. It references the 182 unchanged MP3s
-(2,657,554,540 bytes) and creates 183 JSON objects (9,921,051 bytes). Female
+The local `lumen-private-192-v4` export is complete: 91 tracks in both voices,
+365 assets totaling 2,667,475,488 bytes. It references the 182 unchanged MP3s
+(2,657,554,540 bytes) and creates 183 JSON objects (9,920,948 bytes). Female
 narration starts by default with opening credits; every scene list is empty
 for the authorized generic-placeholder release. All 25,844 canonical sentence
-positions are represented: 23,759 measured and 2,085 explicitly unavailable.
+positions are represented: 23,673 measured and 2,171 explicitly unavailable.
 
 The exporter freshly verified actual masters, selected raw sources and exact
 ASR evidence again. The local manifest SHA-256 is
-`5766db252fa58aa7434374eea7c9b7a823b620ff7d28c481cf3ea5a82090f983`;
+`7415b9530cfc803fbca434c4f8538ecba6727d4160e3ee471c841b50d95d3ac9`;
 the private upload-inventory SHA-256 is
-`0d7a47c734ccd00ab27bcc0fbd89c90095514933a1d527438d7fecb5c1d756cb`.
+`27970eb8ecc7cc9e2027c4aeef0afddce5b3fb65a6f03a353908a142234cd485`.
 The private release-export-verification SHA-256 is
-`5f6f7e16b0a55bf7b4a7345d97659496c79767cbd5ab4c34f4ce9800134e794f`.
-V3 supersedes the earlier boundary policy; prior immutable exports and v2 pointer/report snapshots are retained privately. Only sentences with measured first/last word anchors and sufficient internal coverage receive cues. All 1,095 inventory range samples were checked against their source bytes.
+`f6749a37f6925b10bfcf3ca48880545073e8338cbed671cf80ed598db448a5a3`.
+V4 supersedes earlier boundary/duplicate-occurrence policies; prior immutable exports and v2/v3 pointer/report snapshots are retained privately. Only sentences with uniquely supported measured first/last word anchors and sufficient internal coverage receive cues. All 1,095 inventory range samples were checked against their source bytes.
 These records prove local preparation; remote upload and authorization still
 require the separately verified private-delivery operation.
