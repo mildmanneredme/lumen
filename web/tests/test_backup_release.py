@@ -70,8 +70,11 @@ class BackupReleaseTests(unittest.TestCase):
             manifest = self.run_copy()
         self.assertEqual(writes[-1][0], "backup-manifest.json")
         state = json.loads((self.destination / "backup-state.json").read_text())
-        self.assertEqual(state["copyStatus"], "complete")
-        self.assertEqual(state["manifestSha256"], manifest["manifestSha256"])
+        self.assertEqual(state["copyStatus"], "prepared")
+        self.assertEqual(state["copiedBytes"], manifest["totalBytes"])
+        self.assertNotIn("manifestSha256", state)
+        self.assertTrue(all(value["copyStatus"] != "complete" for name, value in writes if name == "backup-state.json"))
+        self.assertTrue(all("manifestSha256" not in value for name, value in writes if name == "backup-state.json"))
         self.assertNotIn("error", state)
         self.assertEqual(backup.verify_snapshot(self.destination)["manifestSha256"], manifest["manifestSha256"])
 
@@ -87,7 +90,7 @@ class BackupReleaseTests(unittest.TestCase):
                 plan = backup.prepare_fileset(self.root, self.paths, destination.name)
                 failed = []
                 def failing_write(path, value):
-                    if path.name == failed_name and value.get("copyStatus") == "complete":
+                    if path.name == failed_name and value.get("copyStatus") in {"prepared", "complete"}:
                         failed.append(True)
                         raise OSError("injected final metadata failure")
                     return original(path, value)
@@ -120,10 +123,50 @@ class BackupReleaseTests(unittest.TestCase):
             manifest = self.run_copy()
         self.assertTrue(published)
         state = json.loads((self.destination / "backup-state.json").read_text())
-        self.assertEqual(state["copyStatus"], "complete")
+        self.assertEqual(state["copyStatus"], "prepared")
         self.assertNotIn("error", state)
-        self.assertEqual(state["manifestSha256"], manifest["manifestSha256"])
+        self.assertNotIn("manifestSha256", state)
         self.assertEqual(backup.verify_snapshot(self.destination)["manifestSha256"], manifest["manifestSha256"])
+
+    def test_persistent_completion_io_failure_does_not_claim_completion_or_mask_primary_error(self):
+        earlier = self.destination.parent / "lumen-backup-earlier"
+        earlier_plan = backup.prepare_fileset(self.root, self.paths, earlier.name)
+        backup.copy_snapshot(self.root, earlier, earlier_plan, minimum_free_bytes=0)
+        prior = {p.relative_to(earlier).as_posix(): p.read_bytes() for p in earlier.rglob("*") if p.is_file()}
+        original = backup.write_json
+        for phase in ["state", "manifest"]:
+            with self.subTest(phase=phase):
+                destination = self.destination.parent / ("lumen-persistent-" + phase)
+                plan = backup.prepare_fileset(self.root, self.paths, destination.name)
+                primary = "primary " + phase + " completion write failure"
+                failed = []
+                diagnostic_failures = []
+                def persistent_failure(path, value):
+                    if failed and path.name == "backup-state.json":
+                        diagnostic_failures.append(True)
+                        raise OSError("secondary diagnostic write failure")
+                    if ((phase == "state" and path.name == "backup-state.json"
+                         and value.get("copyStatus") in {"prepared", "complete"})
+                            or (phase == "manifest" and path.name == "backup-manifest.json")):
+                        failed.append(True)
+                        raise OSError(primary)
+                    return original(path, value)
+                with patch.object(backup, "write_json", side_effect=persistent_failure):
+                    with self.assertRaisesRegex(backup.BackupError, primary) as failure:
+                        backup.copy_snapshot(self.root, destination, plan, minimum_free_bytes=0)
+                self.assertEqual(str(failure.exception.__cause__), primary)
+                self.assertTrue(failed)
+                self.assertTrue(diagnostic_failures)
+                self.assertFalse((destination / "backup-manifest.json").exists())
+                state = json.loads((destination / "backup-state.json").read_text())
+                self.assertEqual(state["copyStatus"], "incomplete" if phase == "state" else "prepared")
+                self.assertNotIn("manifestSha256", state)
+                with self.assertRaises(backup.BackupError):
+                    backup.verify_snapshot(destination)
+                for name in self.paths:
+                    self.assertEqual((destination / "files" / name).read_bytes(), (self.root / name).read_bytes())
+                self.assertEqual({p.relative_to(earlier).as_posix(): p.read_bytes() for p in earlier.rglob("*") if p.is_file()}, prior)
+                self.assertEqual(backup.verify_snapshot(earlier)["verifiedFiles"], len(self.paths))
 
     def test_expected_production_hash_is_checked_during_copy(self):
         plan = self.plan(expected_hashes={self.paths[1]: "a" * 64})

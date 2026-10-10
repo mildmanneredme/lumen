@@ -371,8 +371,8 @@ def copy_snapshot(root, destination, plan, *, minimum_free_bytes=DEFAULT_RESERVE
                            "cloudDestinationFolderId": plan["cloudDestinationFolderId"],
                            "copyStatus": "complete", "remoteSyncStatus": "pending",
                            "files": copied, "totalBytes": plan["totalBytes"]}, "manifestSha256")
-        state["copyStatus"] = "complete"
-        state["manifestSha256"] = manifest["manifestSha256"]
+        # Preparation is durable progress; only the manifest proves completion.
+        state["copyStatus"] = "prepared"
         write_json(destination / "backup-state.json", state)
         # Publish the immutable completion marker after every fallible state write.
         write_json(destination / "backup-manifest.json", manifest)
@@ -387,9 +387,12 @@ def copy_snapshot(root, destination, plan, *, minimum_free_bytes=DEFAULT_RESERVE
             if published == manifest:
                 return manifest
         state["copyStatus"] = "incomplete"
-        state.pop("manifestSha256", None)
         state["error"] = str(exc)
-        write_json(destination / "backup-state.json", state)
+        try:
+            write_json(destination / "backup-state.json", state)
+        except (OSError, BackupError):
+            # Diagnostic persistence is best effort; preserve the primary error.
+            pass
         raise BackupError(f"Backup remains incomplete: {exc}") from exc
 
 

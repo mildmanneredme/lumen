@@ -106,13 +106,74 @@ def info_for(name):
     return info
 
 
-def write_exclusive_json(path, value):
+def require_owned_path(path, parent_identity, file_identity, label):
+    """Bind a logical output path to its original directory and regular file."""
     with backup.opened_parent(path) as (parent, name):
-        descriptor = os.open(name, os.O_CREAT | os.O_EXCL | os.O_WRONLY | os.O_NOFOLLOW, 0o600, dir_fd=parent)
-        with os.fdopen(descriptor, "wb") as outgoing:
-            outgoing.write(backup.encoded(value))
-            outgoing.flush()
-            os.fsync(outgoing.fileno())
+        current_parent = os.fstat(parent)
+        backup.require((current_parent.st_dev, current_parent.st_ino) == parent_identity,
+                       f"{label} logical parent changed during publication")
+        current = os.stat(name, dir_fd=parent, follow_symlinks=False)
+        backup.require(stat.S_ISREG(current.st_mode) and identity(current) == file_identity,
+                       f"{label} logical file changed during publication")
+
+
+def write_exclusive_json(path, value):
+    """Publish exclusively; reconcile a late I/O error against owned bytes.
+
+    Some filesystems report a flush/fsync/close error after the full marker is
+    already readable. Its exact current bytes then mark a complete local copy,
+    while durability remains unverified. Never recover a failed exclusive open,
+    a replaced marker, a partial write, or merely parseable but different JSON.
+    """
+    payload = backup.encoded(value)
+    owned_file = owned_parent = final_identity = None
+    try:
+        with backup.opened_parent(path) as (parent, name):
+            parent_info = os.fstat(parent)
+            owned_parent = parent_info.st_dev, parent_info.st_ino
+            descriptor = os.open(name, os.O_CREAT | os.O_EXCL | os.O_WRONLY | os.O_NOFOLLOW, 0o600, dir_fd=parent)
+            created = os.fstat(descriptor)
+            owned_file = created.st_dev, created.st_ino
+            try:
+                outgoing = os.fdopen(descriptor, "wb")
+            except BaseException:
+                os.close(descriptor)
+                raise
+            with outgoing:
+                backup.require(outgoing.write(payload) == len(payload), "Incomplete completion sidecar write")
+                outgoing.flush()
+                os.fsync(outgoing.fileno())
+                final_identity = identity(os.fstat(outgoing.fileno()))
+    except OSError as error:
+        if owned_file is None:
+            raise
+        # Reopen through checked ancestors after the writer has closed. The
+        # recovery is bounded by the expected payload and pinned to this call's
+        # exclusively created regular file, not any preexisting completion file.
+        try:
+            with backup.opened_parent(path) as (parent, name):
+                parent_info = os.fstat(parent)
+                backup.require((parent_info.st_dev, parent_info.st_ino) == owned_parent,
+                               "Completion sidecar parent changed after write error")
+                descriptor = os.open(name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=parent)
+                with os.fdopen(descriptor, "rb") as incoming:
+                    before = os.fstat(incoming.fileno())
+                    backup.require(stat.S_ISREG(before.st_mode) and (before.st_dev, before.st_ino) == owned_file,
+                                   "Completion sidecar ownership changed after write error")
+                    backup.require(before.st_size == len(payload) and incoming.read(len(payload) + 1) == payload,
+                                   "Completion sidecar bytes differ after write error")
+                    backup.require(identity(os.fstat(incoming.fileno())) == identity(before) ==
+                                   identity(os.stat(name, dir_fd=parent, follow_symlinks=False)),
+                                   "Completion sidecar changed during error readback")
+            # A pinned old directory can survive a logical-path replacement.
+            # Bind the returned path back to these exact bytes as well.
+            require_owned_path(path, owned_parent, identity(before), "Completion sidecar")
+        except (OSError, backup.BackupError) as failure:
+            raise backup.BackupError(f"Completion sidecar write failed and exact owned-byte readback failed: {failure}") from error
+        return {"parentIdentity": owned_parent, "fileIdentity": identity(before),
+                "diagnostic": {"status": "exact-readback-after-write-error", "durabilityVerified": False, "error": str(error)}}
+    require_owned_path(path, owned_parent, final_identity, "Completion sidecar")
+    return {"parentIdentity": owned_parent, "fileIdentity": final_identity, "diagnostic": None}
 
 
 def hash_stream(stream):
@@ -156,6 +217,8 @@ def archive_snapshot(root, destination, plan, *, maximum_archive_bytes,
                    "Insufficient local free space for the explicit archive cap plus reserve")
     try:
         with backup.opened_parent(destination) as (output_parent, name):
+            output_parent_info = os.fstat(output_parent)
+            output_parent_identity = output_parent_info.st_dev, output_parent_info.st_ino
             descriptor = os.open(name, os.O_CREAT | os.O_EXCL | os.O_RDWR | os.O_NOFOLLOW, 0o600, dir_fd=output_parent)
             with os.fdopen(descriptor, "w+b", buffering=0) as outgoing:
                 guarded = GuardedOutput(outgoing, parent, minimum_free_bytes, maximum_archive_bytes)
@@ -194,14 +257,20 @@ def archive_snapshot(root, destination, plan, *, maximum_archive_bytes,
                 outgoing.flush(); os.fsync(outgoing.fileno())
                 archive_bytes, archive_hash, archive_md5 = hash_stream(outgoing)
                 assert_sources_unchanged(root, rows, states)
+                archive_identity = identity(os.fstat(outgoing.fileno()))
         sidecar = {"schemaVersion": 1, "backupId": plan["backupId"], "planSha256": plan["planSha256"],
                    "manifestSha256": manifest["manifestSha256"], "archiveBytes": archive_bytes,
                    "archiveSha256": archive_hash, "archiveMd5": archive_md5,
                    "sourceBytes": plan["totalBytes"], "files": len(files), "copyStatus": "complete",
                    "remoteSyncStatus": "pending", "cloudDestinationFolderId": plan["cloudDestinationFolderId"]}
         check_free(parent, minimum_free_bytes, len(backup.encoded(sidecar)))
-        write_exclusive_json(checksum_path, sidecar)
-        return sidecar
+        require_owned_path(destination, output_parent_identity, archive_identity, "Backup archive")
+        publication = write_exclusive_json(checksum_path, sidecar)
+        backup.require(publication["parentIdentity"] == output_parent_identity,
+                       "Completion sidecar parent differs from its archive")
+        require_owned_path(destination, output_parent_identity, archive_identity, "Backup archive")
+        require_owned_path(checksum_path, output_parent_identity, publication["fileIdentity"], "Completion sidecar")
+        return dict(sidecar, completionPublication=publication["diagnostic"]) if publication["diagnostic"] else sidecar
     except (OSError, backup.BackupError, zipfile.BadZipFile, RuntimeError) as exc:
         raise backup.BackupError(f"Archive remains incomplete without a completion sidecar: {exc}") from exc
 

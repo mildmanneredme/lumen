@@ -2,9 +2,11 @@
 from __future__ import annotations
 
 import copy
+from contextlib import contextmanager, redirect_stderr, redirect_stdout
 import hashlib
 import importlib.util
 import json
+import io
 import os
 from pathlib import Path
 import stat
@@ -47,6 +49,305 @@ class ArchiveBackupTests(unittest.TestCase):
     def create(self, plan=None, **kwargs):
         return archive.archive_snapshot(self.root, self.destination, plan or self.plan(),
                                         maximum_archive_bytes=1_000_000, minimum_free_bytes=0, **kwargs)
+
+    @contextmanager
+    def sidecar_fault(self, mode):
+        original_fdopen, original_fsync, original_open = archive.os.fdopen, archive.os.fsync, archive.os.open
+        checksum = archive.sidecar_path(self.destination)
+        class FailingWriter:
+            def __init__(self, stream):
+                self.stream = stream
+            def __enter__(self):
+                self.stream.__enter__()
+                return self
+            def __exit__(self, *args):
+                result = self.stream.__exit__(*args)
+                if mode == "close":
+                    raise OSError("fixture sidecar close failure after full write")
+                return result
+            def __getattr__(self, name):
+                return getattr(self.stream, name)
+            def write(self, data):
+                if mode == "partial":
+                    self.stream.write(data[:len(data) // 2]); self.stream.flush()
+                    raise OSError("fixture partial sidecar write")
+                if mode == "malformed":
+                    self.stream.write(b"x" * len(data)); self.stream.flush()
+                    raise OSError("fixture malformed sidecar write")
+                if mode == "different-json":
+                    value = json.loads(data)
+                    value["planSha256"] = ("a" if value["planSha256"][0] != "a" else "b") + value["planSha256"][1:]
+                    self.stream.write(archive.backup.encoded(value)); self.stream.flush()
+                    raise OSError("fixture different but parseable sidecar write")
+                if mode == "short":
+                    return self.stream.write(data[:len(data) // 2])
+                if mode == "before-write":
+                    raise OSError("fixture error before any sidecar bytes")
+                return self.stream.write(data)
+        def failed_fdopen(descriptor, file_mode, *args, **kwargs):
+            stream = original_fdopen(descriptor, file_mode, *args, **kwargs)
+            return FailingWriter(stream) if file_mode == "wb" else stream
+        def failed_fsync(descriptor):
+            if mode == "fsync" and checksum.exists() and os.fstat(descriptor).st_ino == checksum.stat().st_ino:
+                raise OSError("fixture sidecar fsync failure after full write")
+            return original_fsync(descriptor)
+        def failed_open(name, flags, *args, **kwargs):
+            if mode == "before-create" and name == checksum.name and flags & os.O_CREAT:
+                raise OSError("fixture error before exclusive sidecar creation")
+            return original_open(name, flags, *args, **kwargs)
+        with patch.object(archive.os, "fdopen", side_effect=failed_fdopen), \
+             patch.object(archive.os, "fsync", side_effect=failed_fsync), \
+             patch.object(archive.os, "open", side_effect=failed_open):
+            yield
+
+    def test_post_write_sidecar_errors_return_completion_matching_current_byte_verifier(self):
+        old_report = self.create()
+        older = self.destination
+        original_zip, original_sidecar = older.read_bytes(), archive.sidecar_path(older).read_bytes()
+        for mode in ["fsync", "close"]:
+            with self.subTest(mode=mode):
+                self.destination = self.base / mode / older.name
+                self.destination.parent.mkdir()
+                with self.sidecar_fault(mode):
+                    report = self.create()
+                proof = archive.verify_archive(self.destination)
+                self.assertEqual(report["copyStatus"], "complete")
+                self.assertEqual(proof["verifiedFiles"], len(self.paths))
+                self.assertEqual(report["manifestSha256"], proof["manifestSha256"])
+                self.assertEqual(report["completionPublication"]["status"], "exact-readback-after-write-error")
+                self.assertFalse(report["completionPublication"]["durabilityVerified"])
+                marker = json.loads(archive.sidecar_path(self.destination).read_bytes())
+                self.assertEqual({key: value for key, value in report.items() if key != "completionPublication"}, marker)
+                with self.assertRaisesRegex(archive.backup.BackupError, "exists"):
+                    self.create()
+                self.assertEqual(older.read_bytes(), original_zip)
+                self.assertEqual(archive.sidecar_path(older).read_bytes(), original_sidecar)
+                self.assertEqual(archive.verify_archive(older)["manifestSha256"], old_report["manifestSha256"])
+
+    def test_cli_post_write_sidecar_errors_succeed_only_with_exact_readback(self):
+        reviewed = self.base / "reviewed-plan.json"
+        reviewed.write_bytes(archive.backup.encoded(self.plan()))
+        for mode in ["fsync", "close"]:
+            with self.subTest(mode=mode):
+                self.destination = self.base / ("cli-" + mode) / "lumen-backup-fixture.zip"
+                self.destination.parent.mkdir()
+                output, errors = io.StringIO(), io.StringIO()
+                with self.sidecar_fault(mode), redirect_stdout(output), redirect_stderr(errors):
+                    code = archive.main(["--root", str(self.root), "--archive", str(reviewed), "--destination", str(self.destination),
+                        "--maximum-archive-bytes", "1000000", "--minimum-free-bytes", "0"])
+                report = json.loads(output.getvalue().splitlines()[-1])
+                self.assertEqual(code, 0); self.assertEqual(errors.getvalue(), "")
+                self.assertEqual(report["copyStatus"], "complete")
+                self.assertEqual(report["completionPublication"]["status"], "exact-readback-after-write-error")
+                self.assertEqual(archive.verify_archive(self.destination)["manifestSha256"], report["manifestSha256"])
+
+    def test_partial_malformed_or_pre_marker_failures_remain_unverifiable_and_preserve_older_backup(self):
+        self.create()
+        older = self.destination
+        original_zip, original_sidecar = older.read_bytes(), archive.sidecar_path(older).read_bytes()
+        for mode in ["partial", "malformed", "different-json", "short", "before-write", "before-create"]:
+            with self.subTest(mode=mode):
+                self.destination = self.base / mode / older.name
+                self.destination.parent.mkdir()
+                with self.sidecar_fault(mode), self.assertRaises(archive.backup.BackupError):
+                    self.create()
+                self.assertTrue(self.destination.exists(), "retain the completed archive after its marker fails")
+                with self.assertRaises(archive.backup.BackupError):
+                    archive.verify_archive(self.destination)
+                checksum = archive.sidecar_path(self.destination)
+                if mode == "before-create":
+                    self.assertFalse(checksum.exists())
+                else:
+                    self.assertTrue(checksum.exists(), "retain incomplete marker bytes rather than overwrite or delete them")
+                self.assertEqual(older.read_bytes(), original_zip)
+                self.assertEqual(archive.sidecar_path(older).read_bytes(), original_sidecar)
+                self.assertEqual(archive.verify_archive(older)["verifiedFiles"], len(self.paths))
+        for name in self.paths:
+            self.assertEqual((self.root / name).read_bytes(), self.original[name])
+
+    def test_exact_existing_marker_cannot_recover_a_failed_exclusive_create(self):
+        marker = archive.sidecar_path(self.destination)
+        value = {"copyStatus": "complete", "test": "preexisting exact bytes"}
+        expected = archive.backup.encoded(value)
+        marker.write_bytes(expected)
+        with self.assertRaises(FileExistsError):
+            archive.write_exclusive_json(marker, value)
+        self.assertEqual(marker.read_bytes(), expected)
+
+    def test_cli_and_verifier_both_reject_incomplete_completion_marker(self):
+        reviewed = self.base / "reviewed-plan.json"
+        reviewed.write_bytes(archive.backup.encoded(self.plan()))
+        for mode in ["partial", "malformed", "different-json", "short", "before-write", "before-create"]:
+            with self.subTest(mode=mode):
+                self.destination = self.base / ("failed-cli-" + mode) / "lumen-backup-fixture.zip"
+                self.destination.parent.mkdir()
+                output, errors = io.StringIO(), io.StringIO()
+                with self.sidecar_fault(mode), redirect_stdout(output), redirect_stderr(errors):
+                    with self.assertRaises(SystemExit) as failure:
+                        archive.main(["--root", str(self.root), "--archive", str(reviewed), "--destination", str(self.destination),
+                            "--maximum-archive-bytes", "1000000", "--minimum-free-bytes", "0"])
+                self.assertEqual(failure.exception.code, 2)
+                self.assertTrue(all(json.loads(line).get("copyStatus") != "complete" for line in output.getvalue().splitlines()))
+                with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+                    with self.assertRaises(SystemExit) as verification:
+                        archive.main(["--verify", str(self.destination)])
+                self.assertEqual(verification.exception.code, 2)
+
+    def test_completion_marker_mutation_during_readback_rejects_and_retains_partial_backup(self):
+        checksum = archive.sidecar_path(self.destination)
+        original_fdopen = archive.os.fdopen
+        changed = []
+        class MutatingReader:
+            def __init__(self, stream):
+                self.stream = stream
+            def __enter__(self):
+                self.stream.__enter__()
+                return self
+            def __exit__(self, *args):
+                return self.stream.__exit__(*args)
+            def __getattr__(self, name):
+                return getattr(self.stream, name)
+            def read(self, size):
+                data = self.stream.read(size)
+                before = checksum.stat()
+                checksum.write_bytes(b"x" * len(data))
+                os.utime(checksum, ns=(before.st_atime_ns, before.st_mtime_ns))
+                changed.append(True)
+                return data
+        def mutate_marker(descriptor, mode, *args, **kwargs):
+            stream = original_fdopen(descriptor, mode, *args, **kwargs)
+            if mode == "rb" and checksum.exists() and os.fstat(descriptor).st_ino == checksum.stat().st_ino:
+                return MutatingReader(stream)
+            return stream
+        with self.sidecar_fault("fsync"), patch.object(archive.os, "fdopen", side_effect=mutate_marker):
+            with self.assertRaisesRegex(archive.backup.BackupError, "changed during error readback"):
+                self.create()
+        self.assertTrue(changed)
+        self.assertTrue(self.destination.exists()); self.assertTrue(checksum.exists())
+        with self.assertRaises(archive.backup.BackupError):
+            archive.verify_archive(self.destination)
+
+    def test_logical_parent_replacement_during_marker_readback_cannot_report_completion(self):
+        checksum = archive.sidecar_path(self.destination)
+        displaced = self.destination.parent.with_name("Lumen-displaced")
+        original_fdopen = archive.os.fdopen
+        moved = []
+        class MovingReader:
+            def __init__(self, stream):
+                self.stream = stream
+            def __enter__(self):
+                self.stream.__enter__()
+                return self
+            def __exit__(self, *args):
+                return self.stream.__exit__(*args)
+            def __getattr__(self, name):
+                return getattr(self.stream, name)
+            def read(self, size):
+                data = self.stream.read(size)
+                moved.append({"archive": self_destination.read_bytes(), "marker": checksum.read_bytes()})
+                checksum.parent.rename(displaced)
+                checksum.parent.mkdir()
+                return data
+        self_destination = self.destination
+        def move_parent(descriptor, mode, *args, **kwargs):
+            stream = original_fdopen(descriptor, mode, *args, **kwargs)
+            if mode == "rb" and checksum.exists() and os.fstat(descriptor).st_ino == checksum.stat().st_ino:
+                return MovingReader(stream)
+            return stream
+        with self.sidecar_fault("fsync"), patch.object(archive.os, "fdopen", side_effect=move_parent):
+            with self.assertRaisesRegex(archive.backup.BackupError, "logical parent changed"):
+                self.create()
+        self.assertEqual(len(moved), 1)
+        self.assertFalse(self.destination.exists()); self.assertFalse(checksum.exists())
+        with self.assertRaises(archive.backup.BackupError):
+            archive.verify_archive(self.destination)
+        preserved = displaced / self.destination.name
+        self.assertEqual(preserved.read_bytes(), moved[0]["archive"])
+        self.assertEqual(archive.sidecar_path(preserved).read_bytes(), moved[0]["marker"])
+        self.assertEqual(archive.verify_archive(preserved)["verifiedFiles"], len(self.paths))
+        for name in self.paths:
+            self.assertEqual((self.root / name).read_bytes(), self.original[name])
+
+    def test_normal_publication_parent_swaps_cannot_report_a_missing_logical_archive(self):
+        self.create()
+        older = self.destination
+        older_zip, older_marker = older.read_bytes(), archive.sidecar_path(older).read_bytes()
+        for phase in ["before-sidecar", "during-marker"]:
+            with self.subTest(phase=phase):
+                self.destination = self.base / phase / "Lumen" / older.name
+                self.destination.parent.mkdir(parents=True)
+                checksum = archive.sidecar_path(self.destination)
+                displaced = self.destination.parent.with_name("Lumen-displaced")
+                original_writer, original_fdopen = archive.write_exclusive_json, archive.os.fdopen
+                moved = []
+                def move_parent():
+                    moved.append({"archive": self_destination.read_bytes(),
+                                  "marker": checksum.read_bytes() if checksum.exists() else None})
+                    checksum.parent.rename(displaced)
+                    checksum.parent.mkdir()
+                def moving_publication(path, value):
+                    if phase == "before-sidecar":
+                        move_parent()
+                    return original_writer(path, value)
+                class MovingWriter:
+                    def __init__(self, stream):
+                        self.stream = stream
+                    def __enter__(self):
+                        self.stream.__enter__()
+                        return self
+                    def __exit__(self, *args):
+                        return self.stream.__exit__(*args)
+                    def __getattr__(self, name):
+                        return getattr(self.stream, name)
+                    def write(self, data):
+                        count = self.stream.write(data)
+                        self.stream.flush()
+                        move_parent()
+                        return count
+                def moving_fdopen(descriptor, mode, *args, **kwargs):
+                    stream = original_fdopen(descriptor, mode, *args, **kwargs)
+                    return MovingWriter(stream) if mode == "wb" and phase == "during-marker" else stream
+                self_destination = self.destination
+                with patch.object(archive, "write_exclusive_json", side_effect=moving_publication), \
+                     patch.object(archive.os, "fdopen", side_effect=moving_fdopen):
+                    with self.assertRaises(archive.backup.BackupError):
+                        self.create()
+                self.assertEqual(len(moved), 1)
+                self.assertFalse(self.destination.exists())
+                with self.assertRaises(archive.backup.BackupError):
+                    archive.verify_archive(self.destination)
+                preserved = displaced / self.destination.name
+                self.assertEqual(preserved.read_bytes(), moved[0]["archive"])
+                if phase == "during-marker":
+                    self.assertEqual(archive.sidecar_path(preserved).read_bytes(), moved[0]["marker"])
+                    self.assertEqual(archive.verify_archive(preserved)["verifiedFiles"], len(self.paths))
+                self.assertEqual(older.read_bytes(), older_zip)
+                self.assertEqual(archive.sidecar_path(older).read_bytes(), older_marker)
+        for name in self.paths:
+            self.assertEqual((self.root / name).read_bytes(), self.original[name])
+
+    def test_archive_full_identity_is_checked_after_normal_marker_publication(self):
+        original_writer = archive.write_exclusive_json
+        mutated = []
+        def mutate_archive_before_marker(path, value):
+            before = self.destination.stat()
+            with self.destination.open("r+b") as stream:
+                first = stream.read(1)
+                stream.seek(0); stream.write(bytes([first[0] ^ 1]))
+            os.utime(self.destination, ns=(before.st_atime_ns, before.st_mtime_ns))
+            self.assertEqual(self.destination.stat().st_size, before.st_size)
+            self.assertEqual(self.destination.stat().st_mtime_ns, before.st_mtime_ns)
+            mutated.append(True)
+            return original_writer(path, value)
+        with patch.object(archive, "write_exclusive_json", side_effect=mutate_archive_before_marker):
+            with self.assertRaisesRegex(archive.backup.BackupError, "Backup archive logical file changed"):
+                self.create()
+        self.assertEqual(len(mutated), 1)
+        self.assertTrue(self.destination.exists()); self.assertTrue(archive.sidecar_path(self.destination).exists())
+        with self.assertRaises(archive.backup.BackupError):
+            archive.verify_archive(self.destination)
+        for name in self.paths:
+            self.assertEqual((self.root / name).read_bytes(), self.original[name])
 
     def test_zip_preserves_paths_bytes_and_hash_bound_manifest(self):
         report = self.create()
