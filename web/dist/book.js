@@ -413,20 +413,21 @@
           code,
           'Paragraph prose coverage or timing is incomplete.',
         );
-        ensure(
-          p.emphasis.every(
-            (e) =>
-              object(e) &&
+        let emphasisEnd = 0;
+        for (const e of p.emphasis) {
+          ensure(
+            object(e) &&
               Number.isInteger(e.start) &&
               Number.isInteger(e.end) &&
-              0 <= e.start &&
+              emphasisEnd <= e.start &&
               e.start < e.end &&
               e.end <= p.text.length &&
               (e.kind === undefined || ['italic', 'bold'].includes(e.kind)),
-          ),
-          code,
-          'Chapter emphasis ranges are invalid.',
-        );
+            code,
+            'Chapter emphasis ranges are invalid.',
+          );
+          emphasisEnd = e.end;
+        }
       }
       if (value.blocks !== undefined) {
         ensure(Array.isArray(value.blocks) && value.blocks.length > 0, code, 'Chapter blocks are invalid.');

@@ -352,6 +352,29 @@ test('valid blocks preserve ordered paragraphs, headings and supported scene bre
   assert.equal((await book.load('chapter-002','charon')).chapter.paragraphs.length,2);
 });
 
+test('overlapping or out-of-order emphasis cannot commit or alter faithful prose',async t=>{
+  for(const [name,emphasis] of [
+    ['overlap',[{start:0,end:12,kind:'italic'},{start:8,end:20,kind:'bold'}]],
+    ['reversed disjoint spans',[{start:15,end:20,kind:'bold'},{start:0,end:5,kind:'italic'}]],
+    ['nested spans',[{start:0,end:25,kind:'bold'},{start:5,end:10,kind:'italic'}]],
+    ['duplicate spans',[{start:3,end:9,kind:'italic'},{start:3,end:9,kind:'italic'}]]
+  ]) await t.test(name,async()=>{
+    const {f,book}=await opened();book.save(12);
+    f.payloads[f.manifest.tracks[2].recordings.charon.url].paragraphs[0].emphasis=emphasis;
+    const active=book.getActive(),stored=f.storage.values.get(BOOKMARK_KEY);
+    await assert.rejects(book.load('chapter-002','charon'),error=>error.code==='INVALID_CHAPTER');
+    assert.equal(book.getActive(),active);assert.equal(f.storage.values.get(BOOKMARK_KEY),stored);
+    assert.equal(active.chapter.paragraphs[0].text,'First thought. Second thought.');
+  });
+});
+test('adjacent valid emphasis and a span across sentence boundaries preserve source text',async()=>{
+  const {f,book}=await opened(),payload=f.payloads[f.manifest.tracks[2].recordings.charon.url],paragraph=payload.paragraphs[0];
+  paragraph.emphasis=[{start:0,end:4},{start:4,end:18,kind:'bold'},{start:18,end:paragraph.text.length,kind:'italic'}];
+  const result=await book.load('chapter-002','charon');
+  assert.equal(result.chapter.paragraphs[0].text,paragraph.text);
+  assert.deepEqual(result.chapter.paragraphs[0].emphasis,paragraph.emphasis);
+});
+
 test('completion does not finish a different full reading extent', async () => {
   const { f, book } = await opened(),bookmark=book.save(40,{completed:true});
   f.payloads[f.manifest.tracks[1].recordings.autonoe.url].readingExtentId='chapter-001-extended';
