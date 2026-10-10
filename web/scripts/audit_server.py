@@ -31,6 +31,13 @@ def digest(value):
                                     allow_nan=False).encode()).hexdigest()
 
 
+def verify_request(source):
+    fields = [source.get(key) for key in ['model','voice','style','text']]
+    if (not all(isinstance(value,str) for value in fields)
+            or hashlib.sha256(''.join(fields).encode()).hexdigest() != source.get('request_sha256')):
+        raise AuditConflict('Selected generation inputs changed under their request hash. Rebuild the review.')
+
+
 def atomic(path, value):
     path.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.NamedTemporaryFile('w', encoding='utf-8', dir=path.parent,
@@ -127,6 +134,7 @@ class AuditStore:
             source = selected.get(c['clip_id'])
             if not source or source['request_sha256'] != c['request_sha256']:
                 raise AuditConflict('Local review no longer matches the selected source take.')
+            verify_request(source)
             window = c['audio_anchor']
             # Local ASR times belong to the raw WAV; never seek the mastered MP3 with them.
             path = self.audio_path(source['output'], 'v8', 'raw')
@@ -170,7 +178,7 @@ class AuditStore:
             rows = []
             for c in candidates.values():
                 rows.append({**{k:v for k,v in c.items() if k not in {'_path','binding','rawHash','requestHash'}},
-                             'decision':self.decision(c,ledger)})
+                             'reviewBinding':c['binding'], 'decision':self.decision(c,ledger)})
             return dict(schemaVersion=1,
                 coverage=dict(complete=report['complete'], selected=report['selected_chunks'], checked=report['transcribed_chunks']),
                 candidates=rows)
@@ -183,6 +191,8 @@ class AuditStore:
                 raise AuditConflict('This flag is no longer in the current review.')
             if value.get('audioHash') != c['audioHash']:
                 raise AuditConflict('Recording identity changed. Listen again before saving.')
+            if value.get('reviewBinding') != c['binding']:
+                raise AuditConflict('The reviewed passage changed. Reload the audit and listen again before saving.')
             self.verify(c['_path'],c['audioHash'])
             status, notes, revision = value.get('status'), value.get('notes'), value.get('revision')
             if (status not in {'pending','accepted','regenerate','unsure'} or not isinstance(notes,str)
@@ -230,6 +240,7 @@ class AuditStore:
                 source = manifests[c['edition']].get(c['chunkId'])
                 if not source or source['request_sha256'] != c['requestHash']:
                     raise AuditConflict('Repair plan no longer matches the selected generation request.')
+                verify_request(source)
                 raw = self.audio_path(source['output'], c['edition'], 'raw')
                 self.verify(raw, c['rawHash'])
                 key = (c['edition'],c['chunkId'],c['requestHash'],c['rawHash'])

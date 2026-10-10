@@ -91,7 +91,7 @@
   }
   async function save() {
     const c=current();if(!c||state.saving)return false;
-    const payload={candidateId:c.candidateId,audioHash:c.audioHash,status:$('decision-status').value,notes:$('feedback-notes').value,revision:c.decision?.revision||0};
+    const payload={candidateId:c.candidateId,audioHash:c.audioHash,reviewBinding:c.reviewBinding,status:$('decision-status').value,notes:$('feedback-notes').value,revision:c.decision?.revision||0};
     saving(true);showSave('Saving feedback…');
     try {
       const response=await fetch('/api/decisions',{method:'POST',headers:{'Content-Type':'application/json','X-Audit-Token':state.token},body:JSON.stringify(payload),credentials:'same-origin',cache:'no-store'});
@@ -108,7 +108,7 @@
     try {
       const response=await fetch('/api/audit',{credentials:'same-origin',cache:'no-store'});const body=await response.json();
       if(!response.ok)throw new Error(body.error||'Audit data unavailable.');
-      if(body.schemaVersion!==1||!Array.isArray(body.candidates)||!body.csrfToken)throw new Error('The audit server returned incompatible data.');
+      if(body.schemaVersion!==1||!Array.isArray(body.candidates)||!body.csrfToken||body.candidates.some(c=>typeof c.reviewBinding!=='string'||!/^[a-f0-9]{64}$/.test(c.reviewBinding)))throw new Error('The audit server returned incompatible data.');
       state.candidates=body.candidates;state.token=body.csrfToken;
       const coverage=body.coverage||{};
       $('coverage').textContent=`OpenAI checks ${coverage.complete?'complete':'in progress'} · ${coverage.checked??0} / ${coverage.selected??0} production pieces checked`;
@@ -145,7 +145,7 @@
       const response=await fetch('/api/audit',{credentials:'same-origin',cache:'no-store'}),body=await response.json();
       if(!response.ok)throw new Error(body.error||'Could not load the latest feedback.');
       const latest=body.candidates?.find(item=>item.candidateId===c.candidateId);
-      if(!latest||latest.audioHash!==c.audioHash){$('conflict-detail').textContent='This recording or review flag has changed. Keep a copy of your notes, then reload the audit to listen to the current recording before deciding.';return;}
+      if(!latest||latest.audioHash!==c.audioHash||latest.reviewBinding!==c.reviewBinding){$('conflict-detail').textContent='This recording or review flag has changed. Keep a copy of your notes, then reload the audit to listen to the current recording before deciding.';return;}
       if(!latest.decision||!Number.isInteger(latest.decision.revision)||!Object.hasOwn(statusLabels,latest.decision.status)||!body.csrfToken)throw new Error('The server did not return valid latest feedback.');
       c.decision=latest.decision;state.token=body.csrfToken;updateDirty();renderQueue();
       $('conflict-detail').textContent=`Latest saved decision: ${statusLabels[c.decision.status]}. Saved notes: ${c.decision.notes||'None.'} Your draft above has been kept. Review both, then press Save decision to apply your draft.`;

@@ -28,13 +28,14 @@ class AuthorAuditTests(unittest.TestCase):
         self.raw.parent.mkdir(parents=True)
         self.raw.write_bytes(b'original source take')
         self.digest = hashlib.sha256(self.audio.read_bytes()).hexdigest()
+        self.request_hash = hashlib.sha256(('tts-model'+'Autonoe'+'Restrained'+'The last faithful sentence.').encode()).hexdigest()
         raw_hash = hashlib.sha256(self.raw.read_bytes()).hexdigest()
         self.report = self.root / 'Audiobook/openai-review/review.json'
         self.report.parent.mkdir(parents=True)
         self.candidate = dict(candidate_id='a'*64, edition='v7', narrator='Autonoe',
             id='chapter-018-002', chapter=18, chapter_title='Chapter 18', chunk=2,
             mastered_mp3=str(self.audio), mastered_mp3_sha256=self.digest,
-            raw_audio_sha256=raw_hash, request_sha256='c'*64,
+            raw_audio_sha256=raw_hash, request_sha256=self.request_hash,
             expected='', heard='unexpected passage', expected_context='The last faithful sentence.',
             severity='high', category='passage_addition_candidate',
             listening_window=dict(start_seconds=10, end_seconds=30, precision='exact_mastered_chunk_sample_interval', scope='Whole transcription chunk'),
@@ -43,7 +44,7 @@ class AuthorAuditTests(unittest.TestCase):
         self.write_report()
         self.manifest = self.root / 'Audiobook/v7/generation-manifest.json'
         self.manifest.write_text(json.dumps(dict(model='tts-model', voice='Autonoe', items=[dict(
-            id='chapter-018-002', output=str(self.raw), request_sha256='c'*64,
+            id='chapter-018-002', output=str(self.raw), request_sha256=self.request_hash,
             text='The last faithful sentence.', model='tts-model', voice='Autonoe', style='Restrained')])) )
         self.store = audit.AuditStore(self.root, include_local=False)
 
@@ -56,6 +57,7 @@ class AuthorAuditTests(unittest.TestCase):
 
     def save(self, status='regenerate', notes='Remove the added passage', revision=0):
         return self.store.save(dict(candidateId='a'*64, audioHash=self.digest,
+            reviewBinding=self.store.snapshot()['candidates'][0].get('reviewBinding'),
             status=status, notes=notes, revision=revision))
 
     def test_snapshot_uses_estimated_master_clock_and_partial_coverage(self):
@@ -129,10 +131,30 @@ class AuthorAuditTests(unittest.TestCase):
         report=json.loads(self.report.read_text()); report['candidates'].append(c)
         self.report.write_text(json.dumps(report))
         self.save()
-        self.store.save(dict(candidateId='b'*64,audioHash=self.digest,status='regenerate',notes='Fix word',revision=0))
+        self.store.save(dict(candidateId='b'*64,audioHash=self.digest,
+            reviewBinding=self.store.snapshot()['candidates'][1].get('reviewBinding'),
+            status='regenerate',notes='Fix word',revision=0))
         q=self.store.queue()['items']
         self.assertEqual(len(q),1)
         self.assertEqual(len(q[0]['findings']),2)
+
+    def test_stale_browser_cannot_save_against_refined_report_on_same_audio(self):
+        old = self.store.snapshot()['candidates'][0]
+        self.candidate['whisper_anchor']['suggested_clip_start_seconds']=21
+        self.write_report()
+        with self.assertRaises(audit.AuditConflict):
+            self.store.save(dict(candidateId=old['candidateId'],audioHash=old['audioHash'],
+                reviewBinding=old.get('reviewBinding'),status='accepted',notes='Old window sounded right',revision=0))
+        self.assertFalse(self.store.feedback_path.exists())
+
+    def test_repair_request_inputs_cannot_change_under_the_original_hash(self):
+        self.save()
+        original=json.loads(self.manifest.read_text())
+        for key in ['text','model','voice','style']:
+            changed=json.loads(json.dumps(original));changed['items'][0][key]+=' changed'
+            self.manifest.write_text(json.dumps(changed))
+            with self.subTest(key=key),self.assertRaises(audit.AuditConflict):self.store.queue()
+        self.manifest.write_text(json.dumps(original))
 
     def start_http(self):
         instance = audit.server(self.root,0)
@@ -172,7 +194,9 @@ class AuthorAuditTests(unittest.TestCase):
         self.start_http()
         with self.request('/api/audit') as response:token=json.load(response)['csrfToken']
         headers={'Origin':self.origin,'Content-Type':'application/json','X-Audit-Token':token}
-        data=json.dumps(dict(candidateId='a'*64,audioHash=self.digest,status='regenerate',notes='Remove added words',revision=0)).encode()
+        data=json.dumps(dict(candidateId='a'*64,audioHash=self.digest,
+            reviewBinding=self.store.snapshot()['candidates'][0].get('reviewBinding'),
+            status='regenerate',notes='Remove added words',revision=0)).encode()
         with self.request('/api/decisions',headers,data) as response:
             self.assertEqual(json.load(response)['decision']['revision'],1)
         with self.request('/api/queue') as response:

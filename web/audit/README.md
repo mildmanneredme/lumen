@@ -25,11 +25,14 @@ revisions, and append-only decision history. Back up this file with the private
 production assets. A changed report binding resets its displayed verdict to
 pending; changed audio is rejected before playback, saving, or repair export.
 Concurrent tabs must explicitly review newer feedback before overwriting it.
+The client also submits the exact review binding it displayed. Changed windows,
+wording, or provenance require a new listening review even on the same audio.
 
 **Export regeneration queue** downloads a repair plan grouped by selected source
 take. Each item preserves the exact prepared text, model, voice, style, source
 hashes, and your notes. Export makes no paid requests and never changes selected
-production takes. After review, a repair executor must create a fresh take,
+production takes. The original model/voice/style/text digest is recomputed before
+export, so edited inputs cannot reuse an old request hash. After review, a repair executor must create a fresh take,
 recheck it, rebuild the affected chapter, and return it for listening. Existing
 audio and feedback must remain available. Do not run the old generator's
 `prepare()` against the selected manifest: it would discard later split takes.

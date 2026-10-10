@@ -21,6 +21,7 @@ const candidates = [
   {candidateId:'v7-014-c', edition:'v7', narrator:'Autonoe', chapter:14, title:'Chapter 14', chunkId:'014-01', audioHash:'c'.repeat(64), expected:'His name was Adrian.', heard:'', expectedContext:'His name was Adrian.', category:'omission', severity:'low', start:30, end:35, precision:'technical measurement', scope:'chapter', source:'OpenAI / mastered chapter', audioUrl:'/audio.mp3', decision:{status:'accepted',notes:'Sounds good.',revision:1}},
   {candidateId:'local:v8-007-d', edition:'v8', narrator:'Charon', chapter:7, title:'Chapter 7', chunkId:'007-01', audioHash:'d'.repeat(64), expected:'', heard:'Unwritten words.', expectedContext:'The intended manuscript passage.', category:'addition', severity:'high', start:40, end:45, precision:'local_whisper_approximate', scope:'Local Whisper estimate in the original source take, before mastering. unresolved_second_pass_mismatch', source:'Local ASR / source take', audioUrl:'/audio.mp3', decision:{status:'accepted',notes:'Earlier review.',revision:1}}
 ];
+candidates.forEach((candidate,index)=>candidate.reviewBinding=String(index+1).repeat(64));
 const stressCandidates=Array.from({length:240},(_,i)=>({...candidates[0],candidateId:`stress-${i}`,chapter:i+1,title:`Chapter ${i+1} — ${'UnbrokenReportTitle'.repeat(12)}`,chunkId:`clip-${'f'.repeat(180)}`,category:`possible_omission_${'LongClassification'.repeat(12)}`,decision:{status:'pending',notes:'',revision:0}}));
 let failSave = null, failLoad = false, empty = false, stress = false, requests = [];
 function json(response, code, body) { response.writeHead(code, {'Content-Type':'application/json'}); response.end(JSON.stringify(body)); }
@@ -35,6 +36,7 @@ const server = http.createServer((request,response) => {
       const input=JSON.parse(body); requests.push({input,token:request.headers['x-audit-token']});
       if (failSave) return json(response,failSave,{error:failSave===409?'This passage was updated elsewhere. Reload to review the latest decision.':'Could not save feedback.'});
       const item=candidates.find(c=>c.candidateId===input.candidateId);
+      if(input.reviewBinding!==item.reviewBinding)return json(response,409,{error:'The review flag changed. Reload and listen before deciding.'});
       if (input.revision!==item.decision.revision) return json(response,409,{error:'Feedback revision changed.'});
       item.decision={status:input.status,notes:input.notes,revision:input.revision+1}; return json(response,200,{decision:item.decision});
     }); return;
@@ -120,7 +122,7 @@ async function checkAsync(name, fn) { await fn(); report.checks.push({name,pass:
       await page.locator('#decision-status').selectOption('regenerate');
       await page.locator('#save-next').tap();
       await page.waitForFunction(()=>document.querySelector('#candidate-title').textContent.includes('Chapter 4'));
-      assert.deepEqual(requests.at(-1),{input:{candidateId:'v7-001-a',audioHash:'a'.repeat(64),status:'regenerate',notes:'The missing “its” is audible.',revision:0},token:'fixture-token'});
+      assert.deepEqual(requests.at(-1),{input:{candidateId:'v7-001-a',audioHash:'a'.repeat(64),reviewBinding:'1'.repeat(64),status:'regenerate',notes:'The missing “its” is audible.',revision:0},token:'fixture-token'});
       await page.reload();await page.locator('#candidate-title').waitFor();
       await page.locator('#status-filter').selectOption('regenerate');
       assert.equal(await page.locator('#feedback-notes').inputValue(),'The missing “its” is audible.');
@@ -187,6 +189,22 @@ async function checkAsync(name, fn) { await fn(); report.checks.push({name,pass:
       const pending=page.waitForEvent('download');await page.locator('#export-queue').tap();
       const download=await pending;const file=await download.path();const data=JSON.parse(fs.readFileSync(file,'utf8'));
       assert.deepEqual(data.candidates.map(c=>c.candidateId),['v7-001-a']);
+    });
+    await checkAsync('changed review binding on the same audio requires reloading and listening again',async()=>{
+      await page.locator('.queue-item[data-id="v7-001-a"]').tap();
+      await page.locator('#feedback-notes').fill('Preserve this draft while the report changes.');
+      const binding=candidates[0].reviewBinding;candidates[0].reviewBinding='9'.repeat(64);
+      await page.locator('#save-decision').tap();
+      await page.waitForFunction(()=>document.querySelector('#save-status').textContent.includes('review flag changed'));
+      assert.equal(requests.at(-1).input.reviewBinding,binding);
+      await page.locator('#review-latest').tap();
+      await page.waitForFunction(()=>document.querySelector('#conflict-detail').textContent.includes('reload the audit'));
+      assert.equal(await page.locator('#feedback-notes').inputValue(),'Preserve this draft while the report changes.');
+      await page.locator('#save-decision').tap();
+      await page.waitForFunction(()=>document.querySelector('#save-status').textContent.includes('review flag changed'));
+      assert.equal(requests.at(-1).input.reviewBinding,binding);
+      candidates[0].reviewBinding=binding;await page.locator('#save-decision').tap();
+      await page.waitForFunction(()=>document.querySelector('#save-status').textContent.includes('Saved'));
     });
     await checkAsync('phone has no horizontal overflow and touch controls are at least44px',async()=>{
       for(const width of [320,360,390,430]){
