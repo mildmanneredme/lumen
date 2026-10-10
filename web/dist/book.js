@@ -370,6 +370,7 @@
           object(p) &&
             p.id === paragraphId &&
             nonempty(p.text) &&
+            (p.headingLevel === undefined || Number.isInteger(p.headingLevel) && p.headingLevel >= 3 && p.headingLevel <= 6) &&
             Array.isArray(p.sentences) &&
             p.sentences.length &&
             Array.isArray(p.emphasis),
@@ -426,6 +427,23 @@
           code,
           'Chapter emphasis ranges are invalid.',
         );
+      }
+      if (value.blocks !== undefined) {
+        ensure(Array.isArray(value.blocks) && value.blocks.length > 0, code, 'Chapter blocks are invalid.');
+        let paragraphIndex = 0;
+        for (const block of value.blocks) {
+          ensure(object(block), code, 'Chapter blocks must contain supported prose or scene breaks.');
+          if (block.kind === 'scene-break') {
+            ensure(typeof block.markdown === 'string' && /^\s*(?:-{3,}|\*{3,})\s*$/.test(block.markdown) &&
+              block.paragraphId === undefined, code, 'The chapter scene break is invalid.');
+            continue;
+          }
+          const paragraph = value.paragraphs[paragraphIndex++];
+          ensure(paragraph && block.paragraphId === paragraph.id &&
+            block.kind === (paragraph.headingLevel === undefined ? 'paragraph' : 'heading'),
+            code, 'Chapter blocks must reconstruct every paragraph exactly once in order.');
+        }
+        ensure(paragraphIndex === value.paragraphs.length, code, 'Chapter blocks omit prose.');
       }
       let priorScene = -1;
       const sceneIds = new Set();
