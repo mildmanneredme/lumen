@@ -834,6 +834,73 @@ class ContentContractTests(unittest.TestCase):
                         path.write_bytes(original)
 
 
+    def gap_fixture(self, *, all_gaps=False):
+        track, recording, timing = self.timing_fixture()
+        timing["schemaVersion"] = 2
+        for cue in timing["sentences"]:
+            cue["syncStatus"] = "measured"
+        selected = range(len(timing["sentences"])) if all_gaps else [1]
+        for index in selected:
+            timing["sentences"][index] = {"sentenceId": timing["sentences"][index]["sentenceId"],
+                "syncStatus": "unavailable", "start": None, "end": None,
+                "reason": "no-positive-duration-ASR-anchor", "evidenceIds": ["chapter-001-001"]}
+        for index in selected:
+            before = next((cue for cue in reversed(timing["sentences"][:index]) if cue["syncStatus"] == "measured"), None)
+            after = next((cue for cue in timing["sentences"][index + 1:] if cue["syncStatus"] == "measured"), None)
+            timing["sentences"][index]["recheckWindow"] = {
+                "start": before["end"] if before else 0, "end": after["start"] if after else timing["duration"],
+                "beforeSentenceId": before["sentenceId"] if before else None,
+                "afterSentenceId": after["sentenceId"] if after else None, "scope": "neighbor-recheck-only"}
+        measured = [cue for cue in timing["sentences"] if cue["syncStatus"] == "measured"]
+        timing["coverage"] = {"introEnd": measured[0]["start"] if measured else 0,
+                              "tailStart": measured[-1]["end"] if measured else timing["duration"]}
+        return track, recording, timing
+
+    def test_schema2_keeps_all_canonical_sentences_with_explicit_unavailable_gaps(self):
+        for all_gaps in [False, True]:
+            track, recording, timing = self.gap_fixture(all_gaps=all_gaps)
+            self.assertTrue(content.validate_timing_map(track, recording, timing))
+            self.assertEqual([cue["sentenceId"] for cue in timing["sentences"]], [sentence["id"] for sentence in content.sentences(track)])
+
+    def test_schema2_rejects_estimated_gap_cues_unknown_reasons_or_unbound_recheck_windows(self):
+        track, recording, timing = self.gap_fixture()
+        for change in [{"start": 2}, {"end": 3}, {"reason": "the-character-was-silent"},
+                       {"evidenceIds": []}, {"evidenceIds": ["foreign-take"]},
+                       {"recheckWindow": {"start": 0, "end": 8, "scope": "sentence-cue"}}]:
+            changed = copy.deepcopy(timing); changed["sentences"][1].update(change)
+            with self.subTest(change=change), self.assertRaises(content.ContentError):
+                content.validate_timing_map(track, recording, changed)
+        changed = copy.deepcopy(timing); changed["sentences"][1]["recheckWindow"]["start"] = 0
+        with self.assertRaisesRegex(content.ContentError, "neighbor|recheck"):
+            content.validate_timing_map(track, recording, changed)
+
+    def test_schema1_does_not_accept_gap_records_or_technical_flags_as_human_approval(self):
+        track, recording, timing = self.gap_fixture(); timing["schemaVersion"] = 1
+        with self.assertRaises(content.ContentError):
+            content.validate_timing_map(track, recording, timing)
+        track, recording, timing = self.timing_fixture()
+        approval = {"status": "approved", "reviewer": "Fixture", "reviewedAt": "2026-10-10T00:00:00Z",
+                    "audioSha256": recording["sha256"], "textSha256": track["textSha256"]}
+        timing["approvals"] = {"content": approval, "alignment": {"status": "verified", "timingSha256": content.timing_content_hash(timing)}}
+        with self.assertRaisesRegex(content.ContentError, "alignment"):
+            content.validate_timing_map(track, recording, timing, require_approved=True)
+
+    def test_scenes_cannot_use_an_unavailable_sentence_as_a_reveal_clock(self):
+        track, recording, timing = self.gap_fixture()
+        scene = {"id": "room", "sentenceId": timing["sentences"][1]["sentenceId"], "src": "room.webp"}
+        with self.assertRaisesRegex(content.ContentError, "measured|unavailable"):
+            content.resolve_scenes(track, recording, timing, [scene])
+
+    def test_schema2_technical_alignment_flag_without_actual_report_is_rejected(self):
+        track, recording, timing = self.gap_fixture()
+        approval = {"status": "approved", "reviewer": "Fixture", "reviewedAt": "2026-10-10T00:00:00Z",
+                    "audioSha256": recording["sha256"], "textSha256": track["textSha256"]}
+        timing["approvals"] = {"content": approval, "alignment": {"status": "verified", "timingSha256": content.timing_content_hash(timing),
+                                "verificationReportSha256": "a" * 64}}
+        with self.assertRaisesRegex(content.ContentError, "technical|verification"):
+            content.validate_timing_map(track, recording, timing, require_approved=True)
+
+
 class ActualInventoryTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
