@@ -1,6 +1,6 @@
 # Product roadmap: full Lumen audiobook web launch
 
-Status: private full-book implementation and verification; hosting promotion and backup verification pending. Updated: 10 October 2026. Primary device: Android with Chrome.
+Status: private full-book implementation and verification; hosting promotion and cloud-backup byte verification pending. Updated: 10 October 2026. Primary device: Android with Chrome.
 
 ### Execution record — 10 October 2026
 
@@ -14,7 +14,8 @@ The author selected **local-only access for the narration audit** and requested 
 - **Prepared and independently reviewed:** invitation sessions/private Blob delivery ([PR #3](https://github.com/mildmanneredme/lumen/pull/3)), full-book navigation/resume/narrator switching ([PR #4](https://github.com/mildmanneredme/lumen/pull/4)), and source-bound technical timing/export/backup tools. 133 Chrome behavioral checks, 73 controller tests, 49 private-backend/operator and deployment checks, and the cache regression pass. The release pipeline has 351 passing release Python fixtures; 40 further actual-release Chrome checks validate all 182 payloads, canonical prose and ten representative MP3s. Physical phone acceptance and actual hosted-media verification are separate checks.
 - **Timing evidence:** all 496 selected raw clips have local ASR caches. Across both recordings, 23,673 sentence positions have measured cues and 2,171 are explicitly unavailable. Uncertain passages retain their exact manuscript text and audio; they receive no invented seek/highlight time. Technical alignment verification does not claim a full human timing review.
 - **Local export verified:** 365 immutable assets / 2,667,475,488 bytes prepared after fresh verification of actual masters, selected raw sources and exact ASR caches; all 1,095 inventory range samples match source bytes. No remote publication is implied.
-- **Remaining release work:** private Blob provisioning/upload and hosted range verification, stable-origin deployment, private Drive backup/remote checksum/restore proof, hosting budget and repository privacy decision. [Private release operations](private-launch.md) assigns support, incident thresholds and coherent rollback evidence. Character/model and story artwork review remain separate holds.
+- **Backup created and locally verified:** `lumen-backup-20261010-v4-1249` contains 6,340 files / 23,510,599,520 source bytes in a 20,495,430,382-byte ZIP. Full local hash verification and a seven-file restore passed. Drive confirms the versioned archive in the owner-only Lumen folder with the expected size; the checksum companion also matches downloaded bytes. Full cloud byte verification remains pending because the connector rejects files over 256 MiB. [Backup evidence and recovery](backup-recovery.md).
+- **Remaining release work:** private Blob provisioning/upload and hosted range verification, stable-origin deployment, Drive archive cloud checksum/remote restore proof, hosting budget and repository privacy decision. [Private release operations](private-launch.md) assigns support, incident thresholds and coherent rollback evidence. Character/model and story artwork review remain separate holds.
 
 The author has authorized a full private launch with placeholders after technical verification. Earlier public-beta/artwork and complete-listening gates below are superseded where they conflict with the recorded release specification. Unperformed checks remain open; the production pilot is unchanged until verified promotion.
 
@@ -118,7 +119,7 @@ Owner: author/product, with engineering and audio production.
 - [x] Inventory all 91 tracks × two voices: source text hash, selected clip IDs, master path, final web audio hash, duration, size, technical warnings, content approval, timing approval, artwork status.
 - [x] Reconcile track order, part headings, spoken chapter headings, credits, epigraph, and chapter labels. All 91 selected track/source-text extents are present; spoken content follows the recorded author as-is approval.
 - [x] Preserve the existing pilot and source production directories. Use a separate release export/staging location; do not overwrite v7/v8 assets in place.
-- [ ] Back up approved source text, masters, manifests, and art references outside the laptop; verify a sample restore. Keep bulk production audio and API receipts outside Git.
+- [ ] Complete cloud backup verification of approved source text, masters, manifests, and art references. The versioned ZIP is present in private Lumen Drive with matching size; full local verification and a seven-file local restore passed. Cloud checksum/remote restore proof is still pending. Keep bulk production audio and API receipts outside Git.
 - [x] Define publication readiness separately from generation/mastering/package completion.
 
 **Exit gate:** one reconciled inventory, agreed launch scope, and identified reviewers. The inventory initially shows pending approvals rather than pretending the recordings are ready to publish.

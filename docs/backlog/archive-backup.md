@@ -13,21 +13,28 @@ The destination remains the existing private **Lumen** Google Drive folder:
 /Users/robxie/Library/CloudStorage/GoogleDrive-robert.s.xie@gmail.com/My Drive/Lumen
 ```
 
-No archive has been copied there by this implementation. The existing Charon
-M4B and all earlier backups stay in place. No sharing permissions change.
-Finish the release commits, timing maps, and approval proofs before collecting
-the final plan, because changing any selected source invalidates the snapshot.
+The completed `lumen-backup-20261010-v4-1249.zip` was created directly in that
+mount. The existing Charon M4B and earlier backups remain in place, with
+owner-only sharing preserved. For future snapshots, finish the release commits,
+timing maps, and approval proofs before collecting a fresh plan, because a
+change to any selected source invalidates that plan.
+
+## Completed snapshot
+
+`lumen-backup-20261010-v4-1249.zip` contains **6,340 files / 23,510,599,520 source bytes** in **20,495,430,382 archive bytes**. Its SHA-256 is `29cc2bf7f288516531274165063eb85d5469b74d19dc99abbe82605307fc5d38`. The private [execution status](../../Audiobook/author-audit/backup/lumen-backup-20261010-v4-1249.execution-status.json) binds the receipts and [final plan](../../Audiobook/author-audit/backup/lumen-backup-20261010-v4-1249.plan.json). [Full local verification](../../Audiobook/author-audit/backup/lumen-backup-20261010-v4-1249.full-verify.json) passed at **13:04:21 UTC** on 10 October 2026; the [seven-file local restore](../../Audiobook/author-audit/backup/lumen-backup-20261010-v4-1249.sample-restore.json) passed at **13:06:36 UTC**, checking **143,289,201 bytes**. Earlier capacity receipts remain immutable historical evidence.
+
+Authenticated [cloud metadata](../../Audiobook/author-audit/backup/lumen-backup-20261010-v4-1249.archive-remote-metadata.json) confirms the [ZIP](https://drive.google.com/file/d/1oV1J-v6SS2MCdaOTtFyNIo0oWCZeJxjo/view) has the exact size, the Lumen parent and owner-only access. The [540-byte checksum companion](https://drive.google.com/file/d/1D3e4z7CPsRbcqU9Y1LVPZvxc_G34MUEB/view) was [independently remote-byte verified](../../Audiobook/author-audit/backup/lumen-backup-20261010-v4-1249.sidecar-remote-verification.json). The connector omits the ZIP's server checksum; authenticated raw fetch failed with **HTTP 413** before downloading its body because the archive exceeds **268,435,456 bytes (256 MiB)**. Full cloud checksum and cloud restore remain pending; `cloudRecoveryGateSatisfied` is false. Metadata and companion verification do not establish the ZIP's remote byte integrity.
 
 ## Space evidence and limits
 
-The read-only check on 10 October 2026 selected 3,331 files totaling
+The earlier read-only check on 10 October 2026 selected 3,331 files totaling
 23,363,803,259 bytes. It read 103,637,986 bytes across 12 selected raw/mastered
 WAVs, sampling their beginning, middle, and end. The estimate uses the worst
 observed compressed window in each WAV family plus ten percentage points;
 all other files and unrepresented families assume no compression savings.
 It also allows 1 KiB per file plus 9 MiB for ZIP structure and the manifest.
 
-That conservative estimate was **23,071,602,653 bytes** (about 21.49 GiB).
+That historical conservative estimate was **23,071,602,653 bytes** (about 21.49 GiB).
 Mastered WAV windows compressed poorly, so compression does not reliably
 solve a low-space condition. The canonical Drive volume subsequently reported
 30,269,440,000 free bytes, but available space changes while other work runs.
