@@ -139,6 +139,61 @@ let browser;
   const ready=page=>page.waitForFunction(()=>window.LUMEN_CHAPTER && document.querySelector('#narration').readyState>=1);
   const choose=async(page,id)=>{await page.locator('#chapters-open').click();await page.locator('#chapter-list [data-track-id="'+id+'"]').click();};
   const reached=(page,id)=>page.waitForFunction(id=>window.LUMEN_CHAPTER?.chapterId===id && document.querySelector('#narration').readyState>=1,id);
+  const preferenceSeed={speed:1.25,textSize:24,narratorId:'autonoe',artworkVisible:false,autoContinue:false};
+  const preferenceReader=await fixtureContext();
+  await preferenceReader.context.addInitScript(value=>{
+    if(!sessionStorage.getItem('fixture-preference-seeded')) {
+      localStorage.setItem('lumen-reader-preferences-v1',JSON.stringify(value));
+      sessionStorage.setItem('fixture-preference-seeded','yes');
+    }
+  },preferenceSeed);
+  await preferenceReader.page.goto(origin,{waitUntil:'domcontentloaded'});await ready(preferenceReader.page);
+  await preferenceReader.page.locator('#settings-open').click();await preferenceReader.page.locator('#narrator').selectOption('charon');
+  await preferenceReader.page.locator('#settings-close').click();
+  await preferenceReader.page.waitForFunction(()=>window.LUMEN_CHAPTER.audio.narratorId==='charon' && document.querySelector('#narration').readyState>=1);
+  regression('a successful narrator choice persists the committed voice with its selector and bookmark',await preferenceReader.page.evaluate(()=>
+    JSON.parse(localStorage.getItem('lumen-reader-preferences-v1')).narratorId==='charon' &&
+    document.querySelector('#narrator').value==='charon' && JSON.parse(localStorage.getItem('lumen-book-v2')).lastPosition.narratorId==='charon'));
+  regression('saving a narrator choice preserves the other reader preferences',await preferenceReader.page.evaluate(seed=>{
+    const saved=JSON.parse(localStorage.getItem('lumen-reader-preferences-v1'));
+    return ['speed','textSize','artworkVisible','autoContinue'].every(key=>saved[key]===seed[key]);
+  },preferenceSeed));
+  await preferenceReader.page.goto(origin+'/?chapter=chapter-002',{waitUntil:'domcontentloaded'});await reached(preferenceReader.page,'chapter-002');
+  regression('a chapter-only deep link uses the successfully selected narrator',await preferenceReader.page.evaluate(()=>
+    window.LUMEN_CHAPTER.audio.narratorId==='charon' && document.querySelector('#narrator').value==='charon' &&
+    JSON.parse(localStorage.getItem('lumen-book-v2')).lastPosition.narratorId==='charon'));
+  await preferenceReader.context.close();
+  const rejectedVoiceReader=await fixtureContext({failures:['/fixture/chapter-001-autonoe.json']});
+  await rejectedVoiceReader.context.addInitScript(value=>localStorage.setItem('lumen-reader-preferences-v1',JSON.stringify(value)),{...preferenceSeed,narratorId:'charon'});
+  await rejectedVoiceReader.page.goto(origin,{waitUntil:'domcontentloaded'});await ready(rejectedVoiceReader.page);
+  const rejectedVoiceSource=await rejectedVoiceReader.page.locator('#narration').getAttribute('src');
+  await rejectedVoiceReader.page.locator('#settings-open').click();await rejectedVoiceReader.page.locator('#narrator').selectOption('autonoe');
+  await rejectedVoiceReader.page.locator('#settings-close').click();await rejectedVoiceReader.page.locator('#transition-retry').waitFor({state:'visible'});
+  regression('a failed narrator choice preserves the prior preference, recording and bookmark',await rejectedVoiceReader.page.evaluate(src=>
+    JSON.parse(localStorage.getItem('lumen-reader-preferences-v1')).narratorId==='charon' &&
+    window.LUMEN_CHAPTER.audio.narratorId==='charon' && document.querySelector('#narration').getAttribute('src')===src &&
+    JSON.parse(localStorage.getItem('lumen-book-v2')).lastPosition.narratorId==='charon',rejectedVoiceSource));
+  await rejectedVoiceReader.context.close();
+  const cancelledVoiceReader=await fixtureContext();
+  await cancelledVoiceReader.context.addInitScript(value=>localStorage.setItem('lumen-reader-preferences-v1',JSON.stringify(value)),{...preferenceSeed,narratorId:'charon'});
+  let cancelledVoiceRequested=false,releaseCancelledVoice;
+  await cancelledVoiceReader.page.route('**/fixture/chapter-001-autonoe.json',async route=>{
+    cancelledVoiceRequested=true;await new Promise(resolve=>releaseCancelledVoice=resolve);
+    await route.fulfill({json:payloads.get('/fixture/chapter-001-autonoe.json')});
+  });
+  await cancelledVoiceReader.page.goto(origin,{waitUntil:'domcontentloaded'});await ready(cancelledVoiceReader.page);
+  await cancelledVoiceReader.page.locator('#settings-open').click();await cancelledVoiceReader.page.locator('#narrator').selectOption('autonoe');
+  for(let n=0;n<100&&!cancelledVoiceRequested;n++) await cancelledVoiceReader.page.waitForTimeout(10);
+  assert.ok(cancelledVoiceRequested,'deferred narrator request started');
+  regression('a pending narrator choice does not persist its requested voice',await cancelledVoiceReader.page.evaluate(()=>
+    JSON.parse(localStorage.getItem('lumen-reader-preferences-v1')).narratorId==='charon'));
+  await cancelledVoiceReader.page.locator('#narrator').selectOption('charon');await cancelledVoiceReader.page.locator('#settings-close').click();
+  await cancelledVoiceReader.page.waitForFunction(()=>document.querySelector('#transition-panel').hidden && window.LUMEN_CHAPTER.audio.narratorId==='charon');
+  releaseCancelledVoice();await cancelledVoiceReader.page.waitForTimeout(150);
+  regression('a cancelled narrator response cannot change the preference, selector or bookmark',await cancelledVoiceReader.page.evaluate(()=>
+    JSON.parse(localStorage.getItem('lumen-reader-preferences-v1')).narratorId==='charon' && window.LUMEN_CHAPTER.audio.narratorId==='charon' &&
+    document.querySelector('#narrator').value==='charon' && JSON.parse(localStorage.getItem('lumen-book-v2')).lastPosition.narratorId==='charon'));
+  await cancelledVoiceReader.context.close();
   const finished=storedPosition('chapter-001','autonoe',12);finished.completed=true;
   const trailingSilence=JSON.parse(JSON.stringify(payloads.get('/fixture/chapter-001-charon.json')));
   trailingSilence.paragraphs[0].end=7;trailingSilence.paragraphs[0].sentences[1].end=7;

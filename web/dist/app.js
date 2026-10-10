@@ -539,6 +539,7 @@
       const requestedListening = pendingTransition.listen;
       pendingTransition = null;
       commitChapter(result.chapter,result.position,{initial:options.initial,listen:requestedListening});
+      if (options.reason === 'voice') book.savePreferences({narratorId:result.chapter.audio.narratorId});
       updateURL(trackId,narratorId,options.history || (sameTrackVoice || options.initial ? 'replace' : 'push'));
       $('transition-panel').hidden = true; retryTransition = null;
     } catch (error) {
