@@ -39,6 +39,18 @@ def object_hash(value):
     return hashlib.sha256(json_bytes(value)).hexdigest()
 
 
+def production_object_hash(value):
+    """Match master_chapters.py compact JSON digest, without a final newline."""
+    return hashlib.sha256(json_bytes(value)[:-1]).hexdigest()
+
+
+def selected_request_hash(item):
+    """Match production's exact model + voice + style + text request identity."""
+    fields = ("model", "voice", "style", "text")
+    require(all(isinstance(item.get(field), str) for field in fields), "Missing selected request digest parameters")
+    return hashlib.sha256("".join(item[field] for field in fields).encode("utf-8")).hexdigest()
+
+
 def file_hash(path):
     digest = hashlib.sha256()
     with Path(path).open("rb") as stream:
@@ -54,6 +66,31 @@ def read_json(path):
         raise ContentError(f"Cannot read JSON {path}: {exc}") from exc
     require(isinstance(value, dict), f"Expected JSON object: {path}")
     return value
+
+
+def project_file(root, path):
+    """Resolve selected-root evidence before reading or hashing its bytes."""
+    root = Path(root).resolve()
+    path = Path(path)
+    if not path.is_absolute():
+        path = root / path
+    try:
+        resolved = path.resolve()
+        require(root in resolved.parents, f"Project file path escapes selected root: {path}")
+        require(resolved.is_file(), f"Missing project evidence file: {path}")
+    except (OSError, RuntimeError) as exc:
+        raise ContentError(f"Cannot resolve selected-root project evidence: {path}: {exc}") from exc
+    # Read the selected-root target rather than following a historical path
+    # string or retaining an unchecked logical metadata symlink.
+    return resolved
+
+
+def read_project_json(root, path):
+    return read_json(project_file(root, path))
+
+
+def project_file_hash(root, path):
+    return file_hash(project_file(root, path))
 
 
 def valid_hash(value):
@@ -203,13 +240,34 @@ def grouped_items(manifest, expected_chapters):
         require(type(number) is int and number in groups and number >= previous,
                 "Invalid generation track order")
         require(isinstance(item_id, str) and (item_id.startswith(f"chapter-{number:03d}-")
-                or (number == expected_chapters + 1 and item_id == "closing-credits"))
+                or (number == expected_chapters + 1 and
+                    (item_id == "closing-credits" or item_id.startswith("closing-credits-"))))
                 and item_id not in seen and isinstance(item.get("text"), str), "Invalid/duplicate generation item")
         previous = number
         seen.add(item_id)
         groups[number].append(item)
     require(all(groups.values()), "Missing generation track")
     return groups
+
+
+def narration_identity(items):
+    """Shared ordered prose identity, independent of voice or chunk boundaries."""
+    return object_hash({"spokenText": spoken_comparison("\n\n".join(item["text"] for item in items))})
+
+
+def opening_credit_body(items, first_manuscript):
+    """Keep the epigraph paragraph independent of an edition's audio chunks."""
+    prose = spoken_comparison("\n\n".join(item["text"] for item in items))
+    front = first_manuscript.split("## Chapter", 1)[0]
+    epigraph = re.search(r"^\*([^*\n]+)\*[ \t]*$", front, re.M)
+    if epigraph:
+        text = epigraph.group(1)
+        spoken_epigraph = spoken_comparison(text)
+        require(prose.endswith(spoken_epigraph), "Opening narration does not preserve canonical epigraph")
+        prefix = prose[:-len(spoken_epigraph)].strip()
+        require(bool(prefix), "Opening credits are missing before the epigraph")
+        return prefix + "\n\n" + text
+    return prose
 
 
 def build_registry(manuscript_directory, generation_manifests, *, manuscript_version="v6",
@@ -241,7 +299,7 @@ def build_registry(manuscript_directory, generation_manifests, *, manuscript_ver
         voices.add(voice)
         grouped = grouped_items(manifest, expected_chapters)
         for number in selected:
-            require([(i["id"], i["text"]) for i in grouped[number]] == [(i["id"], i["text"]) for i in selected[number]],
+            require(narration_identity(grouped[number]) == narration_identity(selected[number]),
                     f"Edition narration differs: {voice}/chapter-{number:03d}")
     story = []
     for part_number, path in enumerate(source_files, 1):
@@ -276,12 +334,11 @@ def build_registry(manuscript_directory, generation_manifests, *, manuscript_ver
             story.append(track)
     require([t["number"] for t in story] == list(range(1, expected_chapters + 1)),
             "Canonical chapters are missing, duplicated, or out of order")
-    opening = make_track(0, "opening-credits", "\n\n".join(i["text"] for i in selected[0]), manuscript_version)
+    opening = make_track(0, "opening-credits", opening_credit_body(selected[0], source_files[0].read_text(encoding="utf-8")), manuscript_version)
     closing = make_track(expected_chapters + 1, "closing-credits",
-                         "\n\n".join(i["text"] for i in selected[expected_chapters + 1]), manuscript_version)
+                         spoken_comparison("\n\n".join(i["text"] for i in selected[expected_chapters + 1])), manuscript_version)
     for number, track in enumerate([opening] + story + [closing]):
-        track["narrationSha256"] = object_hash([{ "id": item["id"], "text": item["text"]}
-                                               for item in selected[number]])
+        track["narrationSha256"] = narration_identity(selected[number])
     registry = {"schemaVersion": 1, "bookId": "lumen", "manuscriptVersion": manuscript_version,
                 "sourceHashes": dict(hashes), "tracks": [opening] + story + [closing],
                 "toc": [{"trackId": t["id"], "title": t["title"], "part": t["part"]} for t in story],
@@ -484,10 +541,13 @@ def resolve_scenes(track, recording, timing, scenes):
 
 
 def load_project_registry(root, *, previous=None):
-    root = Path(root)
-    manifests = [read_json(root / "Audiobook" / edition / "generation-manifest.json") for edition in ["v7", "v8"]]
+    root = Path(root).resolve()
+    manifests = [read_project_json(root, root / "Audiobook" / edition / "generation-manifest.json")
+                 for edition in ["v7", "v8"]]
+    for path in (root / "Draft/v6").glob("part*.md"):
+        project_file(root, path)
     return build_registry(root / "Draft/v6", manifests, previous=previous,
-                          pilot=read_json(root / "web/data/chapter-001.json"))
+                          pilot=read_project_json(root, root / "web/data/chapter-001.json"))
 
 
 def recording_path(root, edition, track_id, declared_path):
@@ -520,34 +580,59 @@ def load_recording_inventory(root, registry):
     for edition, narrator_id in [("v7", "autonoe"), ("v8", "charon")]:
         job = root / "Audiobook" / edition
         manifest_path = job / "generation-manifest.json"
-        manifest = read_json(manifest_path)
-        delivery = read_json(job / "delivery/delivery-manifest.json")
+        manifest = read_project_json(root, manifest_path)
+        delivery = read_project_json(root, job / "delivery/delivery-manifest.json")
+        report = read_project_json(root, job / "mastered/mastering-report.json")
         require(manifest["source_sha256"] == registry["sourceHashes"], f"{edition}: inventory source hash differs")
         require(manifest["voice"].lower() == narrator_id and delivery.get("complete") is True,
                 f"{edition}: incomplete delivery/narrator mismatch")
-        require(delivery.get("generation_manifest_sha256") == file_hash(manifest_path), f"{edition}: stale delivery manifest")
-        require(delivery.get("input_list_sha256") == file_hash(job / "chapters.json")
-                and delivery.get("mastering_report_sha256") == file_hash(job / "mastered/mastering-report.json"),
+        manifest_hash = project_file_hash(root, manifest_path)
+        require(delivery.get("generation_manifest_sha256") == manifest_hash, f"{edition}: stale delivery manifest")
+        require(report.get("complete") is True and report.get("generation_manifest_sha256") == manifest_hash,
+                f"{edition}: incomplete/stale mastering report")
+        require(delivery.get("input_list_sha256") == project_file_hash(root, job / "chapters.json")
+                and delivery.get("mastering_report_sha256") == project_file_hash(root, job / "mastered/mastering-report.json"),
                 f"{edition}: stale chapter/mastering report")
         delivered = delivery.get("chapters", [])
         require([f"chapter-{row.get('key')}" for row in delivered] == [track["id"] for track in registry["tracks"]]
                 and delivery.get("chapter_count") == len(registry["tracks"]), f"{edition}: inventory track order differs")
         selected = grouped_items(manifest, len(registry["tracks"]) - 2)
         for track, row in zip(registry["tracks"], delivered):
-            require(track["narrationSha256"] == object_hash([{ "id": item["id"], "text": item["text"]}
-                                                            for item in selected[int(row["key"])]]),
+            source_items = selected[int(row["key"])]
+            require(track["narrationSha256"] == narration_identity(source_items),
                     f"{edition}/{track['id']}: canonical narration identity differs")
+            selected_clips = []
+            for item in source_items:
+                require(item.get("voice") == manifest["voice"], f"{edition}/{track['id']}: selected clip voice differs from edition")
+                require(valid_hash(item.get("request_sha256")),
+                        f"{edition}/{track['id']}: missing/invalid selected request digest")
+                require(item["request_sha256"] == selected_request_hash(item),
+                        f"{edition}/{track['id']}: selected request digest differs from exact parameters")
+                selected_clips.append({"id": item["id"], "requestSha256": item["request_sha256"],
+                                       "textSha256": hashlib.sha256(item["text"].encode("utf-8")).hexdigest()})
             path = recording_path(root, edition, track["id"], row.get("file"))
             qa_path = path.with_suffix(".qa.json")
             checkpoint_path = path.with_suffix(".checkpoint.json")
-            qa, checkpoint = read_json(qa_path), read_json(checkpoint_path)
+            qa, checkpoint = read_project_json(root, qa_path), read_project_json(root, checkpoint_path)
             binding = row.get("source_binding", {})
+            identity = checkpoint.get("identity")
+            require(isinstance(identity, dict) and isinstance(binding, dict), f"{edition}/{track['id']}: missing master identity")
+            identity_hash = production_object_hash(identity)
+            require(identity_hash == checkpoint.get("identity_sha256") == binding.get("identity_sha256")
+                    == qa.get("master_identity_sha256"), f"{edition}/{track['id']}: master identity digest differs")
+            require(identity.get("chapter") == int(row["key"]) and identity.get("title") == track["title"]
+                    == row.get("title"), f"{edition}/{track['id']}: master track/title identity differs")
+            inputs = identity.get("inputs")
+            require(isinstance(inputs, list) and all(isinstance(item, dict) for item in inputs)
+                    and [(item.get("id"), item.get("request_sha256")) for item in inputs]
+                    == [(item["id"], item["request_sha256"]) for item in source_items],
+                    f"{edition}/{track['id']}: selected takes differ from ordered master identity inputs")
             require(path.is_file() and path.stat().st_size == row.get("bytes"),
                     f"{edition}/{track['id']}: local MP3 path/size differs")
             require(valid_hash(row.get("sha256")) and checkpoint.get("output_sha256", {}).get("mp3") == row["sha256"]
                     and binding.get("output_sha256") == checkpoint["output_sha256"]
-                    and binding.get("checkpoint_sha256") == file_hash(checkpoint_path)
-                    and checkpoint["output_sha256"].get("qa") == file_hash(qa_path),
+                    and binding.get("checkpoint_sha256") == project_file_hash(root, checkpoint_path)
+                    and checkpoint["output_sha256"].get("qa") == project_file_hash(root, qa_path),
                     f"{edition}/{track['id']}: MP3/QA binding differs")
             samples = qa.get("decoded_mp3_qa", {}).get("samples")
             rate = qa.get("coordinator_checks", {}).get("sample_rate")
@@ -557,6 +642,9 @@ def load_recording_inventory(root, registry):
                                "sourcePath": str(path.relative_to(root)), "sha256": row["sha256"],
                                "bytes": row["bytes"], "decodedDuration": samples / rate,
                                "decodedSamples": samples, "sampleRate": rate,
+                               "generationManifestSha256": manifest_hash, "selectedClips": selected_clips,
+                               "masterIdentitySha256": identity_hash,
+                               "selectionSha256": object_hash(selected_clips),
                                "textSha256": track["textSha256"], "warnings": qa.get("warnings", []),
                                "publicationStatus": "pending", "contentApproval": "pending",
                                "timingApproval": "pending", "audioHashVerified": False})

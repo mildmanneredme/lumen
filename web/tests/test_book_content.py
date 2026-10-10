@@ -9,6 +9,7 @@ from pathlib import Path
 import shutil
 import tempfile
 import unittest
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
 SPEC = importlib.util.spec_from_file_location("book_content", ROOT / "web/scripts/book_content.py")
@@ -18,6 +19,15 @@ SPEC.loader.exec_module(content)
 
 def digest(value):
     return hashlib.sha256(value.encode()).hexdigest()
+
+
+def production_digest(value):
+    return digest(json.dumps(value, sort_keys=True, ensure_ascii=False,
+                             separators=(",", ":"), allow_nan=False))
+
+
+def request_digest(item):
+    return digest(item["model"] + item["voice"] + item["style"] + item["text"])
 
 
 class ContentContractTests(unittest.TestCase):
@@ -40,6 +50,12 @@ class ContentContractTests(unittest.TestCase):
         }
         self.other = copy.deepcopy(self.manifest)
         self.other["voice"] = "Autonoe"
+        for manifest in [self.manifest, self.other]:
+            manifest["model"] = "fixture-tts"
+            for item in manifest["items"]:
+                item.update(model=manifest["model"], voice=manifest["voice"],
+                            style="Fixture literary narration.", chunk=1)
+                item["request_sha256"] = request_digest(item)
 
     def registry(self, **kwargs):
         return content.build_registry(self.source, [self.manifest, self.other], expected_chapters=2, **kwargs)
@@ -75,28 +91,151 @@ class ContentContractTests(unittest.TestCase):
             chapters_path = job / "chapters.json"
             report_path = job / "mastered/mastering-report.json"
             write_json(manifest_path, manifest)
-            write_json(chapters_path, {f"{index:03d}": {"title": track["title"]}
-                                       for index, track in enumerate(registry["tracks"])})
-            write_json(report_path, {"complete": True})
+            chapters = {}
+            write_json(report_path, {"complete": True, "generation_manifest_sha256": content.file_hash(manifest_path)})
             rows = []
             for index, track in enumerate(registry["tracks"]):
                 audio = job / "mastered" / (track["id"] + ".mp3")
                 audio.write_bytes((edition + track["id"]).encode())
+                inputs = [{"id": item["id"], "chapter": index, "chunk": item["chunk"],
+                           "path": str(job / "raw" / (item["id"] + ".wav")),
+                           "request_sha256": item["request_sha256"], "audio_sha256": digest("raw:" + edition + item["id"]),
+                           "native_frames": 240000, "native_rate": 24000}
+                          for item in manifest["items"] if item["chapter"] == index]
+                identity = {"chapter": index, "title": track["title"], "book": "LUMEN", "author": "Rob Xie",
+                            "narration": "AI-generated Gemini voice, " + manifest["voice"], "inputs": inputs}
+                identity_hash = production_digest(identity)
+                chapters[f"{index:03d}"] = {"title": track["title"], "paths": [item["path"] for item in inputs],
+                                            "request_sha256": [item["request_sha256"] for item in inputs]}
                 qa_path = audio.with_suffix(".qa.json")
                 write_json(qa_path, {"decoded_mp3_qa": {"samples": 441000},
-                                     "coordinator_checks": {"sample_rate": 44100}, "warnings": []})
+                                     "coordinator_checks": {"sample_rate": 44100}, "warnings": [],
+                                     "master_identity_sha256": identity_hash})
                 outputs = {"mp3": content.file_hash(audio), "qa": content.file_hash(qa_path)}
                 checkpoint_path = audio.with_suffix(".checkpoint.json")
-                write_json(checkpoint_path, {"output_sha256": outputs})
-                rows.append({"key": f"{index:03d}", "file": str(audio), "bytes": audio.stat().st_size,
+                write_json(checkpoint_path, {"identity": identity, "identity_sha256": identity_hash, "output_sha256": outputs})
+                rows.append({"key": f"{index:03d}", "title": track["title"], "file": str(audio), "bytes": audio.stat().st_size,
                              "sha256": outputs["mp3"], "source_binding": {
-                                 "output_sha256": outputs, "checkpoint_sha256": content.file_hash(checkpoint_path)}})
+                                 "output_sha256": outputs, "identity_sha256": identity_hash,
+                                 "raw_inputs": [{key: item[key] for key in ["path", "request_sha256", "audio_sha256"]}
+                                                for item in inputs], "checkpoint_sha256": content.file_hash(checkpoint_path)}})
+            write_json(chapters_path, chapters)
             write_json(job / "delivery/delivery-manifest.json", {
                 "complete": True, "generation_manifest_sha256": content.file_hash(manifest_path),
                 "input_list_sha256": content.file_hash(chapters_path),
                 "mastering_report_sha256": content.file_hash(report_path), "chapters": rows,
                 "chapter_count": len(rows)})
         return root, registry
+
+    def refresh_fixture_containers(self, root, *, update_report_generation=False):
+        """Refresh outer file hashes without silently fixing inner lineage."""
+        job = root / "Audiobook/v7"
+        manifest_hash = content.file_hash(job / "generation-manifest.json")
+        report_path = job / "mastered/mastering-report.json"
+        if update_report_generation:
+            report = json.loads(report_path.read_text())
+            report["generation_manifest_sha256"] = manifest_hash
+            report_path.write_text(json.dumps(report))
+        delivery_path = job / "delivery/delivery-manifest.json"
+        delivery = json.loads(delivery_path.read_text())
+        delivery.update(generation_manifest_sha256=manifest_hash,
+                        input_list_sha256=content.file_hash(job / "chapters.json"),
+                        mastering_report_sha256=content.file_hash(report_path))
+        for row in delivery["chapters"]:
+            base = job / "mastered" / ("chapter-" + row["key"])
+            checkpoint_path = base.with_suffix(".checkpoint.json")
+            checkpoint = json.loads(checkpoint_path.read_text())
+            checkpoint["output_sha256"]["qa"] = content.file_hash(base.with_suffix(".qa.json"))
+            checkpoint_path.write_text(json.dumps(checkpoint))
+            row["source_binding"]["output_sha256"] = checkpoint["output_sha256"]
+            row["source_binding"]["checkpoint_sha256"] = content.file_hash(checkpoint_path)
+        delivery_path.write_text(json.dumps(delivery))
+
+    def test_selected_fresh_take_cannot_reuse_an_old_master_identity(self):
+        root, registry = self.production_fixture()
+        path = root / "Audiobook/v7/generation-manifest.json"
+        manifest = json.loads(path.read_text())
+        manifest["items"][1]["id"] += "-take2"
+        path.write_text(json.dumps(manifest))
+        self.refresh_fixture_containers(root, update_report_generation=True)
+        with self.assertRaisesRegex(content.ContentError, "selected.*identity|identity.*selected"):
+            content.load_recording_inventory(root, registry)
+
+    def test_mastering_report_must_be_complete_and_bind_current_generation(self):
+        for change in [{"complete": False}, {"generation_manifest_sha256": "b" * 64}]:
+            root, registry = self.production_fixture()
+            path = root / "Audiobook/v7/mastered/mastering-report.json"
+            report = json.loads(path.read_text()); report.update(change)
+            path.write_text(json.dumps(report))
+            self.refresh_fixture_containers(root)
+            with self.subTest(change=change):
+                with self.assertRaisesRegex(content.ContentError, "mastering report"):
+                    content.load_recording_inventory(root, registry)
+
+    def test_selected_request_digest_is_recomputed_from_exact_parameters(self):
+        for field, value in [("model", "different-model"), ("style", "A different delivery."),
+                             ("text", self.other["items"][1]["text"] + " ")]:
+            root, registry = self.production_fixture()
+            path = root / "Audiobook/v7/generation-manifest.json"
+            manifest = json.loads(path.read_text())
+            manifest["items"][1][field] = value
+            path.write_text(json.dumps(manifest))
+            self.refresh_fixture_containers(root, update_report_generation=True)
+            with self.subTest(field=field):
+                with self.assertRaisesRegex(content.ContentError, "request digest"):
+                    content.load_recording_inventory(root, registry)
+
+    def test_selected_clip_voice_must_match_its_edition(self):
+        root, registry = self.production_fixture()
+        path = root / "Audiobook/v7/generation-manifest.json"
+        manifest = json.loads(path.read_text())
+        manifest["items"][1]["voice"] = "Charon"
+        manifest["items"][1]["request_sha256"] = request_digest(manifest["items"][1])
+        path.write_text(json.dumps(manifest))
+        self.refresh_fixture_containers(root, update_report_generation=True)
+        with self.assertRaisesRegex(content.ContentError, "selected.*voice"):
+            content.load_recording_inventory(root, registry)
+
+    def test_master_identity_digest_is_consistent_across_all_bound_metadata(self):
+        for target in ["checkpoint", "qa", "delivery"]:
+            root, registry = self.production_fixture()
+            job = root / "Audiobook/v7"
+            if target == "checkpoint":
+                path = job / "mastered/chapter-001.checkpoint.json"
+                value = json.loads(path.read_text()); value["identity_sha256"] = "b" * 64
+            elif target == "qa":
+                path = job / "mastered/chapter-001.qa.json"
+                value = json.loads(path.read_text()); value["master_identity_sha256"] = "b" * 64
+            else:
+                path = job / "delivery/delivery-manifest.json"
+                value = json.loads(path.read_text()); value["chapters"][1]["source_binding"]["identity_sha256"] = "b" * 64
+            path.write_text(json.dumps(value))
+            self.refresh_fixture_containers(root)
+            with self.subTest(target=target):
+                with self.assertRaisesRegex(content.ContentError, "identity digest"):
+                    content.load_recording_inventory(root, registry)
+
+    def test_rehashed_master_identity_still_requires_correct_track_and_title(self):
+        for field, value in [("chapter", 2), ("title", "Wrong chapter title")]:
+            root, registry = self.production_fixture()
+            job = root / "Audiobook/v7"
+            checkpoint_path = job / "mastered/chapter-001.checkpoint.json"
+            checkpoint = json.loads(checkpoint_path.read_text())
+            checkpoint["identity"][field] = value
+            identity_hash = production_digest(checkpoint["identity"])
+            checkpoint["identity_sha256"] = identity_hash
+            checkpoint_path.write_text(json.dumps(checkpoint))
+            qa_path = job / "mastered/chapter-001.qa.json"
+            qa = json.loads(qa_path.read_text()); qa["master_identity_sha256"] = identity_hash
+            qa_path.write_text(json.dumps(qa))
+            delivery_path = job / "delivery/delivery-manifest.json"
+            delivery = json.loads(delivery_path.read_text())
+            delivery["chapters"][1]["source_binding"]["identity_sha256"] = identity_hash
+            delivery_path.write_text(json.dumps(delivery))
+            self.refresh_fixture_containers(root)
+            with self.subTest(field=field):
+                with self.assertRaisesRegex(content.ContentError, "track/title identity"):
+                    content.load_recording_inventory(root, registry)
 
     def test_display_prose_emphasis_scene_breaks_and_sentence_offsets_are_lossless(self):
         registry = self.registry()
@@ -201,6 +340,72 @@ class ContentContractTests(unittest.TestCase):
         self.other["items"][1]["text"] = self.other["items"][1]["text"].replace("Why now", "Why later")
         with self.assertRaisesRegex(content.ContentError, "narration differs"):
             self.registry()
+
+    def test_faithful_edition_specific_retake_keeps_canonical_registry_stable(self):
+        original = self.registry()
+        self.other["items"][1]["id"] += "-take2"
+        self.other["items"][1]["request_sha256"] = request_digest(self.other["items"][1])
+        self.assertEqual(self.registry(), original)
+
+    def split_autonoe_chapter(self):
+        original = self.other["items"][1]
+        first = dict(original, id="chapter-001-001-take2", text="Chapter One.\n\nDr. Vale waited.",
+                     chunk=1)
+        second = dict(original, id="chapter-001-002-take2", text="Why now?\n\n<short pause>\n\nLater. She paid 4.2 dollars.",
+                      chunk=2)
+        first["request_sha256"] = request_digest(first)
+        second["request_sha256"] = request_digest(second)
+        self.other["items"][1:2] = [first, second]
+
+    def test_faithful_voice_chunk_splitting_keeps_shared_anchors_stable(self):
+        original = self.registry()
+        self.split_autonoe_chapter()
+        self.assertEqual(self.registry(), original)
+
+    def test_credit_chunk_splitting_and_fresh_take_ids_do_not_change_canonical_anchors(self):
+        original = self.registry()
+        first = self.manifest["items"][0]
+        self.manifest["items"][0:1] = [
+            dict(first, id="chapter-000-001-take2", text="Lumen.", chunk=1),
+            dict(first, id="chapter-000-002-take2", text="Written by Rob Xie.", chunk=2),
+        ]
+        for item in self.manifest["items"][:2]:
+            item["request_sha256"] = request_digest(item)
+        self.other["items"][-1]["id"] = "closing-credits-take2"
+        self.other["items"][-1]["request_sha256"] = request_digest(self.other["items"][-1])
+        self.assertEqual(self.registry(), original)
+
+    def test_retake_chunk_order_or_wording_changes_are_rejected(self):
+        self.split_autonoe_chapter()
+        original = copy.deepcopy(self.other["items"])
+        self.other["items"][1:3] = list(reversed(self.other["items"][1:3]))
+        with self.assertRaisesRegex(content.ContentError, "narration differs|canonical prose"):
+            self.registry()
+        self.other["items"] = original
+        self.other["items"][2]["text"] = self.other["items"][2]["text"].replace("Why now?", "Why later?")
+        with self.assertRaisesRegex(content.ContentError, "narration differs|canonical prose"):
+            self.registry()
+
+    def test_recordings_keep_edition_specific_selections_and_exact_input_digests(self):
+        self.split_autonoe_chapter()
+        root, registry = self.production_fixture()
+        inventory = content.load_recording_inventory(root, registry)
+        female = next(recording for recording in inventory["recordings"]
+                      if recording["trackId"] == "chapter-001" and recording["narratorId"] == "autonoe")
+        male = next(recording for recording in inventory["recordings"]
+                    if recording["trackId"] == "chapter-001" and recording["narratorId"] == "charon")
+        self.assertEqual([clip["id"] for clip in female["selectedClips"]],
+                         ["chapter-001-001-take2", "chapter-001-002-take2"])
+        self.assertEqual([clip["id"] for clip in male["selectedClips"]], ["chapter-001-001"])
+        for recording, manifest in [(female, self.other), (male, self.manifest)]:
+            expected = [item for item in manifest["items"] if item["chapter"] == 1]
+            for clip, item in zip(recording["selectedClips"], expected):
+                self.assertEqual(clip["requestSha256"], item["request_sha256"])
+                self.assertEqual(clip["textSha256"], digest(item["text"]))
+            self.assertEqual(recording["generationManifestSha256"],
+                             content.file_hash(root / "Audiobook" / recording["productionEdition"] / "generation-manifest.json"))
+        self.assertNotEqual(female["selectionSha256"], male["selectionSha256"])
+        self.assertEqual(female["textSha256"], male["textSha256"])
 
     def test_generation_cannot_omit_displayed_words(self):
         for manifest in [self.manifest, self.other]:
@@ -452,6 +657,52 @@ class ContentContractTests(unittest.TestCase):
         target.symlink_to(outside)
         with self.assertRaisesRegex(content.ContentError, "path escapes"):
             content.load_recording_inventory(root, registry)
+
+    def test_all_inventory_metadata_must_remain_within_selected_root(self):
+        root, registry = self.production_fixture()
+        metadata_paths = [
+            "generation-manifest.json", "delivery/delivery-manifest.json", "chapters.json",
+            "mastered/mastering-report.json", "mastered/chapter-000.qa.json",
+            "mastered/chapter-000.checkpoint.json",
+        ]
+        for relative in metadata_paths:
+            path = root / "Audiobook/v7" / relative
+            original = path.read_bytes()
+            outside = Path(self.temp.name) / ("outside-" + relative.replace("/", "-"))
+            outside.write_bytes(original)
+            path.unlink()
+            path.symlink_to(outside)
+            with self.subTest(metadata=relative):
+                try:
+                    with self.assertRaisesRegex(content.ContentError, "escapes selected root"):
+                        content.load_recording_inventory(root, registry)
+                finally:
+                    path.unlink()
+                    path.write_bytes(original)
+
+    def test_companion_metadata_escape_after_read_is_rejected_before_hashing(self):
+        root, registry = self.production_fixture()
+        original_reader = content.read_project_json
+        for filename in ["chapter-000.qa.json", "chapter-000.checkpoint.json"]:
+            path = root / "Audiobook/v7/mastered" / filename
+            original = path.read_bytes()
+            outside = Path(self.temp.name) / ("late-outside-" + filename)
+            outside.write_bytes(original)
+            def swap_after_read(selected_root, selected_path):
+                value = original_reader(selected_root, selected_path)
+                if Path(selected_path).resolve() == path.resolve():
+                    path.unlink()
+                    path.symlink_to(outside)
+                return value
+            with self.subTest(metadata=filename):
+                try:
+                    with patch.object(content, "read_project_json", side_effect=swap_after_read):
+                        with self.assertRaisesRegex(content.ContentError, "escapes selected root"):
+                            content.load_recording_inventory(root, registry)
+                finally:
+                    if path.is_symlink():
+                        path.unlink()
+                        path.write_bytes(original)
 
 
 class ActualInventoryTests(unittest.TestCase):

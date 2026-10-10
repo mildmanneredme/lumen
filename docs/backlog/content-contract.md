@@ -33,9 +33,12 @@ than downloading this full registry at reader startup.
 
 `load_project_registry(root, previous=None)` reads the five v6 manuscript parts,
 both generation manifests, and the existing pilot. It verifies recorded source
-SHA-256 values, complete chapter order, the same selected clip IDs and exact
-prepared narration across voices, and correspondence between prepared narration
-and displayed prose. It produces 91 ordered tracks and an 89-entry story table
+SHA-256 values, complete chapter order, the same faithful ordered narration
+across voices, and correspondence between prepared narration and displayed
+prose. Clip IDs and chunk boundaries remain specific to each edition; a faithful
+retake or split preserves the shared registry and anchors. Opening credits keep
+the manuscript epigraph as a separate paragraph independently of audio chunks.
+It produces 91 ordered tracks and an 89-entry story table
 of contents. Opening credits and closing credits have distinct track kinds.
 
 Each paragraph retains its manuscript markdown, faithful display text, emphasis
@@ -87,6 +90,20 @@ records, checking generation/delivery/mastering metadata hashes, selected
 narration identity, MP3 paths and byte counts, checkpoint/QA bindings, and the
 decoded MP3 sample clock. Each recording includes its narrator ID, SHA-256,
 decoded duration, byte count, warnings, and private relative production path.
+It also records ordered `selectedClips` (IDs, exact request SHA-256s, and raw
+UTF-8 text SHA-256s), `selectionSha256`, `generationManifestSha256`, and
+`masterIdentitySha256` for that edition. Shared narration hashes depend on
+ordered faithful prose rather than selected clip IDs or chunk topology.
+
+Selected request hashes are recomputed with the production encoding of
+`model + voice + style + text`, and each selected voice must match its edition.
+Ordered selected IDs and request hashes must match checkpoint identity inputs.
+The master chapter/title identity must match the canonical track and delivery
+row. Its compact-JSON production digest (without a trailing newline) must agree
+across the checkpoint, delivery binding, and QA. The mastering report must be
+complete and bind the current generation manifest. Merely refreshing outer
+container hashes cannot relabel an old master as a new selected take; a retake
+requires an affected chapter rebuild and coherent provenance.
 
 The caller's `root` owns the current logical asset path:
 `Audiobook/<edition>/mastered/<track>.mp3`. Historical absolute paths retained in
@@ -96,6 +113,13 @@ project does not rewrite production metadata or its checkpoint hashes. Wrong
 editions, filenames, traversal components, and local symlinks escaping the root
 are rejected. Physical byte verification reads the current-root file; it never
 falls back to an asset left at the historical path.
+
+Every inventory metadata file must also resolve inside the selected root before
+reading and again before hashing: generation/delivery manifests, the chapter
+list, mastering report, per-track QA, and checkpoints. An external symlink is
+rejected even when its target has identical bytes and would match the recorded
+SHA-256. Historical path strings remain provenance evidence; they do not grant
+permission to read files outside the selected project root.
 
 The duration comes from decoded MP3 samples, rather than the lossless assembly
 clock used by historical delivery-manifest fields. Records initially have
