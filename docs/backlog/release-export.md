@@ -173,20 +173,20 @@ verification gates pass.
 
 ## Prepared private release
 
-The local `lumen-private-192-v1` export is complete: 91 tracks in both voices,
-365 assets totaling 2,667,477,164 bytes. It references the 182 unchanged MP3s
-(2,657,554,540 bytes) and creates 183 JSON objects (9,922,624 bytes). Female
+The local `lumen-private-192-v2` export is complete: 91 tracks in both voices,
+365 assets totaling 2,667,476,385 bytes. It references the 182 unchanged MP3s
+(2,657,554,540 bytes) and creates 183 JSON objects (9,921,845 bytes). Female
 narration starts by default with opening credits; every scene list is empty
 for the authorized generic-placeholder release. All 25,844 canonical sentence
-positions are represented: 25,702 measured and 142 explicitly unavailable.
+positions are represented: 24,864 measured and 980 explicitly unavailable.
 
 The exporter freshly verified actual masters, selected raw sources and exact
 ASR evidence again. The local manifest SHA-256 is
-`4b12eaa91a7900e075c607245d3e23977dacd680a7d4c427d3c1463b448b8dcf`;
+`8b6be459813b11424f0ca52715b30ff8e75b4c532729879dc31f9e5dcc3e2d4f`;
 the private upload-inventory SHA-256 is
-`bd6ccb66fb5b1e04f98e19d5a3bbe26d1d4f5ae847a67090af0fffa7748a6f5f`.
+`afe8f78cbaca0cee1ef56ee51d545da06f6fa62820c88eb9ff298be2d0e6fef9`.
 The private release-export-verification SHA-256 is
-`db08052e2f61783c81dc6c14ef9937b976f06cd001e7c37fb3e4b43be29cf90a`.
+`b36d95c79920e75cf75bfae1a5ea89bce51a9650b3717b1cc65e56f960254d23`.
 All 1,095 inventory range samples were checked against their source bytes.
 These records prove local preparation; remote upload and authorization still
 require the separately verified private-delivery operation.
