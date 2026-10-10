@@ -6,6 +6,7 @@ import hashlib
 import importlib.util
 import json
 from pathlib import Path
+import shutil
 import tempfile
 import unittest
 
@@ -61,6 +62,42 @@ class ContentContractTests(unittest.TestCase):
         }
         return track, recording, timing
 
+    def production_fixture(self):
+        """Small provenance-bound fixture retaining historical absolute paths."""
+        root = Path(self.temp.name) / "original-project"
+        registry = self.registry()
+        def write_json(path, value):
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(json.dumps(value, sort_keys=True) + "\n")
+        for edition, manifest in [("v7", self.other), ("v8", self.manifest)]:
+            job = root / "Audiobook" / edition
+            manifest_path = job / "generation-manifest.json"
+            chapters_path = job / "chapters.json"
+            report_path = job / "mastered/mastering-report.json"
+            write_json(manifest_path, manifest)
+            write_json(chapters_path, {f"{index:03d}": {"title": track["title"]}
+                                       for index, track in enumerate(registry["tracks"])})
+            write_json(report_path, {"complete": True})
+            rows = []
+            for index, track in enumerate(registry["tracks"]):
+                audio = job / "mastered" / (track["id"] + ".mp3")
+                audio.write_bytes((edition + track["id"]).encode())
+                qa_path = audio.with_suffix(".qa.json")
+                write_json(qa_path, {"decoded_mp3_qa": {"samples": 441000},
+                                     "coordinator_checks": {"sample_rate": 44100}, "warnings": []})
+                outputs = {"mp3": content.file_hash(audio), "qa": content.file_hash(qa_path)}
+                checkpoint_path = audio.with_suffix(".checkpoint.json")
+                write_json(checkpoint_path, {"output_sha256": outputs})
+                rows.append({"key": f"{index:03d}", "file": str(audio), "bytes": audio.stat().st_size,
+                             "sha256": outputs["mp3"], "source_binding": {
+                                 "output_sha256": outputs, "checkpoint_sha256": content.file_hash(checkpoint_path)}})
+            write_json(job / "delivery/delivery-manifest.json", {
+                "complete": True, "generation_manifest_sha256": content.file_hash(manifest_path),
+                "input_list_sha256": content.file_hash(chapters_path),
+                "mastering_report_sha256": content.file_hash(report_path), "chapters": rows,
+                "chapter_count": len(rows)})
+        return root, registry
+
     def test_display_prose_emphasis_scene_breaks_and_sentence_offsets_are_lossless(self):
         registry = self.registry()
         track = registry["tracks"][1]
@@ -105,6 +142,51 @@ class ContentContractTests(unittest.TestCase):
             ("She lived in the U.S. The hearing started.", ["She lived in the U.S.", "The hearing started."]),
             ("Washington, D.C.", ["Washington, D.C."]),
             ('"He lives in D.C." She waited.', ['"He lives in D.C."', "She waited."]),
+        ]
+        for text, expected in cases:
+            with self.subTest(text=text):
+                self.assertEqual([text[start:end] for start, end in content.sentence_ranges(text)], expected)
+
+    def test_time_abbreviations_end_sentences_before_clear_openers(self):
+        cases = [
+            ("It was 11:47 a.m. A manila envelope arrived.", ["It was 11:47 a.m.", "A manila envelope arrived."]),
+            ("It was 11:47 a.m. Her phone remained on.", ["It was 11:47 a.m.", "Her phone remained on."]),
+            ("It was 12:17 p.m. It was an estimate, not a promise.",
+             ["It was 12:17 p.m.", "It was an estimate, not a promise."]),
+            ("It was 4:23 p.m. The crowd surged.", ["It was 4:23 p.m.", "The crowd surged."]),
+            ("It was 7:38 a.m. Raven followed.", ["It was 7:38 a.m.", "Raven followed."]),
+            ("It was 12:17 p.m. Thirty-five hours from now.", ["It was 12:17 p.m.", "Thirty-five hours from now."]),
+            ("He left at 8:17 a.m. Santos rode beside him.", ["He left at 8:17 a.m.", "Santos rode beside him."]),
+            ("The phone rang at 8:17 a.m. Tomás spoke.", ["The phone rang at 8:17 a.m.", "Tomás spoke."]),
+            ("It was 11:47 a.m.", ["It was 11:47 a.m."]),
+        ]
+        for text, expected in cases:
+            with self.subTest(text=text):
+                self.assertEqual([text[start:end] for start, end in content.sentence_ranges(text)], expected)
+
+    def test_timezones_and_explanatory_abbreviations_continue_within_sentence(self):
+        cases = [
+            ("It was 11:47 a.m. London time when she called. Nobody answered.",
+             ["It was 11:47 a.m. London time when she called.", "Nobody answered."]),
+            ("At 12:17 p.m. Central European Time, he waited. They left.",
+             ["At 12:17 p.m. Central European Time, he waited.", "They left."]),
+            ("At 11:47 a.m. CET, the call started. It ended.",
+             ["At 11:47 a.m. CET, the call started.", "It ended."]),
+            ("They met at 3:47 a.m. Greenwich Mean Time. Then they waited.",
+             ["They met at 3:47 a.m. Greenwich Mean Time.", "Then they waited."]),
+            ("At 9:17 a.m. Berlin time she published it. It was ready.",
+             ["At 9:17 a.m. Berlin time she published it.", "It was ready."]),
+            ("It was 5:17 a.m. Eastern when they convened. He answered.",
+             ["It was 5:17 a.m. Eastern when they convened.", "He answered."]),
+            ("Use examples, e.g. the opening scene. Then review them.",
+             ["Use examples, e.g. the opening scene.", "Then review them."]),
+            ("Use the same voice, i.e. Charon throughout. They agreed.",
+             ["Use the same voice, i.e. Charon throughout.", "They agreed."]),
+            ("Phones, cameras, etc. were present. Nothing changed.",
+             ["Phones, cameras, etc. were present.", "Nothing changed."]),
+            ("He cited Marsh, et al. in the report. It was public.",
+             ["He cited Marsh, et al. in the report.", "It was public."]),
+            ("Phones, cameras, etc. He counted them.", ["Phones, cameras, etc.", "He counted them."]),
         ]
         for text, expected in cases:
             with self.subTest(text=text):
@@ -315,6 +397,62 @@ class ContentContractTests(unittest.TestCase):
         with self.assertRaises(content.ContentError):
             content.verify_recording_file(recording, root)
 
+    def test_relocated_production_inventory_retains_provenance_and_verifies_local_bytes(self):
+        original, registry = self.production_fixture()
+        original_hashes = {str(path.relative_to(original)): content.file_hash(path)
+                           for path in original.rglob("*.json")}
+        relocated = Path(self.temp.name) / "relocated-project"
+        shutil.copytree(original, relocated)
+        shutil.rmtree(original)
+        inventory = content.load_recording_inventory(relocated, registry)
+        self.assertEqual(len(inventory["recordings"]), 8)
+        for recording in inventory["recordings"]:
+            self.assertTrue(content.verify_recording_file(recording, relocated)["audioHashVerified"])
+            self.assertEqual(recording["sourcePath"],
+                             f"Audiobook/{recording['productionEdition']}/mastered/{recording['trackId']}.mp3")
+        self.assertEqual(original_hashes, {str(path.relative_to(relocated)): content.file_hash(path)
+                                          for path in relocated.rglob("*.json")})
+
+    def test_recording_inventory_rejects_wrong_logical_edition_filename_or_traversal(self):
+        root, registry = self.production_fixture()
+        path = root / "Audiobook/v7/delivery/delivery-manifest.json"
+        original = json.loads(path.read_text())
+        variants = [
+            "/historical/Audiobook/v8/mastered/chapter-000.mp3",
+            "/historical/Audiobook/v7/mastered/chapter-001.mp3",
+            "/historical/Audiobook/v7/mastered/../mastered/chapter-000.mp3",
+            "../../Audiobook/v7/mastered/chapter-000.mp3",
+        ]
+        for stored_path in variants:
+            with self.subTest(stored_path=stored_path):
+                changed = copy.deepcopy(original)
+                changed["chapters"][0]["file"] = stored_path
+                path.write_text(json.dumps(changed))
+                with self.assertRaisesRegex(content.ContentError, "path"):
+                    content.load_recording_inventory(root, registry)
+
+    def test_relocated_audio_verification_rejects_same_size_changed_bytes(self):
+        original, registry = self.production_fixture()
+        relocated = Path(self.temp.name) / "relocated-project"
+        shutil.copytree(original, relocated)
+        shutil.rmtree(original)
+        inventory = content.load_recording_inventory(relocated, registry)
+        recording = inventory["recordings"][0]
+        target = relocated / recording["sourcePath"]
+        target.write_bytes(b"x" * recording["bytes"])
+        with self.assertRaisesRegex(content.ContentError, "hash"):
+            content.verify_recording_file(recording, relocated)
+
+    def test_recording_inventory_rejects_audio_symlink_outside_caller_root(self):
+        root, registry = self.production_fixture()
+        target = root / "Audiobook/v7/mastered/chapter-000.mp3"
+        outside = Path(self.temp.name) / "outside.mp3"
+        outside.write_bytes(target.read_bytes())
+        target.unlink()
+        target.symlink_to(outside)
+        with self.assertRaisesRegex(content.ContentError, "path escapes"):
+            content.load_recording_inventory(root, registry)
+
 
 class ActualInventoryTests(unittest.TestCase):
     @classmethod
@@ -350,6 +488,44 @@ class ActualInventoryTests(unittest.TestCase):
             "Screens showed damage assessments.", "Phones rang constantly.",
             "Suspicion crystallized quickly: someone with insider knowledge of all six companies had designed these exploits.",
         ])
+
+    def test_actual_time_abbreviation_sentence_ends_remain_separate(self):
+        cases = [
+            ("chapter-006", "7:38 a.m.", "Raven followed"),
+            ("chapter-014", "11:47 a.m.", "A manila envelope"),
+            ("chapter-048", "11:47 a.m.", "Her phone remained on."),
+            ("chapter-049", "12:17 p.m.", "It was an estimate, not a promise."),
+            ("chapter-058", "12:17 p.m.", "Thirty-five hours from now."),
+            ("chapter-070", "8:17 a.m.", "Santos rode beside him"),
+            ("chapter-077", "7:31 p.m.", "In four minutes"),
+            ("chapter-079", "8:17 a.m.", "Tomás's voice"),
+            ("chapter-085", "nine a.m.", "The booth in the back."),
+            ("chapter-089", "4:23 p.m.", "The crowd surged."),
+        ]
+        for track_id, abbreviation, opener in cases:
+            track = next(track for track in self.registry["tracks"] if track["id"] == track_id)
+            paragraph = next(paragraph for paragraph in track["paragraphs"]
+                             if abbreviation + " " + opener in paragraph["text"])
+            texts = [sentence["text"] for sentence in paragraph["sentences"]]
+            with self.subTest(track=track_id):
+                self.assertTrue(any(text.endswith(abbreviation) for text in texts))
+                self.assertTrue(any(text.startswith(opener) for text in texts))
+
+    def test_every_actual_time_abbreviation_preserves_timezone_continuations(self):
+        continuations = ["Greenwich Mean Time", "London time", "Central European Time", "CET",
+                         "Berlin time", "Tallinn time", "Lisbon time", "Austin time", "Pacific time",
+                         "Brussels time", "Eastern"]
+        for continuation in continuations:
+            observed = 0
+            for track in self.registry["tracks"]:
+                for paragraph in track["paragraphs"]:
+                    for abbreviation in ["a.m.", "p.m."]:
+                        phrase = abbreviation + " " + continuation
+                        if phrase in paragraph["text"]:
+                            observed += 1
+                            with self.subTest(track=track["id"], phrase=phrase):
+                                self.assertTrue(any(phrase in sentence["text"] for sentence in paragraph["sentences"]))
+            self.assertGreater(observed, 0, f"Production-source coverage is missing {continuation}")
 
 
 if __name__ == "__main__":

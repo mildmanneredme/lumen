@@ -58,8 +58,14 @@ Sentence segmentation preserves dotted initialisms and personal initials within
 prose, including `D.C. residence`, `U.S. Supreme Court`, and `Ursula K. Le Guin`.
 Clear following sentence openers, such as `D.C. He`, retain the true boundary;
 paragraph ends remain boundaries. Ambiguous abbreviation contexts still need
-editorial review before anchor/timing approval. The current private registry has
-12,912 sentence anchors, and the existing 60 pilot sentence aliases are unchanged.
+editorial review before anchor/timing approval. Time abbreviations use a capitalized
+following subject as a new sentence boundary, including proper names, while
+explicit timezone phrases such as `a.m. London time`, `p.m. Central European
+Time`, and `a.m. CET` remain within the sentence. Explanatory `e.g.`/`i.e.` and
+honorifics retain their continuation behavior. Tests cover every timezone pattern
+in the current manuscript and all observed new-subject time boundaries. The
+current private registry has 12,922 sentence anchors, and the existing 60 pilot
+sentence aliases are unchanged.
 These exports remain pending; the corrected segmentation changes their content
 hashes before final timing maps are created.
 
@@ -81,6 +87,15 @@ records, checking generation/delivery/mastering metadata hashes, selected
 narration identity, MP3 paths and byte counts, checkpoint/QA bindings, and the
 decoded MP3 sample clock. Each recording includes its narrator ID, SHA-256,
 decoded duration, byte count, warnings, and private relative production path.
+
+The caller's `root` owns the current logical asset path:
+`Audiobook/<edition>/mastered/<track>.mp3`. Historical absolute paths retained in
+delivery manifests are checked for that exact logical edition/filename suffix,
+then reconciled against files under the current root. Moving or restoring the
+project does not rewrite production metadata or its checkpoint hashes. Wrong
+editions, filenames, traversal components, and local symlinks escaping the root
+are rejected. Physical byte verification reads the current-root file; it never
+falls back to an asset left at the historical path.
 
 The duration comes from decoded MP3 samples, rather than the lossless assembly
 clock used by historical delivery-manifest fields. Records initially have

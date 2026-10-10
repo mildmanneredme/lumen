@@ -119,9 +119,23 @@ def sentence_ranges(text):
     for match in re.finditer(r"[.!?][\"”']?(?=\s+|$)", text):
         ending = match.end()
         candidate = text[cursor:ending].strip()
-        if re.search(r"\b(?:Mr|Mrs|Ms|Dr|Prof|Sr|Jr|St|vs|etc|et al|a\.m|p\.m|e\.g|i\.e)\.$", candidate, re.I):
+        without_quote = candidate.rstrip('\"”\'')
+        if re.search(r"\b(?:Mr|Mrs|Ms|Dr|Prof|Sr|Jr|St|vs|e\.g|i\.e)\.$", without_quote, re.I):
             continue
-        if re.search(r"\b(?:[A-Z]\.)+$", candidate.rstrip('\"”\'')):
+        contextual = re.search(r"\b(?:etc|et al|a\.m|p\.m)\.$", without_quote, re.I)
+        if contextual:
+            following_text = text[ending:].lstrip().lstrip('\"“‘([')
+            following = re.match(r"(\w+)", following_text)
+            time_abbreviation = re.search(r"\b(?:a\.m|p\.m)\.$", without_quote, re.I)
+            # A capitalized subject may start a new sentence after a time.
+            # Named zones and explicit '<place> time' phrases continue it.
+            timezone = time_abbreviation and re.match(
+                r"(?:Greenwich Mean Time|Central European Time|Eastern|Pacific|Central|Mountain|Atlantic|"
+                r"GMT|UTC|CET|CEST|BST|EST|EDT|CST|CDT|MST|MDT|PST|PDT|IST)\b|"
+                r"[^\W\d_]\w*\s+[Tt]ime\b", following_text)
+            if following and (not following.group(1)[0].isupper() or timezone):
+                continue
+        elif re.search(r"\b(?:[A-Z]\.)+$", without_quote):
             following = re.match(r'\s*[\"“‘(\[]*([A-Za-z]+)', text[ending:])
             if following and following.group(1) not in sentence_openers:
                 continue
@@ -476,6 +490,24 @@ def load_project_registry(root, *, previous=None):
                           pilot=read_json(root / "web/data/chapter-001.json"))
 
 
+def recording_path(root, edition, track_id, declared_path):
+    """Map historical metadata to its expected logical asset in this checkout."""
+    logical = Path("Audiobook") / edition / "mastered" / f"{track_id}.mp3"
+    require(isinstance(declared_path, str) and bool(declared_path) and "\x00" not in declared_path,
+            f"{edition}/{track_id}: invalid recorded MP3 path")
+    declared = Path(declared_path)
+    require(".." not in declared.parts and
+            ((declared.is_absolute() and declared.parts[-len(logical.parts):] == logical.parts)
+             or (not declared.is_absolute() and declared.parts == logical.parts)),
+            f"{edition}/{track_id}: recorded MP3 path differs from logical edition/track")
+    path = root / logical
+    try:
+        require(root in path.resolve().parents, f"{edition}/{track_id}: local MP3 path escapes root")
+    except (OSError, RuntimeError) as exc:
+        raise ContentError(f"{edition}/{track_id}: cannot resolve local MP3 path: {exc}") from exc
+    return path
+
+
 def load_recording_inventory(root, registry):
     """Reconcile 182 metadata-bound MP3s; physical hash verification stays pending.
 
@@ -483,6 +515,7 @@ def load_recording_inventory(root, registry):
     This does not rehash gigabytes or mistake package completion for approval.
     """
     root = Path(root).resolve()
+    validate_registry(registry)
     recordings = []
     for edition, narrator_id in [("v7", "autonoe"), ("v8", "charon")]:
         job = root / "Audiobook" / edition
@@ -504,13 +537,13 @@ def load_recording_inventory(root, registry):
             require(track["narrationSha256"] == object_hash([{ "id": item["id"], "text": item["text"]}
                                                             for item in selected[int(row["key"])]]),
                     f"{edition}/{track['id']}: canonical narration identity differs")
-            path = job / "mastered" / f"{track['id']}.mp3"
+            path = recording_path(root, edition, track["id"], row.get("file"))
             qa_path = path.with_suffix(".qa.json")
             checkpoint_path = path.with_suffix(".checkpoint.json")
             qa, checkpoint = read_json(qa_path), read_json(checkpoint_path)
             binding = row.get("source_binding", {})
-            require(path.resolve() == Path(row.get("file", "")).resolve() and path.is_file()
-                    and path.stat().st_size == row.get("bytes"), f"{edition}/{track['id']}: MP3 path/size differs")
+            require(path.is_file() and path.stat().st_size == row.get("bytes"),
+                    f"{edition}/{track['id']}: local MP3 path/size differs")
             require(valid_hash(row.get("sha256")) and checkpoint.get("output_sha256", {}).get("mp3") == row["sha256"]
                     and binding.get("output_sha256") == checkpoint["output_sha256"]
                     and binding.get("checkpoint_sha256") == file_hash(checkpoint_path)
