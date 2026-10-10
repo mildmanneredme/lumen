@@ -479,12 +479,17 @@ def _copy_snapshot(root, destination, plan, *, capacity_descriptor, minimum_free
     state = {"schemaVersion": 1, "backupId": plan["backupId"], "planSha256": plan["planSha256"],
              "copyStatus": "incomplete", "remoteSyncStatus": "pending", "files": copied,
              "totalBytes": plan["totalBytes"], "copiedBytes": 0}
-    write_json(destination / "backup-state.json", state)
     remaining = plan["totalBytes"]
     manifest = None
     def check_capacity(copied=0):
         require(available_bytes(capacity_descriptor) >= remaining - copied + minimum_free_bytes,
                 "Insufficient local free space during backup; incomplete copy retained")
+    def write_metadata(path, value, **options):
+        # Replacement state needs its full temporary payload while the prior
+        # file still exists; final manifests need their full exclusive payload.
+        require(available_bytes(capacity_descriptor) >= remaining + minimum_free_bytes + len(encoded(value)),
+                "Insufficient local free space for backup metadata; incomplete copy retained")
+        write_json(path, value, **options)
     def check_outputs():
         require_directory_binding(destination, directory_binding)
         for path, binding in outputs:
@@ -502,6 +507,7 @@ def _copy_snapshot(root, destination, plan, *, capacity_descriptor, minimum_free
             if published:
                 require_file_binding(marker, published[0], "Published backup manifest")
             check_outputs()
+    write_metadata(destination / "backup-state.json", state)
     try:
         for row in rows:
             check_capacity()
@@ -520,7 +526,7 @@ def _copy_snapshot(root, destination, plan, *, capacity_descriptor, minimum_free
             copied.append({"path": row["path"], "bytes": count, "sha256": source_hash})
             state["copiedBytes"] += count
             remaining -= count
-            write_json(destination / "backup-state.json", state)
+            write_metadata(destination / "backup-state.json", state)
             if progress:
                 progress(len(copied), len(rows), state["copiedBytes"], plan["totalBytes"])
         # Earlier files must remain unchanged while later files are copied.
@@ -534,10 +540,10 @@ def _copy_snapshot(root, destination, plan, *, capacity_descriptor, minimum_free
                            "files": copied, "totalBytes": plan["totalBytes"]}, "manifestSha256")
         # Preparation is durable progress; only the manifest proves completion.
         state["copyStatus"] = "prepared"
-        write_json(destination / "backup-state.json", state)
+        write_metadata(destination / "backup-state.json", state)
         # Publish the immutable completion marker after every fallible state write.
-        write_json(destination / "backup-manifest.json", manifest, exclusive=True,
-                   created=owned_marker.append, published=published.append)
+        write_metadata(destination / "backup-manifest.json", manifest, exclusive=True,
+                       created=owned_marker.append, published=published.append)
         check_publication()
         completed(check_publication)
         return manifest
@@ -558,7 +564,7 @@ def _copy_snapshot(root, destination, plan, *, capacity_descriptor, minimum_free
         state["copyStatus"] = "incomplete"
         state["error"] = str(exc)
         try:
-            write_json(destination / "backup-state.json", state)
+            write_metadata(destination / "backup-state.json", state)
         except (OSError, BackupError):
             # Diagnostic persistence is best effort; preserve the primary error.
             pass

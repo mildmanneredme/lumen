@@ -42,6 +42,18 @@ class BackupReleaseTests(unittest.TestCase):
     def run_copy(self, plan=None):
         return backup.copy_snapshot(self.root, self.destination, plan or self.plan(), minimum_free_bytes=0)
 
+    def metadata_allocation_fixture(self, plan):
+        # Observe real JSON payloads on an independent tiny copy rather than
+        # assigning a guessed metadata allowance to exact-capacity fixtures.
+        reference = self.base / "metadata-reference" / plan["backupId"]
+        reference.parent.mkdir(parents=True)
+        fixed_now = backup.datetime(2026, 10, 10, 1, 2, 3, 123456, tzinfo=backup.timezone.utc)
+        with patch.object(backup, "datetime") as clock:
+            clock.now.return_value = fixed_now
+            backup.copy_snapshot(self.root, reference, plan, minimum_free_bytes=0)
+        metadata_bytes = sum(path.stat().st_size for path in reference.glob("*.json"))
+        return metadata_bytes, fixed_now
+
     def test_plan_is_deterministic_and_keeps_large_file_hashing_for_copy(self):
         first = self.plan()
         self.assertEqual(first, self.plan())
@@ -77,6 +89,137 @@ class BackupReleaseTests(unittest.TestCase):
         self.assertTrue(all("manifestSha256" not in value for name, value in writes if name == "backup-state.json"))
         self.assertNotIn("error", state)
         self.assertEqual(backup.verify_snapshot(self.destination)["manifestSha256"], manifest["manifestSha256"])
+
+    def test_initial_metadata_requires_payload_space_above_sources_and_reserve(self):
+        plan = self.plan()
+        reserve = 64
+        writes = []
+        original = backup.write_json
+        def tracked_write(path, value, **kwargs):
+            writes.append((path.name, copy.deepcopy(value)))
+            return original(path, value, **kwargs)
+        with patch.object(backup, "available_bytes", return_value=plan["totalBytes"] + reserve), \
+             patch.object(backup, "write_json", side_effect=tracked_write):
+            with self.assertRaisesRegex(backup.BackupError, "space.*metadata"):
+                backup.copy_snapshot(self.root, self.destination, plan, minimum_free_bytes=reserve)
+        self.assertEqual(writes, [])
+        self.assertFalse((self.destination / "backup-state.json").exists())
+        self.assertFalse((self.destination / "backup-manifest.json").exists())
+        self.assertFalse(any(path.is_file() for path in (self.destination / "files").rglob("*")))
+
+    def test_progress_metadata_and_diagnostic_cannot_spend_remaining_source_reserve(self):
+        plan = self.plan()
+        reserve = 64
+        available = [2 ** 30]
+        copied, writes = [], []
+        original_copy, original_write = backup.copy_hashed, backup.write_json
+        def copy_then_reduce_capacity(source, destination, **kwargs):
+            result = original_copy(source, destination, **kwargs)
+            copied.append(destination)
+            available[0] = plan["totalBytes"] - result[0] + reserve
+            return result
+        def tracked_write(path, value, **kwargs):
+            writes.append((path.name, copy.deepcopy(value)))
+            return original_write(path, value, **kwargs)
+        with patch.object(backup, "available_bytes", side_effect=lambda _: available[0]), \
+             patch.object(backup, "copy_hashed", side_effect=copy_then_reduce_capacity), \
+             patch.object(backup, "write_json", side_effect=tracked_write):
+            with self.assertRaisesRegex(backup.BackupError, "space.*metadata"):
+                backup.copy_snapshot(self.root, self.destination, plan, minimum_free_bytes=reserve)
+        self.assertEqual(len(copied), 1)
+        self.assertEqual(copied[0].read_bytes(), (self.root / plan["files"][0]["path"]).read_bytes())
+        self.assertEqual(len(writes), 1)
+        state = backup.read_json(self.destination / "backup-state.json")
+        self.assertEqual(state["copyStatus"], "incomplete")
+        self.assertEqual(state["copiedBytes"], 0)
+        self.assertEqual(state["files"], [])
+        self.assertNotIn("error", state)
+        self.assertFalse((self.destination / "backup-manifest.json").exists())
+
+    def test_final_metadata_cannot_consume_exact_remaining_reserve(self):
+        reserve = 64
+        original_write = backup.write_json
+        for phase in ["prepared", "manifest"]:
+            with self.subTest(phase=phase):
+                destination = self.destination.with_name("lumen-metadata-" + phase)
+                plan = backup.prepare_fileset(self.root, self.paths, destination.name)
+                available, writes = [2 ** 30], []
+                def tracked_write(path, value, **kwargs):
+                    writes.append((path.name, copy.deepcopy(value)))
+                    result = original_write(path, value, **kwargs)
+                    if path.name == "backup-state.json":
+                        last_progress = (value["copyStatus"] == "incomplete"
+                                         and value["copiedBytes"] == plan["totalBytes"] and "error" not in value)
+                        if (phase == "prepared" and last_progress) or (phase == "manifest" and value["copyStatus"] == "prepared"):
+                            available[0] = reserve
+                    return result
+                with patch.object(backup, "available_bytes", side_effect=lambda _: available[0]), \
+                     patch.object(backup, "write_json", side_effect=tracked_write):
+                    with self.assertRaisesRegex(backup.BackupError, "space.*metadata"):
+                        backup.copy_snapshot(self.root, destination, plan, minimum_free_bytes=reserve)
+                self.assertEqual(available[0], reserve)
+                self.assertFalse((destination / "backup-manifest.json").exists())
+                state = backup.read_json(destination / "backup-state.json")
+                self.assertEqual(state["copyStatus"], "incomplete" if phase == "prepared" else "prepared")
+                self.assertEqual(state["copiedBytes"], plan["totalBytes"])
+                self.assertNotIn("error", state)
+                self.assertTrue(all("error" not in value for _, value in writes))
+                self.assertTrue(all(name != "backup-manifest.json" for name, _ in writes))
+                if phase == "prepared":
+                    self.assertTrue(all(value["copyStatus"] != "prepared" for _, value in writes))
+                for name in self.paths:
+                    self.assertEqual((destination / "files" / name).read_bytes(), (self.root / name).read_bytes())
+                with self.assertRaises(backup.BackupError):
+                    backup.verify_snapshot(destination)
+
+    def test_prepared_state_replacement_requires_its_full_temporary_payload(self):
+        plan = self.plan()
+        reserve = 64
+        available, writes, required_payload = [2 ** 30], [], []
+        original_write = backup.write_json
+        def tracked_write(path, value, **kwargs):
+            writes.append((path.name, copy.deepcopy(value)))
+            result = original_write(path, value, **kwargs)
+            if path.name == "backup-state.json" and value["copyStatus"] == "incomplete" and value["copiedBytes"] == plan["totalBytes"] and "error" not in value:
+                next_state = copy.deepcopy(value)
+                next_state["copyStatus"] = "prepared"
+                required_payload.append(len(backup.encoded(next_state)))
+                available[0] = reserve + required_payload[0] - 1
+            return result
+        with patch.object(backup, "available_bytes", side_effect=lambda _: available[0]), \
+             patch.object(backup, "write_json", side_effect=tracked_write):
+            with self.assertRaisesRegex(backup.BackupError, "space.*metadata"):
+                backup.copy_snapshot(self.root, self.destination, plan, minimum_free_bytes=reserve)
+        self.assertEqual(len(required_payload), 1)
+        self.assertEqual(available[0], reserve + required_payload[0] - 1)
+        self.assertTrue(all(value["copyStatus"] == "incomplete" and "error" not in value for _, value in writes))
+        self.assertEqual(backup.read_json(self.destination / "backup-state.json")["copiedBytes"], plan["totalBytes"])
+        self.assertFalse((self.destination / "backup-manifest.json").exists())
+
+    def test_diagnostic_metadata_capacity_failure_preserves_primary_copy_error(self):
+        plan = self.plan()
+        reserve = 64
+        available, writes = [2 ** 30], []
+        original_copy, original_write = backup.copy_hashed, backup.write_json
+        def fail_after_copy(source, destination, **kwargs):
+            original_copy(source, destination, **kwargs)
+            available[0] = plan["totalBytes"] + reserve
+            raise OSError("fixture primary copy failure")
+        def tracked_write(path, value, **kwargs):
+            writes.append((path.name, copy.deepcopy(value)))
+            return original_write(path, value, **kwargs)
+        with patch.object(backup, "available_bytes", side_effect=lambda _: available[0]), \
+             patch.object(backup, "copy_hashed", side_effect=fail_after_copy), \
+             patch.object(backup, "write_json", side_effect=tracked_write):
+            with self.assertRaisesRegex(backup.BackupError, "fixture primary copy failure") as caught:
+                backup.copy_snapshot(self.root, self.destination, plan, minimum_free_bytes=reserve)
+        self.assertIsInstance(caught.exception.__cause__, OSError)
+        self.assertEqual(str(caught.exception.__cause__), "fixture primary copy failure")
+        self.assertEqual(len(writes), 1)
+        state = backup.read_json(self.destination / "backup-state.json")
+        self.assertEqual(state["copyStatus"], "incomplete")
+        self.assertNotIn("error", state)
+        self.assertFalse((self.destination / "backup-manifest.json").exists())
 
     def test_completion_metadata_failures_keep_new_copy_incomplete_and_prior_backup_immutable(self):
         earlier = self.destination.parent / "lumen-backup-earlier"
@@ -1329,7 +1472,8 @@ class BackupReleaseTests(unittest.TestCase):
         plan = self.plan()
         planned_bytes = next(row["bytes"] for row in plan["files"] if row["path"] == name)
         reserve = backup.CHUNK_BYTES // 2
-        initial_free = plan["totalBytes"] + reserve
+        metadata_bytes, _ = self.metadata_allocation_fixture(plan)
+        initial_free = plan["totalBytes"] + reserve + metadata_bytes
         original_fdopen = backup.os.fdopen
         source_inode = source.stat().st_ino
         growth = b"g" * (backup.CHUNK_BYTES * 3)
@@ -1358,7 +1502,7 @@ class BackupReleaseTests(unittest.TestCase):
             return GrowingReader(stream) if mode == "rb" and os.fstat(descriptor).st_ino == source_inode else stream
 
         def disk_space(_):
-            copied = sum(path.stat().st_size for path in (self.destination / "files").rglob("*") if path.is_file())
+            copied = sum(path.stat().st_size for path in self.destination.rglob("*") if path.is_file())
             return type("Usage", (), {"free": initial_free - copied})()
 
         with patch.object(backup.os, "fdopen", side_effect=growing_fdopen), \
@@ -1382,11 +1526,16 @@ class BackupReleaseTests(unittest.TestCase):
         source.write_bytes(b"x" * (backup.CHUNK_BYTES * 2 + 17))
         plan = backup.prepare_fileset(self.root, [selected], "lumen-backup-fixture")
         reserve = 64
+        metadata_bytes, _ = self.metadata_allocation_fixture(plan)
         target = self.destination / "files" / selected
         def available(_):
             written = target.stat().st_size if target.exists() else 0
-            unrelated_usage = 1 if written >= backup.CHUNK_BYTES else 0
-            return type("Usage", (), {"free": plan["totalBytes"] + reserve - written - unrelated_usage})()
+            metadata_written = sum(path.stat().st_size for path in self.destination.glob("*.json"))
+            # Another writer consumes the remaining JSON headroom and one byte
+            # after the first chunk, keeping the original source-copy boundary.
+            unrelated_usage = metadata_bytes - metadata_written + 1 if written >= backup.CHUNK_BYTES else 0
+            return type("Usage", (), {"free": plan["totalBytes"] + reserve + metadata_bytes
+                                      - written - metadata_written - unrelated_usage})()
         with patch.object(backup, "available_bytes", side_effect=lambda descriptor: available(descriptor).free):
             with self.assertRaisesRegex(backup.BackupError, "space.*incomplete"):
                 backup.copy_snapshot(self.root, self.destination, plan, minimum_free_bytes=reserve)
@@ -1405,10 +1554,13 @@ class BackupReleaseTests(unittest.TestCase):
         (self.root / selected).write_bytes(b"x" * (backup.CHUNK_BYTES * 2 + 17))
         plan = self.plan()
         reserve = 64
+        metadata_bytes, fixed_now = self.metadata_allocation_fixture(plan)
         def available(_):
-            written = sum(path.stat().st_size for path in (self.destination / "files").rglob("*") if path.is_file())
-            return type("Usage", (), {"free": plan["totalBytes"] + reserve - written})()
-        with patch.object(backup, "available_bytes", side_effect=lambda descriptor: available(descriptor).free):
+            written = sum(path.stat().st_size for path in self.destination.rglob("*") if path.is_file())
+            return type("Usage", (), {"free": plan["totalBytes"] + reserve + metadata_bytes - written})()
+        with patch.object(backup, "available_bytes", side_effect=lambda descriptor: available(descriptor).free), \
+             patch.object(backup, "datetime") as clock:
+            clock.now.return_value = fixed_now
             manifest = backup.copy_snapshot(self.root, self.destination, plan, minimum_free_bytes=reserve)
         self.assertEqual(manifest["copyStatus"], "complete")
         self.assertEqual(available(None).free, reserve)

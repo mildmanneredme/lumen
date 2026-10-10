@@ -42,7 +42,7 @@ The script streams each source once into a newly created file, calculates its SH
 
 Both the local state and final manifest keep `remoteSyncStatus: pending`. Copy completion and a matching local restore are not proof of cloud upload. Reports must distinguish these states.
 
-Copy and restore reserve checks use `fstatvfs` on the original open destination-directory descriptor. A renamed or replaced logical path cannot redirect capacity measurements to another filesystem. Restored files and their containing directory entries are synced before success is recorded.
+Every directory progress, prepared-state, completion-manifest and diagnostic JSON write also reserves its full encoded payload, including the temporary replacement while the old state exists. Copy and restore reserve checks use `fstatvfs` on the original open destination-directory descriptor. A renamed or replaced logical path cannot redirect capacity measurements to another filesystem. Restored files and their containing directory entries are synced before success is recorded.
 
 ## Remote verification and restore proof
 
@@ -74,6 +74,6 @@ For disaster recovery, fetch the complete cloud snapshot into a fresh directory,
 python3 -m unittest discover -s web/tests -p test_backup_release.py -v
 ```
 
-The 76 backup fixtures use tiny temporary files and cover exact copying, production hash mismatch, source changes and same-size replacements after planning, nonblocking FIFO rejection, OAuth and parent-directory credential/receipt and generated-directory exclusions, symlink rejection, snapshot and restore disk-space reserves, earlier-backup preservation, immutable manifests, and verified sample restore/tamper failure. Manifest descriptors remain bound throughout verification and restore, and success checks recheck earlier files and the logical restored destination. Flush, fsync, close, short-write and directory-sync fixtures exercise publication diagnostics and output identities without extra production hash reads. They do not upload files or read production audio bodies. A further 50 fixtures verify the archive route described in [archive-backup.md](archive-backup.md).
+The 81 backup fixtures use tiny temporary files and cover exact copying, production hash mismatch, source changes and same-size replacements after planning, nonblocking FIFO rejection, OAuth and parent-directory credential/receipt and generated-directory exclusions, symlink rejection, snapshot and restore disk-space reserves, earlier-backup preservation, immutable manifests, and verified sample restore/tamper failure. Manifest descriptors remain bound throughout verification and restore, and success checks recheck earlier files and the logical restored destination. Flush, fsync, close, short-write and directory-sync fixtures exercise publication diagnostics and output identities without extra production hash reads. They do not upload files or read production audio bodies. A further 50 fixtures verify the archive route described in [archive-backup.md](archive-backup.md).
 
 Destination discovery and engineering preparation are complete. The actual versioned copy, cloud-sync confirmation, remote inventory/checksum evidence, and production restore sample remain pending until their recorded checks have finished.

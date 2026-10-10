@@ -143,7 +143,7 @@ does not establish cloud durability.
 python3 -m unittest discover -s web/tests -p test_archive_backup.py
 ```
 
-Fifty archive fixtures and 76 backup fixtures verify original bytes, ZIP64 streaming, deterministic paths
+Fifty archive fixtures and 81 backup fixtures verify original bytes, ZIP64 streaming, deterministic paths
 and timestamps, checksum binding, full verification, sample restore, exclusive
 files, public-path and symlink defenses, source identity changes, reserve and
 size-cap failures, malformed entries, source replacement after planning,
