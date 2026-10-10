@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#171a1b">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Lumen · Narration audit</title>
+  <link rel="stylesheet" href="/audit/audit.css">
+  <script src="/audit/audit.js" defer></script>
+</head>
+<body>
+  <header class="masthead">
+    <div><span class="wordmark">LUMEN</span><span class="edition-label">AUTHOR WORKSPACE</span></div>
+    <p>Narration audit</p>
+  </header>
+  <main>
+    <section class="introduction">
+      <p class="eyebrow">LISTEN · DECIDE · REFINE</p>
+      <h1>Every word deserves a hearing.</h1>
+      <p class="lede">Review the passages flagged by our checks. Listen to the recording, compare it with the manuscript, and tell us what should change.</p>
+      <div class="overview"><p id="coverage" role="status">Loading audio review coverage…</p><p id="review-counts">Loading decisions…</p></div>
+      <p id="source-coverage" class="quiet small"></p>
+      <p class="quiet">A flag is a reason to listen. Speech recognition can mishear a correct recording. Keeping a passage approves this flagged piece; it does not approve the entire chapter.</p>
+    </section>
+    <section id="load-error" class="notice" hidden>
+      <h2>Audit unavailable</h2>
+      <p id="load-error-message">Start the local audit server to load the recordings and saved feedback.</p>
+      <button id="reload-audit" type="button">Try again</button>
+    </section>
+    <div id="workspace" hidden>
+      <section class="filters" aria-label="Filter flagged passages">
+        <label>Edition<select id="edition-filter"><option value="all">Both narrators</option></select></label>
+        <label>Review source<select id="source-filter"><option value="all">All sources</option></select></label>
+        <label>Priority<select id="severity-filter"><option value="all">All priorities</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option></select></label>
+        <label>Decision<select id="status-filter"><option value="all">All decisions</option><option value="pending">Not reviewed</option><option value="accepted">Keep as recorded</option><option value="regenerate">Regenerate</option><option value="unsure">Needs discussion</option></select></label>
+        <label class="search-field">Find a passage<input id="search" type="search" placeholder="Chapter, words, or flag…" autocomplete="off"></label>
+      </section>
+      <div class="audit-layout">
+        <aside class="queue-pane" aria-label="Review queue">
+          <div class="queue-heading"><h2>Flagged passages</h2><span id="queue-count"></span></div>
+          <p class="quiet small">Unreviewed passages first, then priority.</p>
+          <div id="candidate-list" class="candidate-list"></div>
+          <a class="action export" id="export-queue" href="/api/queue" download="lumen-regeneration-queue.json">Export regeneration queue <span aria-hidden="true">↗</span></a>
+          <p class="quiet small">Only passages you mark for regeneration enter the queue. Exporting does not generate new audio.</p>
+        </aside>
+        <section class="review-pane" aria-label="Listen and review">
+          <div id="empty-state" class="empty-state" hidden><h2>Nothing to review here.</h2><p id="empty-message"></p></div>
+          <article id="candidate" hidden>
+            <header class="candidate-header">
+              <div><p id="candidate-meta" class="eyebrow"></p><h2 id="candidate-title"></h2></div>
+              <span id="severity-badge" class="badge"></span>
+            </header>
+            <p id="flag-category" class="flag-category"></p>
+            <p id="candidate-source" class="quiet small"></p>
+            <p id="precision" class="precision"></p>
+            <section class="listening" aria-label="Passage playback">
+              <div class="window-label"><span>FLAGGED WINDOW</span><span id="window-time"></span></div>
+              <audio id="audit-audio" controls preload="metadata" aria-label="Flagged narration recording"></audio>
+              <div class="transport">
+                <button id="skip-back" type="button" aria-label="Back 5 seconds">−5s</button>
+                <button id="play-window" type="button">Listen to passage</button>
+                <button id="skip-forward" type="button" aria-label="Forward 5 seconds">+5s</button>
+                <label class="rate-label"><span class="sr-only">Playback speed</span><select id="playback-rate" aria-label="Playback speed"><option value="0.75">0.75×</option><option value="1" selected>1×</option><option value="1.25">1.25×</option><option value="1.5">1.5×</option></select></label>
+              </div>
+              <p id="audio-status" class="quiet small" role="status">Press Listen to passage to play the flagged window. Native audio controls let you hear the surrounding recording.</p>
+            </section>
+            <section class="comparison" aria-label="Compare transcript and manuscript">
+              <div class="comparison-cell"><h3>Manuscript</h3><p id="expected"></p></div>
+              <div class="comparison-cell"><h3>Recognised audio</h3><p id="heard"></p><p class="quiet small">Machine transcription; confirm by listening.</p></div>
+            </section>
+            <details class="context" open><summary>Manuscript context</summary><p id="expected-context"></p></details>
+            <form id="decision-form">
+              <label>Your decision<select id="decision-status"><option value="pending">Not reviewed</option><option value="accepted">Keep as recorded</option><option value="regenerate">Regenerate this piece</option><option value="unsure">Needs discussion</option></select></label>
+              <label>Notes for the correction<textarea id="feedback-notes" rows="4" maxlength="10000" placeholder="What did you hear? Note missing words, pronunciation, pacing, or the change you want."></textarea></label>
+              <div class="save-actions"><button id="save-decision" class="primary" type="submit">Save decision</button><button id="save-next" type="button">Save &amp; next</button></div>
+              <p id="save-status" class="save-status" role="status" aria-live="polite">Feedback saves to the local audit workspace.</p>
+              <div id="conflict-review" class="conflict-review" hidden><p id="conflict-detail" class="quiet small"></p><button id="review-latest" type="button">Review latest saved feedback</button></div>
+            </form>
+            <nav class="passage-navigation" aria-label="Passage navigation"><button id="previous-candidate" type="button">← Previous</button><span id="candidate-position"></span><button id="next-candidate" type="button">Next →</button></nav>
+          </article>
+        </section>
+      </div>
+    </div>
+  </main>
+  <footer>Private author review · Saved decisions stay tied to the recording you heard.</footer>
+  <dialog id="unsaved-dialog" aria-labelledby="unsaved-title">
+    <h2 id="unsaved-title">Keep your feedback?</h2>
+    <p>This passage has unsaved changes. Save them before continuing, or discard the changes you just made.</p>
+    <p id="guard-error" class="error" role="alert"></p>
+    <div class="dialog-actions"><button id="guard-save" class="primary" type="button">Save &amp; continue</button><button id="guard-discard" type="button">Discard changes</button><button id="keep-editing" type="button">Keep editing</button></div>
+  </dialog>
+</body>
+</html>
