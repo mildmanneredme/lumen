@@ -8,6 +8,21 @@ const JSON_LIMIT = 2 * 1024 * 1024;
 const sha256 = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
 const isHash = value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
 const object = value => value && typeof value === 'object' && !Array.isArray(value);
+function canonicalAccessCode(value) {
+  if (typeof value !== 'string' || value.length > 256) return null;
+  const words = value.trim().toLowerCase().split(/[\s\u2010-\u2015-]+/);
+  return words.length === 6 && words.every(word => /^[a-z]{3,5}$/.test(word)) ? words.join('-') : null;
+}
+function credentialCandidates(value) {
+  const candidates = [];
+  // Opaque invitations keep their exact case and bytes. A word-like legacy
+  // token must win before trying the forgiving shared-code spelling.
+  if (typeof value === 'string' && /^[a-zA-Z0-9_-]{43}$/.test(value) &&
+    Buffer.from(value,'base64url').toString('base64url') === value) candidates.push(value);
+  const code = canonicalAccessCode(value);
+  if (code && !candidates.includes(code)) candidates.push(code);
+  return candidates;
+}
 function requireValue(condition) { if (!condition) throw new Error('Invalid private reader configuration'); }
 function equal(left, right) {
   const a = Buffer.from(left), b = Buffer.from(right);
@@ -82,7 +97,7 @@ function json(value, status = 200, extra = {}) {
   return new Response(JSON.stringify(value), {status, headers:headers({'Content-Type':'application/json; charset=utf-8',...extra})});
 }
 function failure(status) {
-  return json({error: status === 401 ? 'An invitation is required.' : status === 503 ?
+  return json({error: status === 401 ? 'An access code is required.' : status === 503 ?
     'The private reader is temporarily unavailable.' : status === 404 ? 'Not found.' : 'Request rejected.'}, status);
 }
 function sameOrigin(request, config, writing = false) {
@@ -192,10 +207,14 @@ function createPrivateReader({env = process.env, now = Date.now, loadIndex, getB
       let body;
       try { body=JSON.parse((await boundedBytes(request.body,BODY_LIMIT)).toString('utf8')); }
       catch (_) { return failure(contentLength && Number(contentLength)>BODY_LIMIT ? 413 : 400); }
-      if (!object(body) || typeof body.invite !== 'string' || !/^[a-zA-Z0-9_-]{43}$/.test(body.invite) ||
-        Buffer.from(body.invite,'base64url').toString('base64url') !== body.invite) return failure(400);
-      const hash = sha256(body.invite);
-      const invite = config.invites.find(value => equal(value.tokenHash,hash) && !value.revoked && value.expiresAt > clock);
+      const candidates = object(body) ? credentialCandidates(body.invite) : [];
+      if (!candidates.length) return failure(400);
+      let invite;
+      for (const credential of candidates) {
+        const hash = sha256(credential);
+        invite = config.invites.find(value => equal(value.tokenHash,hash) && !value.revoked && value.expiresAt > clock);
+        if (invite) break;
+      }
       if (!invite) return failure(401);
       const signed = signedSession(invite,config,clock);
       return json({authenticated:true},200,{'Set-Cookie':`${SESSION_COOKIE}=${signed.value}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${signed.expires-clock}`});

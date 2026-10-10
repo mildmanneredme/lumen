@@ -451,6 +451,37 @@ let browser;
   regression('an invalid invitation cannot cancel an explicit sign-out exchange',(await cookieContext.cookies(origin)).every(cookie=>cookie.name!=='lumen_fixture_session'));
   regression('an invalid invitation during logout cannot keep the old reader unlocked',await cookieReader.evaluate(()=>!window.LUMEN_BOOK && !document.body.classList.contains('authenticated')));
   await cookieContext.close();cookieFixture=null;
+  const sharedCode='acorn-blend-choir-drift-eager-flock',legacyFallback=Buffer.alloc(32,11).toString('base64url');
+  cookieFixture={tokens:new Map([[sharedCode,'A'],[legacyFallback,'B']]),held:new Set(),responses:new Map(),posts:[]};
+  const openCodeReader=async value=>{
+    const context=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,serviceWorkers:'block'}),page=await context.newPage();
+    page.on('pageerror',error=>errors.push(String(error)));
+    await page.route('**/api/book',route=>route.fulfill({json:manifest}));await page.route('**/fixture/**',fixtureRoute);
+    await page.goto(origin,{waitUntil:'domcontentloaded'});await page.waitForFunction(()=>!document.querySelector('#invite-submit').disabled);
+    await page.locator('#invite-code').fill(value);await page.locator('#invite-submit').click();await page.waitForTimeout(200);
+    return {context,page,opened:await page.evaluate(()=>!!window.LUMEN_BOOK)};
+  };
+  const sharedReader=await openCodeReader('  ACORN blend — choir -DRIFT eager FLOCK  ');
+  regression('the welcome form prioritizes a memorable access code with a clear help and creation disclosure',await sharedReader.page.evaluate(()=>
+    document.querySelector('label[for="invite-code"]').textContent==='Access code' &&
+    document.querySelector('#access-gate').textContent.includes('For help or feedback, contact the person who shared your access code.') &&
+    document.querySelector('#access-gate').textContent.includes('AI-generated narration. Illustrations are in preparation.') &&
+    document.querySelector('.narration-credit').textContent==='AI-generated narration. Illustrations are in preparation.'));
+  regression('typing a shared code with capital letters, spaces and dashes opens an actual cookie session',sharedReader.opened &&
+    (await sharedReader.context.cookies(origin)).some(cookie=>cookie.name==='lumen_fixture_session' && cookie.value==='A') && cookieFixture.posts.at(-1)===sharedCode);
+  regression('the shared code is cleared after access and never enters browser storage or the URL',sharedReader.opened && await sharedReader.page.evaluate(code=>
+    document.querySelector('#invite-code').value==='' && !location.href.includes(code) &&
+    !Object.values(localStorage).some(value=>value.includes(code)) && !Object.values(sessionStorage).some(value=>value.includes(code)),sharedCode));
+  const sharedPeer=await openCodeReader(sharedCode);
+  regression('a second browser can use the same access code without replacing the first reader cookie',sharedReader.opened && sharedPeer.opened &&
+    (await sharedReader.context.cookies(origin)).some(cookie=>cookie.value==='A') && (await sharedPeer.context.cookies(origin)).some(cookie=>cookie.value==='A'));
+  if(sharedReader.opened) {
+    await sharedReader.page.locator('#settings-open').click();await sharedReader.page.locator('#sign-out-settings').click();
+    await sharedReader.page.waitForFunction(()=>!document.body.classList.contains('authenticated'));
+  }
+  regression('shared-code sign out removes its cookie while another reader stays signed in',sharedReader.opened && sharedPeer.opened &&
+    (await sharedReader.context.cookies(origin)).every(cookie=>cookie.name!=='lumen_fixture_session') && await sharedPeer.page.evaluate(()=>!!window.LUMEN_BOOK));
+  await sharedReader.context.close();await sharedPeer.context.close();cookieFixture=null;
   const voiceRetryFailures=['/fixture/chapter-001-charon.json'],voiceRetryReader=await fixtureContext({failures:voiceRetryFailures});
   await voiceRetryReader.page.goto(origin,{waitUntil:'domcontentloaded'});await ready(voiceRetryReader.page);
   await voiceRetryReader.page.locator('#seek').evaluate(el=>{el.value='3';el.dispatchEvent(new Event('input',{bubbles:true}));});
@@ -931,7 +962,7 @@ let browser;
   await guest.route('**/api/book',route=>{privateRequests++;return route.fulfill({json:manifest});});
   await guest.route('**/fixture/**',fixtureRoute);
   await guest.goto(origin,{waitUntil:'domcontentloaded'});
-  await guest.waitForFunction(()=>document.querySelector('#access-status').textContent.includes('Use your invitation'));
+  await guest.waitForFunction(()=>document.querySelector('#access-status').textContent.includes('Use your access code'));
   check('guest shell never requests the private book',privateRequests===0);
   check('guest has no book prose or audio source',await guest.evaluate(()=>!document.querySelector('#prose').textContent && !document.querySelector('#narration').getAttribute('src')));
   await guest.locator('#invite-code').fill('b'.repeat(43));await guest.locator('#invite-submit').click();
@@ -968,7 +999,7 @@ let browser;
   regression('phone sign out resets the lock-screen audio position',await guest.evaluate(()=>window.fixtureMediaPositions.at(-1)===null));
   check('sign out preserves the saved listening place',await guest.evaluate(()=>JSON.parse(localStorage.getItem('lumen-book-v2')).lastPosition.audioTime>2));
   await guest.reload({waitUntil:'domcontentloaded'});
-  await guest.waitForFunction(()=>document.querySelector('#access-status').textContent.includes('Use your invitation'));
+  await guest.waitForFunction(()=>document.querySelector('#access-status').textContent.includes('Use your access code'));
   check('returning signed-out reader remains locked',!authenticated);
   const gapPayload=payloads.get('/fixture/chapter-001-autonoe.json'),paragraph=gapPayload.paragraphs[0];
   gapPayload.schemaVersion=2;Object.assign(paragraph.sentences[1],{start:null,end:null,syncStatus:'unavailable'});paragraph.end=paragraph.sentences[0].end;
