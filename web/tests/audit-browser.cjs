@@ -21,13 +21,14 @@ const candidates = [
   {candidateId:'v7-014-c', edition:'v7', narrator:'Autonoe', chapter:14, title:'Chapter 14', chunkId:'014-01', audioHash:'c'.repeat(64), expected:'His name was Adrian.', heard:'', expectedContext:'His name was Adrian.', category:'omission', severity:'low', start:30, end:35, precision:'technical measurement', scope:'chapter', source:'OpenAI / mastered chapter', audioUrl:'/audio.mp3', decision:{status:'accepted',notes:'Sounds good.',revision:1}},
   {candidateId:'local:v8-007-d', edition:'v8', narrator:'Charon', chapter:7, title:'Chapter 7', chunkId:'007-01', audioHash:'d'.repeat(64), expected:'', heard:'Unwritten words.', expectedContext:'The intended manuscript passage.', category:'addition', severity:'high', start:40, end:45, precision:'local_whisper_approximate', scope:'Local Whisper estimate in the original source take, before mastering. unresolved_second_pass_mismatch', source:'Local ASR / source take', audioUrl:'/audio.mp3', decision:{status:'accepted',notes:'Earlier review.',revision:1}}
 ];
-let failSave = null, failLoad = false, empty = false, requests = [];
+const stressCandidates=Array.from({length:240},(_,i)=>({...candidates[0],candidateId:`stress-${i}`,chapter:i+1,title:`Chapter ${i+1} — ${'UnbrokenReportTitle'.repeat(12)}`,chunkId:`clip-${'f'.repeat(180)}`,category:`possible_omission_${'LongClassification'.repeat(12)}`,decision:{status:'pending',notes:'',revision:0}}));
+let failSave = null, failLoad = false, empty = false, stress = false, requests = [];
 function json(response, code, body) { response.writeHead(code, {'Content-Type':'application/json'}); response.end(JSON.stringify(body)); }
 const server = http.createServer((request,response) => {
   const url = new URL(request.url, 'http://localhost');
   if (url.pathname === '/api/audit') {
     if (failLoad) return json(response,503,{error:'Audit data unavailable'});
-    return json(response,200,{schemaVersion:1,csrfToken:'fixture-token',coverage:{complete:false,selected:496,checked:180},candidates:empty?[]:candidates});
+    return json(response,200,{schemaVersion:1,csrfToken:'fixture-token',coverage:{complete:false,selected:496,checked:180},candidates:empty?[]:stress?stressCandidates:candidates});
   }
   if (url.pathname === '/api/decisions' && request.method === 'POST') {
     let body=''; request.on('data', chunk => body+=chunk); request.on('end', () => {
@@ -214,6 +215,28 @@ async function checkAsync(name, fn) { await fn(); report.checks.push({name,pass:
       await page.locator('#empty-state').waitFor({state:'visible'});
       assert.match(await page.locator('#empty-state').textContent(),/no flagged/i);
       assert.match(await page.locator('#coverage').textContent(),/in progress/i);
+    });
+    await checkAsync('large queues preserve row text and separation on desktop and phones',async()=>{
+      empty=false;stress=true;
+      for(const view of [{page:keyboard,width:1280,height:900},{page,width:320,height:844},{page,width:390,height:844}]){
+        await view.page.setViewportSize({width:view.width,height:view.height});await view.page.reload();
+        await view.page.waitForFunction(()=>document.querySelectorAll('.queue-item').length===240);
+        const layout=await view.page.evaluate(()=>{
+          const rows=[...document.querySelectorAll('.queue-item')];
+          return {width:innerWidth,scroll:document.documentElement.scrollWidth,failures:rows.flatMap((row,index)=>{
+            const rect=row.getBoundingClientRect(),next=rows[index+1]?.getBoundingClientRect(),faults=[];
+            for(const child of row.children){
+              const range=document.createRange();range.selectNodeContents(child);
+              for(const r of [child.getBoundingClientRect(),...range.getClientRects()])if(r.left<rect.left-1||r.right>rect.right+1||r.top<rect.top-1||r.bottom>rect.bottom+1)faults.push({index,kind:'text exceeds button',buttonHeight:rect.height,childHeight:r.height,childBottom:r.bottom,buttonBottom:rect.bottom});
+            }
+            if(next&&rect.bottom>next.top+1)faults.push({index,kind:'rows overlap'});
+            return faults;
+          })};
+        });
+        assert.ok(layout.scroll<=layout.width,`large queue overflows at ${view.width}`);
+        assert.deepEqual(layout.failures,[],`large queue row content at ${view.width}`);
+        const file=path.join(out,`audit-large-queue-${view.width}.png`);await view.page.screenshot({path:file,fullPage:true});report.screenshots.push(file);
+      }
     });
     check('no page JavaScript errors',()=>assert.deepEqual(report.errors,[]));
     await context.close();await desktop.close();
