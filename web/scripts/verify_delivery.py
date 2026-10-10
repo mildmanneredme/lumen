@@ -51,14 +51,38 @@ def origin_of(url, origin_only=False):
         port = parsed.port
     except ValueError:
         raise InventoryError("Invalid URL") from None
+    if not parsed.netloc.isascii():
+        raise InventoryError("URL authority must use ASCII host and port syntax")
+    if (("[" in parsed.netloc or "]" in parsed.netloc) and
+            re.fullmatch(r"\[[0-9a-fA-F:.]+\](?::[0-9]*)?", parsed.netloc) is None):
+        raise InventoryError("Bracketed URL authority must contain only an IPv6 host and optional port")
     if (parsed.scheme not in ("https", "http") or not parsed.hostname or
             parsed.username is not None or parsed.password is not None or parsed.fragment):
         raise InventoryError("HTTP URLs must have a host and no userinfo or fragment")
     if origin_only and (parsed.path not in ("", "/") or parsed.query):
         raise InventoryError("Origins must not contain paths or query strings")
+    if port is not None and not 0 < port < 65536:
+        raise InventoryError("URL port must be a positive canonical port")
     host = parsed.hostname.lower()
+    if not host.isascii() or "%" in host:
+        raise InventoryError("URL hosts must use canonical ASCII or explicit punycode")
     if ":" in host:
-        host = "[" + host + "]"
+        try:
+            host = "[" + ipaddress.IPv6Address(host).compressed + "]"
+        except ipaddress.AddressValueError:
+            raise InventoryError("URL host must be a canonical IPv6 address") from None
+    else:
+        name = host.removesuffix(".")
+        if len(name) > 253:
+            raise InventoryError("URL DNS host exceeds its maximum length")
+        try:
+            host = str(ipaddress.IPv4Address(name))
+        except ipaddress.AddressValueError:
+            if (re.fullmatch(r"[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?\.?", host) is None or
+                    any(not 0 < len(label) <= 63 or label.startswith("-") or label.endswith("-")
+                        for label in name.split(".")) or
+                    re.fullmatch(r"(?:[0-9]+|0x[0-9a-f]*)", name.split(".")[-1]) is not None):
+                raise InventoryError("URL host must be canonical DNS or IPv4; legacy numeric forms are forbidden")
     default = 443 if parsed.scheme == "https" else 80
     return f"{parsed.scheme}://{host}" + (f":{port}" if port and port != default else "")
 
@@ -73,7 +97,8 @@ def is_loopback(origin):
     if host == "localhost":
         return True
     try:
-        return ipaddress.ip_address(host).is_loopback
+        address = ipaddress.ip_address(host)
+        return address.is_loopback or bool(getattr(address, "ipv4_mapped", None) and address.ipv4_mapped.is_loopback)
     except ValueError:
         return False
 
