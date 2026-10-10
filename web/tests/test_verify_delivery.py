@@ -187,7 +187,8 @@ class DeliveryHTTPTests(unittest.TestCase):
                         delivery.verify_inventory(inventory, allow_origins=["https://media.example"])
                     opened.assert_not_called()
                     origin, _, _ = delivery.validate_inventory(inventory, ["https://media.example"], True, False, None)
-                    self.assertEqual(origin, inventory["appOrigin"])
+                    canonical_host = "127.0.0.1" if host == "127.0.0.1." else host
+                    self.assertEqual(origin, scheme + "://" + canonical_host + ":8123")
                     self.assertEqual(self.requests, [])
 
     def test_root_dot_loopback_media_preserves_explicit_allowlist_policy(self):
@@ -305,6 +306,103 @@ class DeliveryHTTPTests(unittest.TestCase):
     def test_conflicting_duplicate_max_age_cannot_hide_a_zero_lifetime(self):
         self.cache_headers = ["public, max-age=31536000, immutable", "max-age=0"]
         self.assertFalse(self.verify()["deliveryVerified"])
+
+
+class OriginPolicyTests(unittest.TestCase):
+    def inventory(self):
+        payload = b"delivery origin fixture"
+        return {"schemaVersion": 1, "appOrigin": "https://reader.example", "mediaOrigins": ["https://media.example"],
+                "assets": [{"url": "https://media.example/audio.mp3", "bytes": len(payload),
+                            "sha256": hashlib.sha256(payload).hexdigest(), "contentType": "audio/mpeg", "immutable": True,
+                            "samples": [{"start": start, "end": end,
+                                         "sha256": hashlib.sha256(payload[start:end + 1]).hexdigest()}
+                                        for start, end in delivery.sample_ranges(len(payload))]}]}
+
+    def test_ambiguous_ipv4_forms_reject_in_every_origin_field_before_network(self):
+        for host in ("127.1", "127.0.1", "2130706433", "0x7f000001", "0177.0.0.1", "127.000.000.001", "0x7f.1"):
+            for root_dot in ("", "."):
+                origin = "https://" + host + root_dot
+                for field in ("appOrigin", "mediaOrigins", "allowlist", "assetURL"):
+                    for allow_local in (False, True):
+                        with self.subTest(host=host, root_dot=root_dot, field=field, allow_local=allow_local):
+                            inventory, allowed = self.inventory(), ["https://media.example"]
+                            if field == "appOrigin":
+                                inventory["appOrigin"] = origin
+                            elif field == "mediaOrigins":
+                                inventory["mediaOrigins"].append(origin)
+                            elif field == "allowlist":
+                                allowed.append(origin)
+                            else:
+                                inventory["mediaOrigins"] = allowed = [origin]
+                                inventory["assets"][0]["url"] = origin + "/audio.mp3?signature=fixture"
+                            with patch.object(delivery, "build_opener") as opened:
+                                with self.assertRaisesRegex(delivery.InventoryError, "canonical|host"):
+                                    delivery.verify_inventory(inventory, allow_origins=allowed, allow_loopback=allow_local)
+                                opened.assert_not_called()
+
+    def test_supported_hosts_have_canonical_origins_without_dns_resolution(self):
+        for url, origin in [
+            ("https://READER.example:443/audio.mp3", "https://reader.example"),
+            ("https://reader.example./", "https://reader.example."),
+            ("https://xn--mnich-kva.example:8443/media", "https://xn--mnich-kva.example:8443"),
+            ("http://localhost.:80/media", "http://localhost."),
+            ("https://127.0.0.1.:443/media", "https://127.0.0.1"),
+            ("https://192.0.2.1:8443/media", "https://192.0.2.1:8443"),
+            ("https://[0:0:0:0:0:0:0:1]:443/media", "https://[::1]"),
+            ("https://[2001:0db8:0:0:0:0:0:1]/media", "https://[2001:db8::1]"),
+        ]:
+            with self.subTest(url=url):
+                self.assertEqual(delivery.origin_of(url), origin)
+
+    def test_noncanonical_host_and_zero_port_reject_before_network(self):
+        oversized = ".".join(["a" * 63, "b" * 63, "c" * 63, "d" * 62])
+        for origin in ("https://münich.example", "https://reader_name.example", "https://%31%32%37.0.0.1",
+                       "https://[fe80::1%25en0]", "https://" + oversized, "https://" + "a" * 64 + ".example",
+                       "https://reader.example:0", "https://reader.123", "https://reader.0x7f"):
+            with self.subTest(origin=origin), patch.object(delivery, "build_opener") as opened:
+                inventory = self.inventory();inventory["appOrigin"] = origin
+                with self.assertRaises(delivery.InventoryError):
+                    delivery.verify_inventory(inventory, allow_origins=["https://media.example"], allow_loopback=True)
+                opened.assert_not_called()
+
+    def test_ipv4_mapped_loopback_requires_local_permission_for_reader_and_media(self):
+        origin = "https://[::ffff:7f00:1]"
+        for field in ("reader", "media"):
+            inventory, allowed = self.inventory(), ["https://media.example"]
+            if field == "reader":
+                inventory["appOrigin"] = origin
+            else:
+                inventory["mediaOrigins"] = allowed = [origin]
+                inventory["assets"][0]["url"] = origin + "/audio.mp3"
+            with self.subTest(field=field), patch.object(delivery, "build_opener") as opened:
+                with self.assertRaisesRegex(delivery.InventoryError, "allow-loopback"):
+                    delivery.verify_inventory(inventory, allow_origins=allowed)
+                opened.assert_not_called()
+                self.assertEqual(delivery.validate_inventory(inventory, allowed, True, False, None)[0],
+                                 inventory["appOrigin"])
+
+    def test_browser_invalid_authorities_cannot_normalize_into_an_allowlisted_origin(self):
+        for malformed, canonical in [
+            ("https://media.example:０８０", "https://media.example:80"),
+            ("https://[v1.media.example]", "https://v1.media.example"),
+            ("https://prefix[::1]", "https://[::1]"),
+            ("https://[::1]suffix", "https://[::1]"),
+        ]:
+            for field in ("appOrigin", "mediaOrigins", "allowlist", "assetURL"):
+                with self.subTest(origin=malformed, field=field), patch.object(delivery, "build_opener") as opened:
+                    inventory, allowed = self.inventory(), ["https://media.example"]
+                    if field == "appOrigin":
+                        inventory["appOrigin"] = malformed
+                    elif field == "mediaOrigins":
+                        inventory["mediaOrigins"].append(malformed)
+                    elif field == "allowlist":
+                        allowed.append(malformed)
+                    else:
+                        inventory["mediaOrigins"] = allowed = [canonical]
+                        inventory["assets"][0]["url"] = malformed + "/audio.mp3"
+                    with self.assertRaises(delivery.InventoryError):
+                        delivery.verify_inventory(inventory, allow_origins=allowed, allow_loopback=True)
+                    opened.assert_not_called()
 
 
 if __name__ == "__main__":
