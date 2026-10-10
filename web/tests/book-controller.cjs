@@ -158,7 +158,8 @@ test('explicit unsynchronized prose keeps faithful text and exact same-recording
   assert.equal(restored.position.time,25);
   await assert.rejects(book.load('chapter-001','autonoe',{bookmark}),error=>error.code==='MISSING_ANCHOR');
   const tail=book.capture(40,{completed:true});assert.equal(tail.anchorMeasured,false);
-  await assert.rejects(book.load('chapter-001','autonoe',{bookmark:tail}),error=>error.code==='MISSING_ANCHOR');
+  assert.deepEqual((await book.load('chapter-001','autonoe',{bookmark:tail})).position,
+    {time:60,completed:true,mapped:true});
 });
 test('missing cue never becomes an invented narrator-switch time', async () => {
   const {f,book}=await opened(),bookmark=book.capture(25);
@@ -300,6 +301,25 @@ test('completed pilot maps through verified aliases to its endpoint without fini
   assert.deepEqual(result.position, { time: 35, completed: false, mapped: true });
   book.save(result.position.time);
   assert.equal(book.getHistory()['chapter-001'].completed, false);
+});
+
+test('completed full extents stay completed at the changed recording endpoint without a sentence anchor', async () => {
+  const { f, book } = await opened(), bookmark = book.save(40, { completed:true });
+  const target=f.payloads[f.manifest.tracks[1].recordings.autonoe.url],paragraph=target.paragraphs[0];
+  target.schemaVersion=2;paragraph.start=paragraph.end=null;
+  paragraph.sentences.forEach(sentence=>Object.assign(sentence,{start:null,end:null,syncStatus:'unavailable'}));
+  const switched=await book.load('chapter-001','autonoe',{bookmark});
+  assert.deepEqual(switched.position,{time:60,completed:true,mapped:true});
+  const saved=book.save(switched.position.time,{completed:switched.position.completed});
+  assert.equal(saved.completed,true);assert.equal(saved.anchorMeasured,false);
+  assert.equal(book.getHistory()['chapter-001'].completed,true);
+});
+
+test('completion does not finish a different full reading extent', async () => {
+  const { f, book } = await opened(),bookmark=book.save(40,{completed:true});
+  f.payloads[f.manifest.tracks[1].recordings.autonoe.url].readingExtentId='chapter-001-extended';
+  assert.deepEqual((await book.load('chapter-001','autonoe',{bookmark})).position,
+    {time:50,completed:false,mapped:true});
 });
 test('trusted pilot accepts its local IDs and completion remains excerpt-specific', async () => {
   const f = fixture();
