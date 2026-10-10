@@ -34,6 +34,9 @@ BLOCKED_FILES = {".netrc", ".npmrc", ".pypirc", ".git-credentials", ".ds_store",
 GENERATED_DIRECTORIES = {"env", "venv", "models", "cache", "caches", "checkpoints",
                          "downloaded-models", "models-cache", "pytest-cache", "mypy-cache",
                          "ruff-cache", "tox", "nox"}
+CREDENTIAL_COMPONENT = re.compile(
+    r"(?:^|[._-])(?:secrets?|credentials?|private[-_]keys?|service[-_]accounts?|api[-_]keys?|"
+    r"access[-_]token|oauth|client[-_]secrets?|refresh[-_]token|id[-_]token|auth[-_]token|tokens?)(?:[._-]|$)")
 
 
 class BackupError(ValueError):
@@ -92,8 +95,7 @@ def safe_relative(name):
             and not any(part.startswith(".env") for part in lower_parts)
             and filename not in BLOCKED_FILES
             and Path(filename).suffix not in BLOCKED_SUFFIXES
-            and not re.search(r"(?:^|[._-])(?:credentials?|private[-_]key|service[-_]account|api[-_]key|access[-_]token)(?:[._-]|$)", filename)
-            and not re.search(r"(?:^|[._-])(?:oauth|client[-_]secrets?|refresh[-_]token|id[-_]token|auth[-_]token|tokens?)(?:[._-]|$)", filename),
+            and not any(CREDENTIAL_COMPONENT.search(part) for part in lower_parts),
             f"Excluded credential, receipt, environment, or key path: {name}")
     return path
 
@@ -485,11 +487,12 @@ def collect_release_fileset(root, backup_id):
         if not directory.is_dir():
             continue
         for path in directory.rglob("*"):
-            # Inspect directories directly below every selected root too;
-            # approved character models are intentional source references.
-            if (not path.is_relative_to(root / "web/art-direction") and
-                    any(part.lower().lstrip(".").replace("_", "-") in GENERATED_DIRECTORIES
-                        for part in path.relative_to(directory).parts[:-1])):
+            # Only this exact models folder contains versioned reference sources.
+            # Its generated descendants and all other caches remain excluded.
+            parents = path.relative_to(root).parts[:-1]
+            if any(part.lower().lstrip(".").replace("_", "-") in GENERATED_DIRECTORIES
+                   and parents[:index + 1] != ("web", "art-direction", "models")
+                   for index, part in enumerate(parents)):
                 continue
             if not path.is_file():
                 continue

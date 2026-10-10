@@ -107,6 +107,21 @@ class BackupReleaseTests(unittest.TestCase):
                 with self.assertRaisesRegex(backup.BackupError, "Excluded credential"):
                     backup.prepare_fileset(self.root, [name], "lumen-backup-fixture")
 
+    def test_credential_bearing_parent_components_reject_explicit_sources(self):
+        for name in ["web/secrets/google.json", "docs/credentials/config.json",
+                     "Audiobook/v8/client_secrets/config.json", "Audiobook/v7/.oauth/provider.json",
+                     "Audiobook/author-audit/.Secrets/config.json", "web/private_key/source.json",
+                     "web/private_keys/config.json", "docs/api_keys/config.json",
+                     "web/PRIVATE-KEYS/config.json", "docs/API-KEYS/config.json",
+                     "web/service_accounts/google.json", "docs/SERVICE-ACCOUNTS/config.json"]:
+            with self.subTest(name=name):
+                source = self.root / name
+                source.parent.mkdir(parents=True, exist_ok=True)
+                source.write_text('{"fixture":"credential-directory"}')
+                with self.assertRaisesRegex(backup.BackupError, "Excluded credential"):
+                    backup.prepare_fileset(self.root, [name], "lumen-backup-fixture")
+        self.assertFalse(self.destination.exists())
+
     def test_changed_plan_source_clock_is_rejected_before_destination_creation(self):
         plan = self.plan()
         (self.root / self.paths[0]).write_text("source changed")
@@ -693,7 +708,15 @@ else:
                      "web/.cache/weights.bin", "web/.pytest_cache/cache.json", "web/downloaded_models/weights.bin",
                      "web/.mypy_cache/meta.json", "web/.ruff_cache/meta.json", "web/.tox/site.py", "web/.nox/site.py",
                      "secret.json", "secrets.json", "docs/Secrets.json", "web/secret.json",
-                     "Audiobook/v8/secret.json", "Audiobook/v8/mastered/secrets.json"]
+                     "Audiobook/v8/secret.json", "Audiobook/v8/mastered/secrets.json",
+                     "web/secrets/google.json", "docs/credentials/config.json",
+                     "Audiobook/author-audit/.Secrets/config.json",
+                     "Audiobook/v7/local-checks/credentials/config.json",
+                     "Audiobook/v8/local-checks/secrets/google.json",
+                     "web/art-direction/secrets/config.json",
+                     "web/private_keys/config.json", "docs/api_keys/config.json",
+                     "web/PRIVATE-KEYS/config.json", "docs/API-KEYS/config.json",
+                     "web/service_accounts/google.json", "docs/SERVICE-ACCOUNTS/config.json"]
         for name in excluded:
             path = self.root / name; path.parent.mkdir(parents=True, exist_ok=True); path.write_text("excluded")
         (self.root / "web/env/linked.py").symlink_to(self.root / self.paths[0])
@@ -714,6 +737,32 @@ else:
         self.assertTrue(set(excluded).isdisjoint(names))
         self.assertFalse(any(name.endswith((".m4b", ".zip")) or "receipts" in name or "unselected" in name or ".env" in name or "node_modules" in name or ".npmrc" in name for name in names))
         self.assertEqual(sum("expectedSha256" in row for row in plan["files"]), 3)
+
+    def test_art_direction_exempts_only_exact_model_sources_and_skips_nested_caches(self):
+        sys.path.insert(0, str(SCRIPT.parent))
+        self.addCleanup(lambda: sys.path.remove(str(SCRIPT.parent)))
+        import book_content as content
+        references = ["web/art-direction/models/adrian-marsh-v1.png",
+                      "web/art-direction/models/daniel-yoon-v1.png",
+                      "web/art-direction/approved-cast-v1/images/adrian-marsh-portrait-v1.webp"]
+        generated = ["web/art-direction/downloaded_models/weights.bin",
+                     "web/art-direction/.cache/weights.bin", "web/art-direction/.pytest_cache/data.json",
+                     "web/art-direction/models/.cache/weights.bin",
+                     "web/art-direction/models/downloaded_models/weights.bin",
+                     "web/art-direction/research/models/weights.bin"]
+        for name in references + generated:
+            source = self.root / name
+            source.parent.mkdir(parents=True, exist_ok=True)
+            source.write_bytes(b"fixture")
+        link = self.root / "web/art-direction/.cache/linked.py"
+        link.symlink_to(self.root / self.paths[0])
+        with patch.object(content, "load_project_registry", return_value={}), \
+             patch.object(content, "load_recording_inventory", return_value={"recordings": []}):
+            plan = backup.collect_release_fileset(self.root, "lumen-backup-fixture")
+        names = {row["path"] for row in plan["files"]}
+        self.assertTrue(set(references).issubset(names))
+        self.assertTrue(set(generated).isdisjoint(names))
+        self.assertNotIn(link.relative_to(self.root).as_posix(), names)
 
     def test_collector_requires_valid_checkpoint_hash_for_selected_lossless_audio(self):
         sys.path.insert(0, str(SCRIPT.parent))
