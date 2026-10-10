@@ -18,7 +18,7 @@ Phone controls have large touch targets, a full-width timeline and safe-area spa
 
 In Android Chrome, use the browser menu to install Lumen or add it to the Home screen. The settings panel offers installation help and an install button when Chrome makes it available. iPhone home-screen launch is also supported. Media Session supplies supported system play/pause, seek and chapter controls. Automated Chrome phone, iPad and desktop checks do not constitute a physical-device installation or lock-screen acceptance test.
 
-The service worker caches only the public reader shell. Private text, timings, audio, paintings and all Range requests bypass it. Reading and listening need a connection; local bookmarks survive disconnection. New workers activate after existing tabs close, without forced reloads during listening. Older public pilot content caches are cleared on activation.
+The service worker caches the public reader shell and up to 40 visited public pilot paintings under `/assets/`. Private `/api/` text, timings, audio and future paintings, plus all Range requests, bypass it. Private reading and listening need a connection; local bookmarks survive disconnection. New workers activate after existing tabs close, without forced reloads during listening. Obsolete shell and prose caches are cleared on activation while the visited public paintings are retained. Private offline artwork remains deferred until it can honor access expiry, revocation and sign-out.
 
 ## Development and verification
 

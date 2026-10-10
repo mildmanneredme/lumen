@@ -15,6 +15,7 @@ const output = process.env.LUMEN_QA_OUT || '/private/tmp/lumen-book-qa';
 fs.mkdirSync(output, {recursive:true});
 const checks = [], errors = [];
 const check = (name, condition) => { checks.push({name, pass:!!condition}); assert.ok(condition, name); console.log('PASS ' + name); };
+const regression = (name, condition) => { checks.push({name, pass:!!condition}); console.log((condition?'PASS ':'FAIL ') + name); };
 function wav(seconds, frequency) {
   const rate = 8000, samples = seconds * rate, b = Buffer.alloc(44 + samples * 2);
   b.write('RIFF'); b.writeUInt32LE(b.length - 8, 4); b.write('WAVEfmt ', 8);
@@ -91,6 +92,126 @@ let browser;
     return r.fulfill({status:404});
   };
   await page.route('**/fixture/**',fixtureRoute);
+  const storedPosition=(id,voice,time)=>{
+    const payload=payloads.get('/fixture/'+id+'-'+voice+'.json');
+    const sentence=payload.paragraphs[0].sentences[time>=payload.duration/2?1:0];
+    return {schemaVersion:1,bookId:'lumen',manuscriptVersion:'v6',chapterId:id,readingExtentId:payload.id,
+      sentenceId:sentence.id,sentenceFraction:(time-sentence.start)/(sentence.end-sentence.start),
+      narratorId:voice,audioSha256:payload.audio.sha256,audioTime:time,completed:false,updatedAt:new Date().toISOString()};
+  };
+  const fixtureContext=async({legacy=null,saved=null,index=manifest,failures=[],overrides=new Map()}={})=>{
+    const context=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,serviceWorkers:'block'});
+    const page=await context.newPage();page.on('pageerror',e=>errors.push(String(e)));
+    await page.route('**/api/session',r=>r.fulfill({json:{authenticated:true}}));
+    await page.route('**/api/book',r=>r.fulfill({json:index}));
+    await page.route('**/fixture/**',r=>{
+      const pathname=new URL(r.request().url()).pathname;
+      if(failures.includes(pathname)) return r.fulfill({status:503});
+      return overrides.has(pathname)?r.fulfill({json:overrides.get(pathname)}):fixtureRoute(r);
+    });
+    await context.addInitScript(({legacy,saved})=>{
+      if(legacy) localStorage.setItem('lumen-reader-v1',JSON.stringify(legacy));
+      if(saved) localStorage.setItem('lumen-book-v2',JSON.stringify(saved));
+    },{legacy,saved});
+    return {context,page};
+  };
+  const ready=page=>page.waitForFunction(()=>window.LUMEN_CHAPTER && document.querySelector('#narration').readyState>=1);
+  const choose=async(page,id)=>{await page.locator('#chapters-open').click();await page.locator('#chapter-list [data-track-id="'+id+'"]').click();};
+  const reached=(page,id)=>page.waitForFunction(id=>window.LUMEN_CHAPTER?.chapterId===id && document.querySelector('#narration').readyState>=1,id);
+  const legacyReader=await fixtureContext({legacy:storedPosition('chapter-002','charon',3.2)});
+  await legacyReader.page.goto(origin,{waitUntil:'domcontentloaded'});await ready(legacyReader.page);
+  await legacyReader.page.waitForFunction(()=>Math.abs(document.querySelector('#narration').currentTime-3.2)<.25);
+  regression('initial legacy resume is saved in v2 before the reader plays or navigates',await legacyReader.page.evaluate(()=>
+    Math.abs(JSON.parse(localStorage.getItem('lumen-book-v2')||'null')?.history['chapter-002']?.bookmark.audioTime-3.2)<.25));
+  await choose(legacyReader.page,'chapter-003');await reached(legacyReader.page,'chapter-003');
+  await choose(legacyReader.page,'chapter-002');await reached(legacyReader.page,'chapter-002');
+  await legacyReader.page.waitForTimeout(100);
+  regression('navigating before playback preserves the migrated chapter history',await legacyReader.page.evaluate(()=>
+    Math.abs(document.querySelector('#narration').currentTime-3.2)<.25));
+  await legacyReader.context.close();
+  const retryState={schemaVersion:2,bookId:'lumen',manuscriptVersion:'v6',releaseId:manifest.releaseId,
+    lastPosition:storedPosition('chapter-001','charon',1.6),history:{'chapter-003':{bookmark:storedPosition('chapter-003','charon',6)}}};
+  const retryReader=await fixtureContext({saved:retryState,failures:['/fixture/chapter-003-charon.json']});
+  await retryReader.page.goto(origin,{waitUntil:'domcontentloaded'});await ready(retryReader.page);
+  await choose(retryReader.page,'chapter-003');await retryReader.page.locator('#transition-retry').waitFor({state:'visible'});
+  await retryReader.page.locator('#settings-open').click();await retryReader.page.locator('#narrator').selectOption('autonoe');
+  await retryReader.page.locator('#settings-close').click();await reached(retryReader.page,'chapter-003');
+  await retryReader.page.waitForTimeout(100);
+  regression('alternate target narrator restores the target history rather than resetting it',await retryReader.page.evaluate(()=>
+    window.LUMEN_CHAPTER.audio.narratorId==='autonoe' && Math.abs(document.querySelector('#narration').currentTime-9)<.25));
+  await retryReader.context.close();
+  const disjoint=JSON.parse(JSON.stringify(manifest));disjoint.defaultNarratorId='charon';
+  disjoint.tracks[0].recordings.autonoe={status:'unavailable'};disjoint.tracks[2].recordings.charon={status:'unavailable'};
+  const disjointReader=await fixtureContext({index:disjoint});
+  await disjointReader.page.goto(origin,{waitUntil:'domcontentloaded'});await ready(disjointReader.page);
+  await choose(disjointReader.page,'chapter-003');await disjointReader.page.locator('#transition-retry').waitFor({state:'visible'});
+  await disjointReader.page.locator('#settings-open').click();
+  const targetAvailable=await disjointReader.page.locator('#narrator option[value="autonoe"]').evaluate(el=>!el.disabled);
+  regression('failed target keeps its available narrator choices reachable',targetAvailable);
+  regression('disjoint target failure keeps the current chapter playable',await disjointReader.page.evaluate(()=>
+    window.LUMEN_CHAPTER.chapterId==='chapter-001' && !document.querySelector('#play').disabled && !!document.querySelector('#narration').getAttribute('src')));
+  if(targetAvailable) {
+    await disjointReader.page.locator('#narrator').selectOption('autonoe');await disjointReader.page.locator('#settings-close').click();
+    await reached(disjointReader.page,'chapter-003');
+    regression('an available alternative can open a disjoint target',await disjointReader.page.evaluate(()=>window.LUMEN_CHAPTER.audio.narratorId==='autonoe'));
+  }
+  await disjointReader.context.close();
+  const painted=JSON.parse(JSON.stringify(payloads.get('/fixture/chapter-001-autonoe.json')));
+  const assetPath=id=>'/api/assets/'+id+'.'+id.repeat(64).slice(0,64)+'.png';
+  painted.scenes=[{id:'a',start:4,src:'https://lumen-phi-five.vercel.app'+assetPath('a'),title:'Late reveal'},
+    {id:'b',start:8,src:'https://lumen-phi-five.vercel.app'+assetPath('b'),title:'Second reveal'}];
+  const artReader=await fixtureContext({overrides:new Map([['/fixture/chapter-001-autonoe.json',painted]])});
+  const artRequests=[],pendingPaint=[];
+  await artReader.page.route('**/api/assets/**',async route=>{
+    artRequests.push(route.request().url());
+    if(new URL(route.request().url()).pathname===assetPath('b')) await new Promise(resolve=>pendingPaint.push(resolve));
+    await route.fulfill({contentType:'image/png',body:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aD1sAAAAASUVORK5CYII=','base64')});
+  });
+  await artReader.page.goto(origin,{waitUntil:'domcontentloaded'});await ready(artReader.page);await artReader.page.waitForTimeout(100);
+  regression('before the first illustration trigger the reader shows only a generic placeholder',await artReader.page.evaluate(()=>
+    document.querySelector('#scene-stage').classList.contains('placeholder-art') && !document.querySelector('#scene-title').textContent && !document.querySelector('#scene-image').getAttribute('src')));
+  await artReader.page.locator('#seek').evaluate(el=>{el.value='4.5';el.dispatchEvent(new Event('input',{bubbles:true}));});
+  await artReader.page.waitForFunction(()=>!!document.querySelector('#scene-image').getAttribute('src'));
+  regression('private painting URLs use the authenticated preview origin',artRequests.length>0 && artRequests.every(url=>new URL(url).origin===origin));
+  await artReader.page.locator('#seek').evaluate(el=>{el.value='8.5';el.dispatchEvent(new Event('input',{bubbles:true}));});
+  await artReader.page.waitForFunction(()=>document.querySelector('#scene-title').textContent==='Second reveal');
+  await artReader.page.locator('#seek').evaluate(el=>{el.value='0';el.dispatchEvent(new Event('input',{bubbles:true}));});
+  regression('rewinding before the trigger clears the painting and caption',await artReader.page.evaluate(()=>
+    document.querySelector('#scene-stage').classList.contains('placeholder-art') && !document.querySelector('#scene-image').getAttribute('src') && !document.querySelector('#scene-incoming').getAttribute('src') && !document.querySelector('#scene-title').textContent));
+  for(const releasePaint of pendingPaint) releasePaint();await artReader.page.waitForTimeout(150);
+  regression('a delayed painting cannot reveal itself after rewinding',await artReader.page.evaluate(()=>
+    document.querySelector('#scene-stage').classList.contains('placeholder-art') && !document.querySelector('#scene-image').getAttribute('src') && !document.querySelector('#scene-title').textContent));
+  painted.scenes[0].start=0;
+  await artReader.page.reload({waitUntil:'domcontentloaded'});await ready(artReader.page);
+  await artReader.page.waitForFunction(()=>!!document.querySelector('#scene-image').getAttribute('src'));
+  await artReader.page.locator('#settings-open').click();await artReader.page.locator('#sign-out-settings').click();
+  await artReader.page.waitForFunction(()=>!document.body.classList.contains('authenticated'));
+  await artReader.page.evaluate(()=>document.querySelector('#narration').dispatchEvent(new Event('timeupdate')));
+  await artReader.page.waitForTimeout(100);
+  regression('late audio events after sign out cannot restore a private painting',await artReader.page.evaluate(()=>
+    !document.querySelector('#scene-image').getAttribute('src') && !document.querySelector('#scene-incoming').getAttribute('src') && !document.querySelector('#scene-title').textContent));
+  await artReader.context.close();
+  const staleSessionReader=await fixtureContext();
+  await staleSessionReader.page.goto(origin,{waitUntil:'domcontentloaded'});await ready(staleSessionReader.page);
+  let deferOldStatus=true,oldStatusRequested=false,releaseOldStatus;
+  await staleSessionReader.page.route('**/api/session',async route=>{
+    if(route.request().method()==='GET' && deferOldStatus){
+      deferOldStatus=false;oldStatusRequested=true;await new Promise(resolve=>releaseOldStatus=resolve);
+      return route.fulfill({json:{authenticated:false}});
+    }
+    return route.fulfill({json:{authenticated:true}});
+  });
+  await staleSessionReader.page.evaluate(()=>{
+    window.fixtureOldBook=window.LUMEN_BOOK;document.querySelector('#narration').dispatchEvent(new Event('error'));
+  });
+  while(!oldStatusRequested)await staleSessionReader.page.waitForTimeout(10);
+  await staleSessionReader.page.evaluate(()=>location.hash='invite='+('a'.repeat(43)));
+  await staleSessionReader.page.waitForFunction(()=>window.LUMEN_BOOK && window.LUMEN_BOOK!==window.fixtureOldBook &&
+    window.LUMEN_BOOK.getActive() && document.body.classList.contains('authenticated'));
+  releaseOldStatus();await staleSessionReader.page.waitForTimeout(250);
+  regression('an old audio-error session result cannot close a newly authenticated reader',await staleSessionReader.page.evaluate(()=>
+    document.body.classList.contains('authenticated') && !!window.LUMEN_BOOK?.getActive()));
+  await staleSessionReader.context.close();
   const second=payloads.get('/fixture/chapter-002-charon.json');
   const bookmark={schemaVersion:1,bookId:'lumen',manuscriptVersion:'v6',chapterId:'chapter-002',readingExtentId:second.id,
     sentenceId:second.paragraphs[0].sentences[0].id,sentenceFraction:.8,narratorId:'charon',audioSha256:second.audio.sha256,
@@ -166,6 +287,13 @@ let browser;
   }
   const guestContext=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,serviceWorkers:'block'});
   const guest=await guestContext.newPage();guest.on('pageerror',e=>errors.push(String(e)));
+  await guestContext.addInitScript(()=>{
+    if(navigator.mediaSession?.setPositionState) {
+      const native=navigator.mediaSession.setPositionState.bind(navigator.mediaSession);
+      window.fixtureMediaPositions=[];
+      navigator.mediaSession.setPositionState=function(value){window.fixtureMediaPositions.push(value??null);return native(value);};
+    }
+  });
   let authenticated=false,privateRequests=0;
   const invite='a'.repeat(43);
   await guest.route('**/api/session',async route=>{
@@ -203,9 +331,19 @@ let browser;
   check('rewind fifteen seconds restores the start and stays paused',await guest.evaluate(()=>document.querySelector('#narration').paused));
   await guest.locator('#seek').evaluate(el=>{el.value='2.5';el.dispatchEvent(new Event('input',{bubbles:true}));});
   await guest.waitForFunction(()=>Math.abs(document.querySelector('#narration').currentTime-2.5)<.25);
-  await guest.locator('#settings-open').click();await guest.locator('#sign-out-settings').click();
+  await guest.locator('#settings-open').click();
+  const autoLabel=await guest.locator('.auto-continue-label').boundingBox();
+  regression('phone auto-continue label provides a 44px touch target',autoLabel.height>=44);
+  const autoBefore=await guest.locator('#auto-continue').isChecked();
+  await guest.touchscreen.tap(autoLabel.x+autoLabel.width-12,autoLabel.y+autoLabel.height/2);
+  check('phone label touch toggles native auto-continue checkbox',await guest.locator('#auto-continue').isChecked()!==autoBefore);
+  await guest.locator('#sign-out-settings').click();
   await guest.waitForFunction(()=>!document.body.classList.contains('authenticated'));
   check('phone sign out clears displayed prose and audio',await guest.evaluate(()=>!document.querySelector('#prose').textContent && !document.querySelector('#narration').getAttribute('src')));
+  await guest.waitForTimeout(100);
+  regression('phone sign out clears private lock-screen media metadata and playback state',await guest.evaluate(()=>
+    navigator.mediaSession.metadata===null && navigator.mediaSession.playbackState==='none'));
+  regression('phone sign out resets the lock-screen audio position',await guest.evaluate(()=>window.fixtureMediaPositions.at(-1)===null));
   check('sign out preserves the saved listening place',await guest.evaluate(()=>JSON.parse(localStorage.getItem('lumen-book-v2')).lastPosition.audioTime>2));
   await guest.reload({waitUntil:'domcontentloaded'});
   await guest.waitForFunction(()=>document.querySelector('#access-status').textContent.includes('Use your invitation'));
@@ -234,6 +372,8 @@ let browser;
   await race.route('**/fixture/**',fixtureRoute);
   await race.goto(origin,{waitUntil:'domcontentloaded'});
   while(!indexRequested) await race.waitForTimeout(10);
+  regression('the authenticated shell stays generic while its book index loads',await race.evaluate(()=>
+    document.querySelector('#scene-stage').classList.contains('placeholder-art') && !document.querySelector('#scene-title').textContent && !document.querySelector('#scene-image').getAttribute('src')));
   await race.locator('#settings-open').click();await race.locator('#sign-out-settings').click();
   await race.waitForFunction(()=>!document.body.classList.contains('authenticated'));
   releaseIndex();await race.waitForTimeout(250);
@@ -241,6 +381,7 @@ let browser;
     !document.querySelector('#prose').textContent && !document.querySelector('#narration').getAttribute('src') && !window.LUMEN_BOOK));
   await raceContext.close();
   check('no browser JavaScript errors',errors.length===0);
+  assert.ok(checks.every(check=>check.pass),'All browser regression checks must pass.');
   await context.close();
 })().catch(error=>{console.error(error);process.exitCode=1;}).finally(async()=>{
   fs.writeFileSync(path.join(output,'report.json'),JSON.stringify({checks,errors},null,2)+'\n');

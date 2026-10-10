@@ -1,6 +1,8 @@
 /* Bump the shell version when shipping changes to HTML, scripts, or styles. */
 'use strict';
-const SHELL_CACHE = 'lumen-shell-20261010-private-book-v4';
+const SHELL_CACHE = 'lumen-shell-20261010-private-book-v5';
+const ART_CACHE = 'lumen-art-v1';
+const MAX_ART_ENTRIES = 40;
 const SHELL_PATHS = [
   '/', '/index.html', '/styles.css', '/mobile.css', '/app.js', '/progress.js',
   '/book.js', '/legacy-pilot.js', '/install.js', '/manifest.webmanifest',
@@ -27,9 +29,10 @@ self.addEventListener('activate', event => {
   event.waitUntil((async () => {
     const names = await caches.keys();
     await Promise.all(names.filter(name =>
-      (name.startsWith('lumen-shell-') && name !== SHELL_CACHE) || name.startsWith('lumen-art-') || name === 'lumen-media-v1')
+      (name.startsWith('lumen-shell-') && name !== SHELL_CACHE) ||
+      (name.startsWith('lumen-art-') && name !== ART_CACHE) || name === 'lumen-media-v1')
       .map(name => caches.delete(name)));
-    // Previous public paintings and prose are removed when old reader tabs close.
+    // Retain visited public paintings; remove obsolete shells and prose caches.
   })());
 });
 
@@ -42,6 +45,20 @@ function offlineResponse() {
     status: 503,
     headers: {'Content-Type': 'text/plain; charset=utf-8'}
   });
+}
+
+async function saveArt(request, response) {
+  if (!completeResponse(response)) return;
+  const cache = await caches.open(ART_CACHE);
+  await cache.put(request.url, response);
+  const keys = await cache.keys();
+  await Promise.all(keys.slice(0, Math.max(0, keys.length - MAX_ART_ENTRIES))
+    .map(key => cache.delete(key)));
+}
+
+async function cachedArt(request) {
+  const cache = await caches.open(ART_CACHE);
+  return await cache.match(request.url) || offlineResponse();
 }
 
 function navigation(request, event) {
@@ -79,6 +96,15 @@ self.addEventListener('fetch', event => {
 
   if (request.mode === 'navigate') {
     event.respondWith(navigation(request, event));
+  } else if (url.pathname.startsWith('/assets/') && /\.(?:png|webp|jpe?g|gif|svg|avif)$/i.test(url.pathname)) {
+    // Historical public paintings may be viewed offline. Private /api/ artwork
+    // bypasses this worker so expired or revoked access cannot become an offline grant.
+    const network = fetch(request);
+    event.waitUntil(network.then(response => saveArt(request, response.clone())).catch(() => {}));
+    event.respondWith(network.then(response => {
+      if (!response.ok) throw new Error('Painting unavailable');
+      return response;
+    }).catch(() => cachedArt(request)));
   } else if (SHELL_SET.has(url.pathname)) {
     const network = fetch(request);
     event.waitUntil(network.then(async response => {

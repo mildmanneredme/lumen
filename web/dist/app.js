@@ -119,8 +119,19 @@
       pane.scrollTo({top:Math.max(0,top),behavior:reduced.matches || force ? 'auto' : 'smooth'});
     }
   }
+  function clearScene() {
+    ++sceneToken; clearTimeout(sceneTimer); activeScene = null; warmedScenes.clear();
+    $('scene-stage').classList.add('placeholder-art'); $('scene-stage').removeAttribute('data-scene');
+    $('scene-incoming').classList.remove('visible');
+    $('scene-image').removeAttribute('src'); $('scene-incoming').removeAttribute('src'); $('scene-image').alt = '';
+    $('scene-title').textContent = $('scene-number').textContent = '';
+  }
   function showScene(scene) {
-    if (!scene || activeScene?.id === scene.id) return;
+    if (!scene) {
+      if (activeScene || !$('scene-stage').classList.contains('placeholder-art')) clearScene();
+      return;
+    }
+    if (activeScene?.id === scene.id) return;
     activeScene = scene;
     const token = ++sceneToken;
     const stage = $('scene-stage'), image = $('scene-image'), incoming = $('scene-incoming');
@@ -132,6 +143,7 @@
     const preload = new Image();
     preload.onload = () => {
       if (token !== sceneToken) return;
+      stage.classList.remove('placeholder-art');
       incoming.src = scene.src;
       image.alt = scene.alt || scene.description || descriptions[scene.id] || scene.title || 'Illustration';
       const next = scenes[scenes.indexOf(scene) + 1];
@@ -156,14 +168,14 @@
     preload.src = scene.src;
   }
   function render(time = currentPosition(), force = false) {
-    if (committing) return;
+    if (committing || !book?.getActive()) return;
     const clamped = Math.min(duration,Math.max(0,time || 0));
     seek.value = clamped;
     seek.style.setProperty('--progress', (clamped / duration * 100) + '%');
     seek.setAttribute('aria-valuetext', Math.floor(clamped / 60) + ' minutes ' + Math.floor(clamped % 60) + ' seconds');
     $('elapsed').textContent = formatTime(clamped);
     updateMediaSession(force);
-    showScene(getAt(scenes,clamped) || scenes[0]);
+    showScene(getAt(scenes,clamped));
     const candidate = getAt(sentences,clamped);
     const sentence = candidate && clamped <= candidate.end ? candidate : null;
     const paragraph = sentence ? getAt(chapter.paragraphs.filter(p => Number.isFinite(p.start)),clamped) : null;
@@ -247,7 +259,7 @@
     $('art-toggle').setAttribute('aria-label', value ? 'Hide artwork' : 'Show artwork');
   }
   function updateMediaSession(force = false) {
-    if (!('mediaSession' in navigator)) return;
+    if (!('mediaSession' in navigator) || committing || !book?.getActive()) return;
     const now = performance.now();
     if (!force && now - lastMediaUpdate < 1000) return;
     lastMediaUpdate = now;
@@ -364,6 +376,7 @@
     if (event.key === 'ArrowLeft') { event.preventDefault(); seekTo(currentPosition()-15); }
     if (event.key === 'ArrowRight') { event.preventDefault(); seekTo(currentPosition()+15); }
   });
+  clearScene();
   progress = window.LumenProgress.create(pilot, pilot.paragraphs.flatMap(p => p.sentences));
   const saved = progress.readPreferences();
   if ([.75,1,1.25,1.5,2].includes(Number(saved.speed))) { audio.playbackRate=Number(saved.speed); $('speed').value=saved.speed; }
@@ -463,7 +476,7 @@
     activeSentence = activeParagraph = activeScene = null; lastSaved = -1; bookmarkDirty = false;
     warmedScenes.clear(); sentences.length = 0; sentenceElements.clear(); paragraphElements.clear(); prose.replaceChildren();
     chapter = payload; window.LUMEN_CHAPTER = chapter; duration = chapter.duration;
-    scenes = chapter.scenes.map(scene => ({...scene,src:scene.src || 'assets/' + scene.id + '.webp'}));
+    scenes = chapter.scenes.map(scene => ({...scene,src:localAssetURL(scene.src || 'assets/' + scene.id + '.webp').href}));
     completed = position.completed === true; automaticEndHandled = completed;
     buildProse(); progress = window.LumenProgress.create(chapter,sentences);
     const preferences = book.readPreferences();
@@ -474,9 +487,7 @@
     prose.setAttribute('aria-label',chapter.title + ' prose');
     $('ending-label').textContent = endingLabel();
     $('total').textContent = $('excerpt-duration').textContent = formatTime(duration); seek.max = duration;
-    $('scene-stage').classList.toggle('placeholder-art',scenes.length === 0); $('art-toggle').disabled = false;
-    $('scene-incoming').classList.remove('visible'); $('scene-image').removeAttribute('src'); $('scene-incoming').removeAttribute('src');
-    $('scene-image').alt = ''; $('scene-stage').removeAttribute('data-scene'); $('scene-title').textContent = ''; $('scene-number').textContent = '';
+    clearScene(); $('art-toggle').disabled = false;
     setArtworkVisible(preferences.artworkVisible); setTextSize(preferences.textSize);
     $('auto-continue').checked = preferences.autoContinue === true;
     audio.playbackRate = preferences.speed; $('speed').value = preferences.speed;
@@ -491,9 +502,9 @@
       $('resume-message').textContent = completed ? (chapter.id === pilot.id ? 'You’ve finished the opening excerpt.' : 'You’ve finished ' + chapter.title + '.') : 'Your place is saved · ' + chapter.title;
       $('resume-continue').textContent = completed ? 'Listen again' : 'Continue from ' + formatTime(position.time);
     }
-    committing = false; play.disabled = false;
+    committing = false; bookmarkDirty = true;
     seekTo(position.time,true);
-    if (!initial) { bookmarkDirty = true; savePosition(true); }
+    play.disabled = false;
     if (listen && !completed) { if (pendingSeek !== null) resumeAfterSeek = true; else startPlayback(); }
     setPlayState();
   }
@@ -501,7 +512,8 @@
     if (!book) return;
     const token = ++transitionToken, oldActive = book.getActive();
     const listen = options.listen ?? (!audio.paused || resumeAfterSeek);
-    const bookmark = options.bookmark === undefined && options.reason === 'voice' ? book.capture(currentPosition(),{completed}) : options.bookmark;
+    const sameTrackVoice = options.reason === 'voice' && oldActive?.trackId === trackId;
+    const bookmark = options.bookmark === undefined && sameTrackVoice ? book.capture(currentPosition(),{completed}) : options.bookmark;
     if (oldActive) savePosition(true);
     resumeAfterSeek = false; audio.pause();
     $('transition-panel').hidden = false; $('transition-status').textContent = 'Loading chapter…'; $('transition-retry').hidden = true;
@@ -511,14 +523,14 @@
       const result = await book.load(trackId,narratorId,{bookmark});
       if (result.status === 'stale' || token !== transitionToken) return;
       commitChapter(result.chapter,result.position,{initial:options.initial,listen});
-      updateURL(trackId,narratorId,options.history || (options.reason === 'voice' || options.initial ? 'replace' : 'push'));
+      updateURL(trackId,narratorId,options.history || (sameTrackVoice || options.initial ? 'replace' : 'push'));
       $('transition-panel').hidden = true; retryTransition = null;
     } catch (error) {
       if (token !== transitionToken) return;
       $('transition-status').textContent = error.message || 'This chapter could not be loaded. Try again.';
       $('transition-retry').hidden = false;
       if (error.code === 'ACCESS_REQUIRED' || error.cause?.code === 'ACCESS_REQUIRED') { closeAccess(); return; }
-      if (oldActive) { narratorOptions(chapter.chapterId,chapter.audio.narratorId); if (listen) startPlayback(); }
+      if (oldActive && listen) startPlayback();
     }
   }
   function moveTrack(offset,listen) {
@@ -533,7 +545,7 @@
   $('transition-retry').addEventListener('click',() => { if (retryTransition) transitionTo(retryTransition.trackId,retryTransition.narratorId,retryTransition.options); });
   $('narrator').addEventListener('change',() => {
     const target = retryTransition?.trackId || chapter.chapterId;
-    transitionTo(target,$('narrator').value,{reason:'voice',bookmark:target === chapter.chapterId ? undefined : null});
+    transitionTo(target,$('narrator').value,{reason:'voice'});
   });
   $('auto-continue').addEventListener('change',savePreferences);
   window.addEventListener('popstate',() => {
@@ -599,8 +611,11 @@
     pendingSeek = issuedSeek = null; bookmarkDirty = false; book = null; manifest = null; retryTransition = null;
     prose.replaceChildren(); sentences.length = 0; sentenceElements.clear(); paragraphElements.clear();
     window.LUMEN_CHAPTER = undefined; window.LUMEN_BOOK = undefined;
-    $('scene-image').removeAttribute('src'); $('scene-incoming').removeAttribute('src');
-    $('scene-title').textContent = $('scene-number').textContent = '';
+    clearScene();
+    if ('mediaSession' in navigator) {
+      navigator.mediaSession.metadata = null; navigator.mediaSession.playbackState = 'none';
+      try { navigator.mediaSession.setPositionState?.(); } catch (_) {}
+    }
     for (const dialog of [$('settings'),$('chapters')]) if (dialog.open) dialog.close();
     $('resume-panel').hidden = $('transition-panel').hidden = true; $('sign-out').hidden = $('sign-out-settings').hidden = true;
     document.body.classList.remove('authenticated'); committing = false;
@@ -640,8 +655,11 @@
   $('sign-out-settings').addEventListener('click',signOut);
   audio.addEventListener('error',async () => {
     if (!book) return;
+    const token = accessToken, activeBook = book;
     try { const response = await fetch('/api/session',{cache:'no-store'});
-      if (response.ok && (await response.json()).authenticated !== true) closeAccess();
+      if (token !== accessToken || book !== activeBook || !response.ok) return;
+      const session = await response.json();
+      if (token === accessToken && book === activeBook && session.authenticated !== true) closeAccess();
     } catch (_) { /* A connection failure keeps the existing retry and bookmark. */ }
   });
   function consumeInvitation() {
