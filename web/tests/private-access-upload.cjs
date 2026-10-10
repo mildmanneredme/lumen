@@ -97,8 +97,9 @@ test('remote verifier checks private authorization, exact ranges and 416 without
       const h={'Cache-Control':'private, no-store','Cross-Origin-Resource-Policy':'same-origin'};
       if(!authorized) return new Response('{"error":"An invitation is required."}',{status:401,headers:h});
       if(options.headers.Origin==='https://unauthorized.invalid') return new Response(null,{status:403,headers:h});
-      if(url===origin+'/api/book') return new Response(f.bytes,{status:200,headers:h});
       h['Content-Length']=String(f.bytes.length);h['Content-Type']='application/json';h['Accept-Ranges']='bytes';
+      h['ETag']='"sha256-'+hash(f.bytes)+'"';
+      if(url===origin+'/api/book') return new Response(f.bytes,{status:200,headers:h});
       const range=options.headers?.Range;
       if(range===`bytes=${f.bytes.length}-`) return new Response(null,{status:416,headers:{...h,'Content-Range':`bytes */${f.bytes.length}`}});
       if(range) {const m=/bytes=(\d+)-(\d+)/.exec(range);h['Content-Range']=`bytes ${m[1]}-${m[2]}/${f.bytes.length}`;return new Response(f.bytes,{status:206,headers:h});}
@@ -109,6 +110,23 @@ test('remote verifier checks private authorization, exact ranges and 416 without
     assert.ok(requests.every(row=>!row.url.includes('fixture-cookie')));
     assert.ok(!JSON.stringify(report).includes('fixture-cookie'));assert.ok(!JSON.stringify(report).includes('sourcePath'));
     assert.ok(!JSON.stringify(report).includes('privateText'));
+  }finally{await fs.rm(f.root,{recursive:true,force:true});}
+});
+test('API verification rejects a wrong authorized book manifest before certifying the release',async()=>{
+  const f=await setup();try {
+    let authorizedBookRead=false;
+    const fetch=async(url,options)=>{
+      const h={'Cache-Control':'private, no-store','Cross-Origin-Resource-Policy':'same-origin'};
+      if(!options.headers.Cookie) return new Response(null,{status:401,headers:h});
+      if(options.headers.Origin==='https://unauthorized.invalid') return new Response(null,{status:403,headers:h});
+      if(url===origin+'/api/book') {
+        authorizedBookRead=true;
+        return new Response(Buffer.alloc(f.bytes.length),{status:200,headers:{...h,'Content-Type':'application/json','Content-Length':String(f.bytes.length),'ETag':'"sha256-'+hash(f.bytes)+'"'}});
+      }
+      throw Error('Asset verification must wait for book identity');
+    };
+    await assert.rejects(verifyPrivateAPI({inventory:f.inventory,cookie:'fixture-cookie',fetch,byteBudget:1000}),/book.*hash|manifest.*SHA/i);
+    assert.equal(authorizedBookRead,true);
   }finally{await fs.rm(f.root,{recursive:true,force:true});}
 });
 test('API verifier rejects public responses, wrong ranges, loose caching, cross-site access and redirects',async()=>{
