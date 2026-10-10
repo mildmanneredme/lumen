@@ -315,6 +315,43 @@ test('completed full extents stay completed at the changed recording endpoint wi
   assert.equal(book.getHistory()['chapter-001'].completed,true);
 });
 
+function twoParagraphChapter(f) {
+  const value=f.payloads[f.manifest.tracks[2].recordings.charon.url],first=value.paragraphs[0],second=clone(first);
+  second.id='v6:chapter-002:p002';second.start=36;second.end=39;
+  second.sentences.forEach((sentence,index)=>Object.assign(sentence,{id:second.id+'-s0'+(index+1),start:36+index*2,end:37+index*2}));
+  value.paragraphs.push(second);
+  return value;
+}
+test('chapter blocks must reconstruct all prose exactly once before commit', async t => {
+  const cases=[
+    ['empty',()=>[]],['null',()=>null],['object',()=>({kind:'paragraph'})],['string',()=> 'paragraph'],
+    ['missing paragraph',p=>[{kind:'paragraph',paragraphId:p[0].id}]],
+    ['duplicate paragraph',p=>[{kind:'paragraph',paragraphId:p[0].id},{kind:'paragraph',paragraphId:p[0].id},{kind:'paragraph',paragraphId:p[1].id}]],
+    ['reordered paragraphs',p=>[{kind:'paragraph',paragraphId:p[1].id},{kind:'paragraph',paragraphId:p[0].id}]],
+    ['unknown paragraph',p=>[{kind:'paragraph',paragraphId:'missing'},{kind:'paragraph',paragraphId:p[1].id}]],
+    ['nonobject block',p=>[null,...p.map(row=>({kind:'paragraph',paragraphId:row.id}))]],
+    ['unsupported kind',p=>p.map(row=>({kind:'image',paragraphId:row.id}))],
+    ['unsupported scene break',p=>[{kind:'scene-break',markdown:'spoiler'},...p.map(row=>({kind:'paragraph',paragraphId:row.id}))]],
+    ['incomplete scene break',p=>[{kind:'scene-break'},...p.map(row=>({kind:'paragraph',paragraphId:row.id}))]],
+    ['heading without level',p=>p.map(row=>({kind:'heading',paragraphId:row.id}))],
+    ['invalid heading level',p=>{p[1].headingLevel='3 invalid';return p.map(row=>({kind:row.headingLevel?'heading':'paragraph',paragraphId:row.id}));}]
+  ];
+  for(const [name,blocks] of cases) await t.test(name,async()=>{
+    const {f,book}=await opened(),value=twoParagraphChapter(f);value.blocks=blocks(value.paragraphs);
+    const active=book.getActive(),stored=f.storage.values.get(BOOKMARK_KEY);
+    await assert.rejects(book.load('chapter-002','charon'),error=>error.code==='INVALID_CHAPTER');
+    assert.equal(book.getActive(),active);assert.equal(f.storage.values.get(BOOKMARK_KEY),stored);
+  });
+});
+test('valid blocks preserve ordered paragraphs, headings and supported scene breaks; missing legacy blocks stay usable',async()=>{
+  const {f,book}=await opened(),value=twoParagraphChapter(f);value.paragraphs[1].headingLevel=3;
+  value.blocks=[{kind:'paragraph',paragraphId:value.paragraphs[0].id},{kind:'scene-break',markdown:'***'},
+    {kind:'heading',paragraphId:value.paragraphs[1].id}];
+  assert.deepEqual((await book.load('chapter-002','charon')).chapter.blocks,value.blocks);
+  delete value.blocks;
+  assert.equal((await book.load('chapter-002','charon')).chapter.paragraphs.length,2);
+});
+
 test('completion does not finish a different full reading extent', async () => {
   const { f, book } = await opened(),bookmark=book.save(40,{completed:true});
   f.payloads[f.manifest.tracks[1].recordings.autonoe.url].readingExtentId='chapter-001-extended';
