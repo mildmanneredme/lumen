@@ -14,6 +14,10 @@
   let duration = chapter.duration, scenes = [];
   let book, manifest, transitionToken = 0, retryTransition = null, continuationToken = 0, committing = false;
   let pendingTransition = null, accessToken = 0, inviteRequest = 0, retainedInvite = '', sessionExchange = null;
+  const transitionStart = document.createElement('button');
+  transitionStart.id = 'transition-start'; transitionStart.type = 'button'; transitionStart.className = 'text-button';
+  transitionStart.textContent = 'Start this chapter from the beginning'; transitionStart.hidden = true;
+  transitionStart.setAttribute('aria-describedby','transition-status'); $('transition-panel').append(transitionStart);
   let automaticEndHandled = false;
   const descriptions = {
     'opening-room': 'Adrian sits in his Berkeley living room, watching a glass office tower on television; a cold coffee rests nearby.',
@@ -528,11 +532,12 @@
     if (oldActive) savePosition(true);
     resumeAfterSeek = false; audio.pause();
     $('transition-panel').hidden = false; $('transition-status').textContent = 'Loading chapter…'; $('transition-retry').hidden = true;
+    transitionStart.hidden = true;
     retryTransition = {trackId,narratorId,options:{...options,bookmark,listen}};
     narratorOptions(trackId,narratorId);
     setPlayState();
     try {
-      const result = await book.load(trackId,narratorId,{bookmark});
+      const result = await book.load(trackId,narratorId,{bookmark,startFromBeginning:options.startFromBeginning === true});
       if (result.status === 'stale' || token !== transitionToken) return;
       const requestedListening = pendingTransition.listen;
       pendingTransition = null;
@@ -546,6 +551,7 @@
       pendingTransition = null;
       $('transition-status').textContent = error.message || 'This chapter could not be loaded. Try again.';
       $('transition-retry').hidden = false;
+      retryTransition.errorCode = error.code; transitionStart.hidden = error.code !== 'MISSING_ANCHOR';
       if (error.code === 'ACCESS_REQUIRED' || error.cause?.code === 'ACCESS_REQUIRED') { closeAccess(); return; }
       if (oldActive && resumePrevious && requestedListening) startPlayback();
       setPlayState();
@@ -566,6 +572,11 @@
     const bookmark = options.reason === 'voice' && book?.getActive()?.trackId === trackId ? undefined : options.bookmark;
     transitionTo(trackId,narratorId,{...options,bookmark});
   });
+  transitionStart.addEventListener('click',() => {
+    if (transitionStart.hidden || retryTransition?.errorCode !== 'MISSING_ANCHOR') return;
+    const {trackId,narratorId,options} = retryTransition;
+    transitionTo(trackId,narratorId,{...options,bookmark:null,startFromBeginning:true,listen:false});
+  });
   $('narrator').addEventListener('change',() => {
     const target = retryTransition?.trackId || chapter.chapterId;
     transitionTo(target,$('narrator').value,{reason:'voice'});
@@ -576,10 +587,11 @@
     const params = new URL(location.href).searchParams;
     try { const selection = book.initialSelection({trackId:params.get('chapter'),narratorId:params.get('voice')});
       transitionTo(selection.trackId,selection.narratorId,{bookmark:selection.bookmark,reason:'history',history:'none'});
-    } catch (error) { $('transition-panel').hidden = false; $('transition-status').textContent = error.message; }
+    } catch (error) { transitionStart.hidden = true; retryTransition = null; $('transition-panel').hidden = false; $('transition-status').textContent = error.message; }
   });
   async function bootstrap() {
     const token = ++accessToken;
+    transitionStart.hidden = true;
     play.disabled = true; $('play-status').textContent = 'Loading your book…';
     try {
       const session = await fetch('/api/session',{cache:'no-store'});
@@ -613,7 +625,7 @@
       if (!document.body.classList.contains('authenticated')) { $('access-status').textContent = error.message; return; }
       $('transition-panel').hidden = false; $('transition-status').textContent = error.message;
       $('transition-retry').hidden = false;
-      retryTransition = null;
+      retryTransition = null; transitionStart.hidden = true;
     }
   }
   $('transition-retry').addEventListener('click',() => { if (!retryTransition) bootstrap(); });
@@ -633,7 +645,7 @@
     resumeAfterSeek = false; savePosition(true); committing = true;
     audio.pause(); audio.removeAttribute('src'); audio.load();
     cancelAnimationFrame(animationFrame); clearTimeout(seekTimer); clearTimeout(sceneTimer);
-    pendingSeek = issuedSeek = null; bookmarkDirty = false; book = null; manifest = null; retryTransition = null;
+    pendingSeek = issuedSeek = null; bookmarkDirty = false; book = null; manifest = null; retryTransition = null; transitionStart.hidden = true;
     prose.replaceChildren(); sentences.length = 0; sentenceElements.clear(); paragraphElements.clear();
     window.LUMEN_CHAPTER = undefined; window.LUMEN_BOOK = undefined;
     clearScene();

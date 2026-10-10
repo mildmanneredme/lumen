@@ -428,6 +428,49 @@ test('missing semantic anchors cannot guess a changed recording time or overwrit
   assert.equal(book.getActive().narratorId, 'charon');
   assert.equal(f.storage.getItem(BOOKMARK_KEY), raw);
 });
+test('deliberate unmappable resume recovery bypasses only its track until a successful save', async () => {
+  const f=fixture(),original=reader(f);
+  await original.load('chapter-003','charon');original.save(40,{completed:true});
+  await original.load('chapter-001','charon');original.save(40,{completed:true});original.save(25);
+  const state=JSON.parse(f.storage.getItem(BOOKMARK_KEY));
+  state.lastPosition.audioSha256='c'.repeat(64);state.lastPosition.sentenceId='v6:chapter-001:p999-s01';
+  state.history['chapter-001'].bookmark=clone(state.lastPosition);
+  f.storage.setItem(BOOKMARK_KEY,JSON.stringify(state));
+  const raw=f.storage.getItem(BOOKMARK_KEY),book=reader(f),selection=book.initialSelection();
+  await assert.rejects(book.load(selection.trackId,selection.narratorId,{bookmark:selection.bookmark}),error=>error.code==='MISSING_ANCHOR');
+  assert.equal(book.getActive(),null);assert.equal(f.storage.getItem(BOOKMARK_KEY),raw);
+  const recovered=await book.load(selection.trackId,selection.narratorId,{startFromBeginning:true});
+  assert.deepEqual(recovered.position,{time:0,completed:false,mapped:false});
+  assert.equal(f.storage.getItem(BOOKMARK_KEY),raw,'loading never discards progress before a successful commit/save');
+  book.save(0);
+  const after=JSON.parse(f.storage.getItem(BOOKMARK_KEY));
+  assert.equal(after.lastPosition.audioTime,0);assert.equal(after.lastPosition.audioSha256,'a'.repeat(64));
+  assert.equal(after.history['chapter-001'].bookmark.sentenceId,'v6:chapter-001:p001-s01');
+  assert.equal(after.history['chapter-001'].completed,true);assert.equal(after.history['chapter-001'].completedAt,state.history['chapter-001'].completedAt);
+  assert.deepEqual(after.history['chapter-003'],state.history['chapter-003']);
+});
+test('failed and cancelled deliberate recovery keep the unmappable target history', async () => {
+  const f=fixture();let fail=false,hold=false,release;
+  const book=reader(f,{loadChapter:async url=>{
+    if(url===f.manifest.tracks[2].recordings.charon.url) {
+      if(fail)throw new Error('offline');
+      if(hold)await new Promise(resolve=>release=resolve);
+    }
+    return clone(f.payloads[url]);
+  }});
+  await book.load('chapter-001','charon');book.save(25);
+  const state=JSON.parse(f.storage.getItem(BOOKMARK_KEY)),bad=clone(state.lastPosition);
+  bad.chapterId='chapter-002';bad.readingExtentId='chapter-002-full';bad.sentenceId='v6:chapter-002:p999-s01';bad.audioSha256='c'.repeat(64);
+  state.history['chapter-002']={bookmark:bad,completed:false};f.storage.setItem(BOOKMARK_KEY,JSON.stringify(state));
+  const before=f.storage.getItem(BOOKMARK_KEY);
+  await assert.rejects(book.load('chapter-002','charon'),error=>error.code==='MISSING_ANCHOR');
+  fail=true;await assert.rejects(book.load('chapter-002','charon',{startFromBeginning:true}),error=>error.code==='LOAD_FAILED');
+  assert.equal(f.storage.getItem(BOOKMARK_KEY),before);assert.equal(book.getActive().trackId,'chapter-001');
+  fail=false;hold=true;const pending=book.load('chapter-002','charon',{startFromBeginning:true});
+  await Promise.resolve();await book.load('chapter-003','charon');release();
+  assert.equal((await pending).status,'stale');assert.equal(book.getActive().trackId,'chapter-003');
+  assert.equal(f.storage.getItem(BOOKMARK_KEY),before);
+});
 test('failed loading preserves old chapter, bookmark and retry target', async () => {
   const f = fixture();
   let fail = false;

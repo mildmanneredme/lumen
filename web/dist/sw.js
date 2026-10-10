@@ -1,6 +1,6 @@
 /* Bump the shell version when shipping changes to HTML, scripts, or styles. */
 'use strict';
-const SHELL_CACHE = 'lumen-shell-20261010-private-book-v11';
+const SHELL_CACHE = 'lumen-shell-20261010-private-book-v12';
 const ART_CACHE = 'lumen-art-v1';
 const MAX_ART_ENTRIES = 40;
 const SHELL_PATHS = [
