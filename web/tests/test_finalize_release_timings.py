@@ -173,6 +173,83 @@ class FinalizeTimingTests(unittest.TestCase):
         self.assertEqual(timing["coverage"], {"introEnd": 0, "tailStart": recording["decodedDuration"]})
         self.assertTrue(all(cue["recheckWindow"]["scope"] == "neighbor-recheck-only" for cue in timing["sentences"]))
 
+    def test_partial_token_coverage_rebuilds_as_explicit_null_gap_with_retained_neighbors(self):
+        track = content.make_track(1, "story", "Alpha bravo charlie delta echo. Afterwards.", "v6")
+        recording = self.inventory["recordings"][1]
+        evidence = [{"id": clip["id"]} for clip in recording["selectedClips"]]
+        words = [("Alpha", 1, 1.2), ("bravo", 1.2, 1.4), ("charlie", 1.4, 1.6), ("Afterwards.", 4, 4.5)]
+        report = finalizer.report_from_words(track, recording, words, evidence, {})
+        self.assertEqual(report["syncGaps"][0]["reason"], "low-confidence-ASR-anchor")
+        # Dropping a redundant gap list cannot turn the aligner's weak coverage into a measured cue.
+        report["syncGaps"] = []
+        timing = finalizer.gap_timing(track, recording, report, {})
+        first, second = timing["sentences"]
+        self.assertEqual(first["syncStatus"], "unavailable"); self.assertIsNone(first["start"]); self.assertIsNone(first["end"])
+        self.assertEqual(first["reason"], "low-confidence-ASR-anchor")
+        self.assertEqual(first["recheckWindow"], {"start": 0, "end": 4, "beforeSentenceId": None,
+                         "afterSentenceId": second["sentenceId"], "scope": "neighbor-recheck-only"})
+        self.assertEqual(timing["coverage"], {"introEnd": 4, "tailStart": 4.5})
+
+    def test_low_confidence_anchor_keeps_conservative_overlap_diagnostics_without_duplicate_gaps(self):
+        track = content.make_track(1, "story", "Alpha bravo charlie delta echo. Afterwards.", "v6")
+        recording = self.inventory["recordings"][1]
+        evidence = [{"id": clip["id"]} for clip in recording["selectedClips"]]
+        report = finalizer.report_from_words(track, recording, [("Alpha", 1, 5), ("Afterwards.", 4, 4.5)], evidence, {})
+        self.assertEqual(len(report["syncGaps"]), 2)
+        timing = finalizer.gap_timing(track, recording, report, {})
+        self.assertEqual([cue["reason"] for cue in timing["sentences"]],
+                         ["low-confidence-ASR-anchor", "overlapping-ASR-interval"])
+        self.assertTrue(all(cue["start"] is None and cue["end"] is None for cue in timing["sentences"]))
+
+    def test_low_confidence_overlapping_sentence_has_one_gap_and_measured_neighbor_bounds(self):
+        track = content.make_track(1, "story", "Before. Alpha bravo charlie delta echo. Afterwards.", "v6")
+        recording = self.inventory["recordings"][1]
+        evidence = [{"id": clip["id"]} for clip in recording["selectedClips"]]
+        report = finalizer.report_from_words(track, recording,
+                    [("Before.", 1, 3), ("Alpha", 2, 2.5), ("Afterwards.", 4, 4.5)], evidence, {})
+        gap_id = content.sentences(track)[1]["id"]
+        self.assertEqual(report["overlappingSentences"], [gap_id])
+        self.assertEqual(report["syncGaps"], [{"sentenceId": gap_id, "reason": "low-confidence-ASR-anchor",
+                                             "evidenceIds": [row["id"] for row in evidence]}])
+        timing = finalizer.gap_timing(track, recording, report, {})
+        gap = timing["sentences"][1]
+        self.assertEqual(gap["reason"], "low-confidence-ASR-anchor")
+        self.assertIsNone(gap["start"]); self.assertIsNone(gap["end"])
+        self.assertEqual((gap["recheckWindow"]["start"], gap["recheckWindow"]["end"]), (3, 4))
+
+    def test_source_bound_verifier_rejects_partial_cue_even_after_forged_report_hashes_are_refreshed(self):
+        source = next(row for row in content.read_json(self.destination / "audio-release-report.json")["alignmentReports"]
+                      if (row["trackId"], row["narratorId"]) == self.target)
+        cache = self.root / source["evidence"][0]["sourcePath"]
+        record = content.read_json(cache)
+        record["segments"][0]["words"] = [word for word in record["segments"][0]["words"]
+                                           if word["word"] not in {"Vale", "waited."}]
+        cache.write_bytes(content.json_bytes(record))
+        self.run_finalize()
+        track = self.registry["tracks"][1]
+        recording = next(row for row in self.inventory["recordings"]
+                         if (row["trackId"], row["narratorId"]) == self.target)
+        timing = content.read_json(self.destination / "finalized-timings.json")[self.target[0]][self.target[1]]
+        first_id = content.sentences(track)[0]["id"]
+        self.assertEqual(timing["sentences"][0]["reason"], "low-confidence-ASR-anchor")
+        self.assertIsNone(timing["sentences"][0]["start"])
+        words = finalizer.checked_cache_words(self.root, track, recording, timing["evidence"], timing["sourceBindings"])
+        partial = next(word for word in words if word[0] == "Dr.")
+        forged_source = finalizer.report_from_words(track, recording, words, timing["evidence"], timing["sourceBindings"])
+        forged_source["lowConfidenceSentences"] = []
+        forged_source["syncGaps"] = [gap for gap in forged_source["syncGaps"] if gap["sentenceId"] != first_id]
+        forged_source["measuredSentences"].insert(0, {"sentenceId": first_id, "start": partial[1], "end": partial[2]})
+        forged = finalizer.gap_timing(track, recording, forged_source, timing["approvals"]["content"])
+        prior = content.read_project_json(self.root, timing["approvals"]["alignment"]["verificationReportPath"])
+        proof = finalizer.verification_report(track, recording, forged, prior["checkedAt"])
+        artifact = audio.private_export(self.destination, ("technical-alignment",), track["id"], "forged-low-confidence", proof)
+        forged["approvals"]["alignment"] = {**timing["approvals"]["alignment"],
+            "timingSha256": proof["timingSha256"], "verificationReportSha256": artifact["sha256"],
+            "verificationReportPath": (self.destination / artifact["path"]).relative_to(self.root).as_posix()}
+        self.assertTrue(content.validate_technical_alignment(track, recording, forged, proof))
+        with self.assertRaisesRegex(content.ContentError, "recomputed|measured"):
+            finalizer.verify_technical_alignment(self.root, track, recording, forged)
+
     def test_technical_report_false_check_or_selection_hash_is_rejected(self):
         self.run_finalize(); timing = content.read_json(self.destination / "finalized-timings.json")[self.target[0]][self.target[1]]
         original = content.read_project_json(self.root, timing["approvals"]["alignment"]["verificationReportPath"])
