@@ -20,7 +20,8 @@ function createNetworkLedger({appOrigin,workerOrigin,phase=()=>'',onRequest=()=>
       corsOrigin:[appOrigin,workerOrigin,'null'].includes(cors)?cors: cors?'other':'',
       noStore:/(?:^|,)\s*no-store\s*(?:,|$)/i.test(header(response.headers,'cache-control')),
       privateNoStore:header(response.headers,'cache-control').trim().toLowerCase()==='private, no-store',
-      fromServiceWorker:!!response.fromServiceWorker,fromDiskCache:!!response.fromDiskCache};
+      fromServiceWorker:!!response.fromServiceWorker,fromDiskCache:!!response.fromDiskCache,
+      fromPrefetchCache:!!response.fromPrefetchCache,fromEarlyHints:!!response.fromEarlyHints};
   }
   function respond(record,response,kind) {
     if(!record?.current){issue('response-without-request');return;}
@@ -40,6 +41,10 @@ function createNetworkLedger({appOrigin,workerOrigin,phase=()=>'',onRequest=()=>
       const hop={...row,rawURL:event.request.url,bodyBytes:0};record.hops.push(hop);record.current=hop;requests.push(row);notify(onRequest,row);
     },
     responseReceived(event){respond(records.get(event.requestId),event.response,'final');},
+    requestServedFromCache(event) {
+      const hop=records.get(event.requestId)?.current;
+      if(hop)hop.servedFromCache=true;else issue('cache-without-request');
+    },
     dataReceived(event) {
       const delta=event.dataLength;
       if(!Number.isSafeInteger(delta)||delta<0){issue('invalid-body-count');return;}
@@ -56,7 +61,7 @@ function createNetworkLedger({appOrigin,workerOrigin,phase=()=>'',onRequest=()=>
   };
   return {handlers,snapshot() {
     const responses=[],unresponded=[];
-    for(const record of records.values())for(const hop of record.hops)if(hop.response)responses.push({...hop.response,method:hop.method,type:hop.type,phase:hop.phase,bodyBytes:hop.bodyBytes});
+    for(const record of records.values())for(const hop of record.hops)if(hop.response)responses.push({...hop.response,method:hop.method,type:hop.type,phase:hop.phase,bodyBytes:hop.bodyBytes,servedFromCache:!!hop.servedFromCache});
     else unresponded.push({...safeURL(hop.rawURL),method:hop.method,type:hop.type,phase:hop.phase,bodyBytes:hop.bodyBytes,failed:!!hop.failed,cancelled:!!hop.cancelled});
     return {requests:requests.map(row=>({...row})),responses,unresponded,failures:failures.map(row=>({...row})),issues:[...issues],bodyBytes};
   }};
@@ -66,7 +71,7 @@ function mediaNetworkVerdict(snapshot,{appOrigin,workerOrigin}) {
   const worker=row=>row.origin===workerOrigin&&row.path.startsWith('/media/')&&row.path.endsWith('.mp3');
   const apiRows=snapshot.responses.filter(api),mediaRows=snapshot.responses.filter(worker);
   const apiBodyBytes=apiRows.concat(snapshot.unresponded||[]).filter(api).reduce((sum,row)=>sum+row.bodyBytes,0);
-  const sound=row=>row.protocolURLMatched&&!row.fromServiceWorker&&!row.fromDiskCache&&row.privateNoStore;
+  const sound=row=>row.protocolURLMatched&&!row.fromServiceWorker&&!row.fromDiskCache&&!row.servedFromCache&&!row.fromPrefetchCache&&!row.fromEarlyHints&&row.privateNoStore;
   return {apiRedirectsOnly:snapshot.issues.length===0&&apiRows.length>0&&apiBodyBytes===0&&apiRows.every(row=>sound(row)&&!row.contentType.startsWith('audio/')&&row.responseKind==='redirect'&&row.status===307&&row.contentLength==='0'&&row.bodyBytes===0),
     workerAudioValid:snapshot.issues.length===0&&mediaRows.some(row=>row.status===206&&row.bodyBytes>0)&&mediaRows.every(row=>sound(row)&&row.responseKind==='final'&&
       [200,206,304].includes(row.status)&&(row.status===304||row.contentType==='audio/mpeg')&&[appOrigin,'null'].includes(row.corsOrigin)),
@@ -76,6 +81,7 @@ async function observeNativeNetwork(page,options) {
   const ledger=createNetworkLedger(options),session=await page.context().newCDPSession(page);
   const events={
     'Network.requestWillBeSent':ledger.handlers.requestWillBeSent,'Network.responseReceived':ledger.handlers.responseReceived,
+    'Network.requestServedFromCache':ledger.handlers.requestServedFromCache,
     'Network.dataReceived':ledger.handlers.dataReceived,'Network.loadingFailed':ledger.handlers.loadingFailed
   };
   for(const [name,handler]of Object.entries(events))session.on(name,handler);

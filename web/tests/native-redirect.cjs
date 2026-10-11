@@ -4,10 +4,11 @@ const {createNetworkLedger,observeNativeNetwork,mediaNetworkVerdict}=require('./
 const APP='https://candidate.vercel.app',WORKER='https://media.workers.dev',URL_A=APP+'/api/assets/release/audio/voice/chapter.hash.mp3',URL_M=WORKER+'/media/release/audio/voice/chapter.hash.mp3?grant=PRIVATE_GRANT';
 const headers={'Content-Type':'audio/mpeg','Content-Length':'100','Content-Range':'bytes 0-99/100','Cache-Control':'private, no-store','Access-Control-Allow-Origin':APP};
 function goodLedger(options={}) {
- const ledger=createNetworkLedger({appOrigin:APP,workerOrigin:WORKER,...options}),h=ledger.handlers;
+ const {responseFlags={},...ledgerOptions}=options;
+ const ledger=createNetworkLedger({appOrigin:APP,workerOrigin:WORKER,...ledgerOptions}),h=ledger.handlers;
  h.requestWillBeSent({requestId:'media',request:{url:URL_A,method:'GET'},type:'Media'});
  h.requestWillBeSent({requestId:'media',request:{url:URL_M,method:'GET'},type:'Media',redirectResponse:{url:URL_A,status:307,headers:{'Content-Length':'0','Cache-Control':'private, no-store','Set-Cookie':'PRIVATE_COOKIE'}}});
- h.responseReceived({requestId:'media',response:{url:URL_M,status:206,headers}});h.dataReceived({requestId:'media',dataLength:100});return ledger;
+ h.responseReceived({requestId:'media',response:{url:URL_M,status:206,headers,...responseFlags}});h.dataReceived({requestId:'media',dataLength:100});return ledger;
 }
 const verdict=ledger=>mediaNetworkVerdict(ledger.snapshot(),{appOrigin:APP,workerOrigin:WORKER});
 test('raw redirect and final response URLs prove distinct delivery hops; snapshots exclude secrets',()=>{
@@ -48,6 +49,26 @@ test('null CORS, incremental byte callbacks and sanitized cancellation/offline c
  assert.deepEqual(l.snapshot().unresponded.map(r=>[r.failed,r.cancelled]),[[true,false],[true,true]]);
 
  const nullLedger=createNetworkLedger({appOrigin:APP,workerOrigin:WORKER});nullLedger.handlers.requestWillBeSent({requestId:'n',request:{url:URL_M,method:'GET'},type:'Media'});nullLedger.handlers.responseReceived({requestId:'n',response:{url:URL_M,status:206,headers:{...headers,'Access-Control-Allow-Origin':'null'}}});nullLedger.handlers.dataReceived({requestId:'n',dataLength:1});assert.equal(verdict(nullLedger).workerAudioValid,true);
+});
+test('a memory-cache signal rejects an otherwise valid native media response',()=>{
+ const l=goodLedger();l.handlers.requestServedFromCache?.({requestId:'media'});
+ assert.equal(verdict(l).workerAudioValid,false,'Memory-delivered bytes cannot prove fresh network delivery');
+ assert.equal(l.snapshot().responses[1].servedFromCache,true);
+});
+test('prefetch and Early Hints cache responses cannot prove direct network media',()=>{
+ const accepted=[];for(const flag of ['fromPrefetchCache','fromEarlyHints']) {
+  const l=goodLedger({responseFlags:{[flag]:true}});if(verdict(l).workerAudioValid)accepted.push(flag);
+ }assert.deepEqual(accepted,[],'Both prefetch-cache variants must reject otherwise valid media proof');
+});
+test('memory-cache attribution remains on the correct redirect hop',()=>{
+ const l=createNetworkLedger({appOrigin:APP,workerOrigin:WORKER}),h=l.handlers;
+ h.requestWillBeSent({requestId:'r',request:{url:URL_A,method:'GET'},type:'Media'});
+ h.requestServedFromCache?.({requestId:'r'});
+ h.requestWillBeSent({requestId:'r',request:{url:URL_M,method:'GET'},type:'Media',redirectResponse:{url:URL_A,status:307,headers:{'Content-Length':'0','Cache-Control':'private, no-store'}}});
+ h.responseReceived({requestId:'r',response:{url:URL_M,status:206,headers}});h.dataReceived({requestId:'r',dataLength:100});
+ assert.equal(verdict(l).apiRedirectsOnly,false,'A cached API redirect is not current network proof');
+ assert.equal(verdict(l).workerAudioValid,true,'The following uncached response is a distinct hop');
+ assert.deepEqual(l.snapshot().responses.map(r=>r.servedFromCache),[true,false]);
 });
 test('total hop bound includes redirects and invalid counts cannot authorize a proof',()=>{
  const l=createNetworkLedger({appOrigin:APP,workerOrigin:WORKER,maxRequests:1});l.handlers.requestWillBeSent({requestId:'one',request:{url:URL_A,method:'GET'},type:'Media'});l.handlers.requestWillBeSent({requestId:'one',request:{url:URL_M,method:'GET'},type:'Media',redirectResponse:{url:URL_A,status:307,headers:{'Content-Length':'0','Cache-Control':'private, no-store'}}});assert.deepEqual(l.snapshot().issues,['request-limit']);assert.equal(verdict(l).apiRedirectsOnly,false);
