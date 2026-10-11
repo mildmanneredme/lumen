@@ -124,8 +124,8 @@ upload asset.
 
 ## Optional reviewed scenes
 
-Character and image expansion remains held. The exporter can consume existing
-approved paintings when a release explicitly includes them. `scenes_by_track`
+Private full-book painting production is complete; reader publication remains
+separate. The exporter consumes approved paintings when a release explicitly includes them. `scenes_by_track`
 maps track IDs to ordered scene lists. Each scene requires `id`, canonical
 `sentenceId`, owned local `sourcePath`, physical image `sha256`, plain `title`,
 plain `alt`, and an `approval` record. The record contains an approved or
@@ -139,10 +139,24 @@ Scenes require optimized WebP paintings, matching the reader and remote delivery
 contract. PNG/JPEG source paintings must be optimized and the resulting WebP
 hash reviewed before inclusion. The image is freshly hashed. Public scene objects contain an immutable `src`,
 approved title/alt (`description` mirrors alt for the reader), canonical trigger,
-and narrator-resolved start/end. A scene trigger must use a measured sentence;
+and narrator-resolved start/end. Each painting needs a distinct measured sentence trigger;
 an unavailable gap has no reveal timestamp. Local paths and approvals stay private. Missing
 or malformed scene approval fails; it is never replaced with a generated image
 or an assumed approval.
+
+An optional phone variant uses the paired private fields `phoneSourcePath` and
+`phoneSha256`. Both fields are required together, and the file must be a freshly
+hash-verified WebP inside the selected project root. `scene_content_hash(scene)`
+includes `phoneSha256` when present, so adding or changing this variant requires
+a new review. Existing single-image approval hashes remain valid. The exporter
+adds both images to the inventory and exposes only `phoneSrc` alongside `src`.
+
+Use `web/scripts/prepare_illustrated_scenes.py` to prepare the generated selection
+manifests as a private draft and audit their exact narration anchors. Its neutral
+reader labels avoid exposing production notes; explicit metadata overrides can
+provide reviewed titles and alt text. Pending approvals and unavailable clocks
+remain pending. See [generated imagery integration](imagery-integration.md) for
+the R2 decision, command and current full-book gaps.
 
 ## CLI and promotion gate
 

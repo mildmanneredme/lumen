@@ -14,7 +14,7 @@ Bookmarks use `lumen-book-v2`, with chapter history and completion, canonical se
 
 ## Phone and installed app
 
-Phone controls have large touch targets, a full-width timeline and safe-area spacing. iPad and desktop use side-by-side art and text; **Art** can hide the generic placeholder. Narrative illustrations remain pending character/artwork review.
+Phone controls have large touch targets, a full-width timeline and safe-area spacing. iPad and desktop use side-by-side art and text; **Art** can hide the artwork panel. Narrative illustrations remain pending reader release review. The reader supports selected full-size and phone WebPs from the private R2 gateway; the current published release has no new narrative paintings. [Generated imagery integration](../docs/backlog/imagery-integration.md) records the selected collection, preparation command and remaining timing gaps.
 
 In Android Chrome, use the browser menu to install Lumen or add it to the Home screen. The settings panel offers installation help and an install button when Chrome makes it available. iPhone home-screen launch is also supported. Media Session supplies supported system play/pause, seek and chapter controls. Automated Chrome phone, iPad and desktop checks do not constitute a physical-device installation or lock-screen acceptance test.
 

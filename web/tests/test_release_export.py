@@ -414,6 +414,67 @@ uploadPrivateRelease({root:values.root,inventory,manifestURL:values.manifestURL,
                 with self.assertRaises(release.content.ContentError):
                     self.build(scenes_by_track={self.track["id"]: [dict(scene, **change)]})
 
+    def phone_scene_fixture(self):
+        directory = self.root / "approved-art"
+        directory.mkdir()
+        full, phone = directory / "scene.webp", directory / "scene-phone.webp"
+        full.write_bytes(b"fixture full painting")
+        phone.write_bytes(b"fixture phone painting")
+        scene = {"id": "fixture-scene", "sentenceId": self.timing["sentences"][0]["sentenceId"],
+                 "sourcePath": str(full.relative_to(self.root)), "sha256": release.content.file_hash(full),
+                 "phoneSourcePath": str(phone.relative_to(self.root)), "phoneSha256": release.content.file_hash(phone),
+                 "title": "A quiet room", "alt": "A person waiting in a room"}
+        scene["approval"] = {"status": "approved", "reviewer": "Fixture art reviewer",
+                             "reviewedAt": "2026-10-11T00:00:00Z", "sceneSha256": release.scene_content_hash(scene)}
+        return scene, full, phone
+
+    def test_reviewed_phone_and_full_paintings_share_trigger_and_enter_private_inventory(self):
+        scene, full, phone = self.phone_scene_fixture()
+        result = self.build(scenes_by_track={self.track["id"]: [scene]})
+        actual = self.read_chapter(result)["scenes"][0]
+        self.assertEqual(actual["start"], self.timing["sentences"][0]["start"])
+        self.assertEqual(actual["src"], self.plan["mediaURLbase"] + "images/" + scene["sha256"] + ".webp")
+        self.assertEqual(actual["phoneSrc"], self.plan["mediaURLbase"] + "images/" + scene["phoneSha256"] + ".webp")
+        images = [row for row in result["uploadInventory"]["assets"] if row["contentType"] == "image/webp"]
+        self.assertEqual({row["sha256"] for row in images}, {scene["sha256"], scene["phoneSha256"]})
+        self.assertEqual({row["bytes"] for row in images}, {full.stat().st_size, phone.stat().st_size})
+        for key in ["sourcePath", "phoneSourcePath", "phoneSha256", "approval"]:
+            self.assertNotIn(key, actual)
+        self.assert_uploader_source_and_index_compatible(result)
+
+    def test_phone_changes_invalidate_review_and_bytes_are_freshly_verified(self):
+        scene, _, phone = self.phone_scene_fixture()
+        legacy = {key: value for key, value in scene.items() if key not in {"phoneSourcePath", "phoneSha256"}}
+        legacy["approval"] = dict(scene["approval"], sceneSha256=release.scene_content_hash(legacy))
+        for change in [{"phoneSha256": "a" * 64}, {"approval": legacy["approval"]},
+                       {"phoneSourcePath": None}, {"phoneSha256": None}]:
+            with self.subTest(change=change):
+                with self.assertRaises(release.content.ContentError):
+                    self.build(scenes_by_track={self.track["id"]: [dict(scene, **change)]})
+                self.assertFalse(self.staging.exists())
+        phone.write_bytes(b"tampered phone painting")
+        with self.assertRaisesRegex(release.content.ContentError, "Phone image hash"):
+            self.build(scenes_by_track={self.track["id"]: [scene]})
+        self.assertFalse(self.staging.exists())
+
+    def test_phone_file_type_and_owned_root_are_enforced(self):
+        scene, _, phone = self.phone_scene_fixture()
+        png = phone.with_suffix(".png")
+        png.write_bytes(phone.read_bytes())
+        for path in [str(png.relative_to(self.root)), "/etc/hosts"]:
+            with self.subTest(path=path):
+                with self.assertRaises(release.content.ContentError):
+                    self.build(scenes_by_track={self.track["id"]: [dict(scene, phoneSourcePath=path)]})
+                self.assertFalse(self.staging.exists())
+
+    def test_shared_trigger_cannot_silently_hide_a_reviewed_painting(self):
+        scene, _, _ = self.phone_scene_fixture()
+        second = dict(scene, id="fixture-second-scene")
+        second["approval"] = dict(scene["approval"], sceneSha256=release.scene_content_hash(second))
+        with self.assertRaisesRegex(release.content.ContentError, "distinct canonical reveal triggers"):
+            self.build(scenes_by_track={self.track["id"]: [scene, second]})
+        self.assertFalse(self.staging.exists())
+
     def test_schema2_public_payload_keeps_unavailable_sentence_text_without_private_windows(self):
         timing = copy.deepcopy(self.timing); timing["schemaVersion"] = 2
         for cue in timing["sentences"]:

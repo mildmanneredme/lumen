@@ -128,7 +128,12 @@ def validate_plan(plan, registry):
 
 def scene_content_hash(scene):
     """Bind the reviewed painting and reveal text to its canonical trigger."""
-    return content.object_hash({key: scene.get(key) for key in ["id", "sentenceId", "sha256", "title", "alt"]})
+    reviewed = {key: scene.get(key) for key in ["id", "sentenceId", "sha256", "title", "alt"]}
+    # Legacy single-image approvals keep their existing identity. Adding or
+    # changing a phone painting requires reviewing that exact image as well.
+    if "phoneSha256" in scene:
+        reviewed["phoneSha256"] = scene["phoneSha256"]
+    return content.object_hash(reviewed)
 
 
 def scene_approval_valid(scene):
@@ -148,9 +153,17 @@ def scene_approval_valid(scene):
 
 def prepare_scenes(root, scenes, media_base):
     content.require(isinstance(scenes, list) and all(isinstance(scene, dict) for scene in scenes), "Invalid reviewed scene list")
+    anchors = [scene.get("sentenceId") for scene in scenes]
+    content.require(all(isinstance(anchor, str) for anchor in anchors) and len(set(anchors)) == len(anchors),
+                    "Scene paintings require distinct canonical reveal triggers; duplicate anchors would hide a painting")
     public, files = [], []
     for scene in scenes:
         content.require(safe_id(scene.get("id")) and content.valid_hash(scene.get("sha256")), "Invalid reviewed scene identity/hash")
+        has_phone = "phoneSourcePath" in scene or "phoneSha256" in scene
+        if has_phone:
+            content.require(isinstance(scene.get("phoneSourcePath"), str)
+                            and content.valid_hash(scene.get("phoneSha256")),
+                            "Phone painting requires a source path and SHA-256")
         visible_text(scene.get("title"), "scene title")
         visible_text(scene.get("alt"), "scene alt")
         content.require(scene_approval_valid(scene), "Missing/stale scene painting and reveal approval")
@@ -161,9 +174,17 @@ def prepare_scenes(root, scenes, media_base):
         content_type = "image/webp"
         content.require(content.file_hash(path) == scene["sha256"], "Scene image hash differs")
         url = media_base + "images/" + scene["sha256"] + "." + extension
-        public.append({"id": scene["id"], "sentenceId": scene["sentenceId"], "src": url,
-                       "title": scene["title"], "alt": scene["alt"], "description": scene["alt"]})
+        reader_scene = {"id": scene["id"], "sentenceId": scene["sentenceId"], "src": url,
+                        "title": scene["title"], "alt": scene["alt"], "description": scene["alt"]}
         files.append((url, path, scene["sha256"], content_type))
+        if has_phone:
+            phone_path = content.project_file(root, scene["phoneSourcePath"])
+            content.require(phone_path.suffix.lower() == ".webp", "Phone scenes require optimized WebP paintings")
+            content.require(content.file_hash(phone_path) == scene["phoneSha256"], "Phone image hash differs")
+            phone_url = media_base + "images/" + scene["phoneSha256"] + ".webp"
+            reader_scene["phoneSrc"] = phone_url
+            files.append((phone_url, phone_path, scene["phoneSha256"], content_type))
+        public.append(reader_scene)
     return public, files
 
 

@@ -454,6 +454,7 @@
             nonempty(scene.id) &&
             !sceneIds.has(scene.id) &&
             safeURL(scene.src) &&
+            (scene.phoneSrc === undefined || safeURL(scene.phoneSrc)) &&
             finite(scene.start) &&
             priorScene <= scene.start &&
             scene.start <= value.duration &&

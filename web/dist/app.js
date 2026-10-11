@@ -11,6 +11,7 @@
     return;
   }
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
+  const phoneArtwork = window.matchMedia('(max-width: 700px)');
   let duration = chapter.duration, scenes = [];
   let book, manifest, transitionToken = 0, retryTransition = null, continuationToken = 0, committing = false;
   let pendingTransition = null, accessToken = 0, inviteRequest = 0, retainedInvite = '', sessionExchange = null;
@@ -29,8 +30,8 @@
     'classroom-lever': 'Adrian teaches a university seminar, facing a group of attentive adult students with laptops.',
     'people-as-clay': 'A visual metaphor for behavioural manipulation: hands shape a soft clay bust with an unfinished, anonymous face.'
   };
-  let follow = true, activeSentence = null, activeParagraph = null, activeScene = null;
-  let sceneToken = 0, sceneTimer = 0, animationFrame = 0, lastSaved = -1;
+  let follow = true, activeSentence = null, activeParagraph = null, activeScene = null, activeSceneSource = '';
+  let sceneToken = 0, sceneTimer = 0, sceneRetryTimer = 0, sceneLoadState = 'idle', animationFrame = 0, lastSaved = -1;
   let pendingSeek = null, issuedSeek = null, resumeAfterSeek = false, seekTimer = 0;
   let progress, bookmarkDirty = false, completed = false;
   let artworkVisible = true, lastMediaUpdate = 0;
@@ -123,20 +124,37 @@
       pane.scrollTo({top:Math.max(0,top),behavior:reduced.matches || force ? 'auto' : 'smooth'});
     }
   }
-  function clearScene() {
-    ++sceneToken; clearTimeout(sceneTimer); activeScene = null; warmedScenes.clear();
+  function resetSceneDisplay() {
+    clearTimeout(sceneTimer);
     $('scene-stage').classList.add('placeholder-art'); $('scene-stage').removeAttribute('data-scene');
     $('scene-incoming').classList.remove('visible');
     $('scene-image').removeAttribute('src'); $('scene-incoming').removeAttribute('src'); $('scene-image').alt = '';
     $('scene-title').textContent = $('scene-number').textContent = '';
+  }
+  function clearScene() {
+    ++sceneToken; clearTimeout(sceneRetryTimer); sceneLoadState = 'idle';
+    activeScene = null; activeSceneSource = ''; warmedScenes.clear();
+    resetSceneDisplay();
+  }
+  function sceneSource(scene) {
+    if (!scene.phoneSrc) return scene.src;
+    const width = $('scene-stage').getBoundingClientRect().width;
+    const pixels = width * Math.max(1, window.devicePixelRatio || 1);
+    return navigator.connection?.saveData || phoneArtwork.matches || (width > 0 && pixels <= 960)
+      ? scene.phoneSrc : scene.src;
   }
   function showScene(scene) {
     if (!scene) {
       if (activeScene || !$('scene-stage').classList.contains('placeholder-art')) clearScene();
       return;
     }
-    if (activeScene?.id === scene.id) return;
+    const source = sceneSource(scene);
+    if (activeScene?.id === scene.id && activeSceneSource === source && sceneLoadState !== 'idle') return;
+    // Rewinding must clear a later reveal while its earlier painting loads.
+    if (activeScene && scene.start < activeScene.start) clearScene();
     activeScene = scene;
+    activeSceneSource = source;
+    clearTimeout(sceneRetryTimer);
     const token = ++sceneToken;
     const stage = $('scene-stage'), image = $('scene-image'), incoming = $('scene-incoming');
     stage.dataset.scene = scene.id;
@@ -144,32 +162,46 @@
     $('scene-number').textContent = String(scenes.indexOf(scene) + 1).padStart(2,'0') + ' / ' + String(scenes.length).padStart(2,'0');
     clearTimeout(sceneTimer);
     incoming.classList.remove('visible');
-    const preload = new Image();
-    preload.onload = () => {
+    function loadPainting(attempt) {
       if (token !== sceneToken) return;
-      stage.classList.remove('placeholder-art');
-      incoming.src = scene.src;
-      image.alt = scene.alt || scene.description || descriptions[scene.id] || scene.title || 'Illustration';
-      const next = scenes[scenes.indexOf(scene) + 1];
-      if (next && !warmedScenes.has(next.id) && !navigator.connection?.saveData) {
-        warmedScenes.add(next.id);
-        const ahead = new Image(); ahead.decoding = 'async'; ahead.fetchPriority = 'low'; ahead.src = next.src;
-      }
-      if (reduced.matches || audio.paused) { image.src = scene.src; return; }
-      requestAnimationFrame(() => {
+      sceneLoadState = 'loading';
+      const preload = new Image();
+      preload.onload = () => {
         if (token !== sceneToken) return;
-        incoming.classList.add('visible');
-        sceneTimer = setTimeout(() => {
+        sceneLoadState = 'loaded';
+        stage.classList.remove('placeholder-art');
+        incoming.src = source;
+        image.alt = scene.alt || scene.description || descriptions[scene.id] || scene.title || 'Illustration';
+        const next = scenes[scenes.indexOf(scene) + 1];
+        const nextSource = next && sceneSource(next);
+        if (next && !warmedScenes.has(nextSource) && !navigator.connection?.saveData) {
+          warmedScenes.add(nextSource);
+          const ahead = new Image(); ahead.decoding = 'async'; ahead.fetchPriority = 'low'; ahead.src = nextSource;
+        }
+        if (reduced.matches || audio.paused) { image.src = source; return; }
+        requestAnimationFrame(() => {
           if (token !== sceneToken) return;
-          image.src = scene.src;
-          incoming.classList.remove('visible');
-        },1300);
-      });
-    };
-    preload.onerror = () => {
-      if (token === sceneToken) $('play-status').textContent = 'Illustration unavailable';
-    };
-    preload.src = scene.src;
+          incoming.classList.add('visible');
+          sceneTimer = setTimeout(() => {
+            if (token !== sceneToken) return;
+            image.src = source;
+            incoming.classList.remove('visible');
+          },1300);
+        });
+      };
+      preload.onerror = () => {
+        if (token !== sceneToken) return;
+        if (attempt === 0) {
+          sceneLoadState = 'retrying';
+          sceneRetryTimer = setTimeout(() => loadPainting(1),1000);
+        } else {
+          sceneLoadState = 'failed';
+          resetSceneDisplay();
+        }
+      };
+      preload.src = source;
+    }
+    loadPainting(0);
   }
   function render(time = currentPosition(), force = false) {
     if (committing || !book?.getActive()) return;
@@ -489,7 +521,8 @@
     activeSentence = activeParagraph = activeScene = null; lastSaved = -1; bookmarkDirty = false;
     warmedScenes.clear(); sentences.length = 0; sentenceElements.clear(); paragraphElements.clear(); prose.replaceChildren();
     chapter = payload; window.LUMEN_CHAPTER = chapter; duration = chapter.duration;
-    scenes = chapter.scenes.map(scene => ({...scene,src:localAssetURL(scene.src || 'assets/' + scene.id + '.webp').href}));
+    scenes = chapter.scenes.map(scene => ({...scene,src:localAssetURL(scene.src || 'assets/' + scene.id + '.webp').href,
+      ...(scene.phoneSrc ? {phoneSrc:localAssetURL(scene.phoneSrc).href} : {})}));
     completed = position.completed === true; automaticEndHandled = completed;
     buildProse(); progress = window.LumenProgress.create(chapter,sentences);
     const preferences = book.readPreferences();
@@ -638,6 +671,10 @@
     }
     return url;
   }
+  window.addEventListener('resize', () => render(currentPosition()));
+  window.addEventListener('online', () => {
+    if (sceneLoadState === 'failed') { sceneLoadState = 'idle'; render(currentPosition()); }
+  });
   function closeAccess() {
     ++accessToken; ++inviteRequest; ++transitionToken; ++sceneToken; ++continuationToken;
     cancelSessionExchange();
