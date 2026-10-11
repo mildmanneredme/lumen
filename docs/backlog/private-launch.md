@@ -1,6 +1,6 @@
 # Private release operations
 
-The first full-book release uses the stable Lumen Vercel project, both unchanged 192 kbps editions, female narration by default, generic illustration placeholders, and one shared access code for approximately 50 readers. Character and artwork review continues separately. The private R2 upload and Worker deployment are complete. This guide records the remaining launch plan; production promotion, physical-phone acceptance and an exercised production rollback are not yet complete.
+The first full-book release uses the stable Lumen Vercel project, both unchanged 192 kbps editions, female narration by default, generic illustration placeholders, and one shared access code for approximately 50 readers. Character and artwork review continues separately. The private R2 upload, final Worker deployment and final protected-preview HTTP, normal-Chrome and separate native-recovery checks are complete. The private release is now live after the same-release stable-origin promotion/rollback rehearsal and final production Chrome acceptance. Physical-phone acceptance remains a separate follow-up.
 
 The author has now selected and enabled Cloudflare R2. Its private bucket and Worker gateway replace the proposed Blob delivery. See [Cloudflare delivery](cloudflare-delivery.md) for the sole access authority, direct media streaming, upload verification and candidate promotion procedure. Keep Workers on its free plan while measuring hosted behavior.
 
@@ -17,11 +17,32 @@ Before publishing the full book, retain a private release record containing:
 - The exact reviewed source commit and immutable release ID.
 - Book manifest, upload inventory and server-index byte hashes.
 - Complete private-object hash verification and real API authorization/HEAD/Range evidence, including original files larger than 4.5 MB and a throttled native-audio transfer.
-- Local full-release playback/prose checks, HTTPS cold/warm and reconnection results, and separate actual Android installation/listening acceptance.
-- The immediate previous production deployment ID/URL, source commit, app shell identity and matching environment/index pointer. Preserve the pilot as the initial fallback.
+- Local full-release playback/prose checks and hosted HTTPS cold/warm/reconnection results; record physical Android installation/listening as a separate pending follow-up until it is performed.
+- The previous production deployment ID/URL, source commit, app shell identity and matching environment/index pointer. Preserve the pilot reference separately from the two full-release candidates used for the completed production rehearsal.
 - Drive backup creation, full local verification and sample restoration records, with cloud sync/checksum status stated separately.
 
-The verified R2 media release is `lumen-private-192-v4`, with 182 original MP3s and 183 JSON files. All 365 assets passed full remote SHA-256 and sample-range verification; the immutable server index was published last and the temporary upload Worker was removed. The current production pilot remains unchanged until candidate hosting verification passes. Deploy from `web/` using the existing project configuration; root and web Git deployment guards prevent automatic publication of repository pushes.
+The verified R2 media release is `lumen-private-192-v4`, with 182 original MP3s and 183 JSON files. All 365 assets passed full remote SHA-256 and sample-range verification; the immutable server index was published last and the temporary upload Worker was removed. The full private book is live at the unchanged production address; the historical pilot identity is retained separately. Deploy from `web/` using the existing project configuration; root and web Git deployment guards prevent automatic publication of repository pushes.
+
+## Launch evidence — 11 October 2026
+
+The reviewed release is live. [Cloudflare delivery](cloudflare-delivery.md#final-source-preview-acceptance--11-october-2026) records the exact source, Worker bundle/version/settings, preview receipt hashes and test limits. Final protected-preview acceptance passed HTTP18/18 (365 assets/1,095 samples/full largest-MP3 hash), normal Chrome36/36, and separate throttled/offline same-element recovery in both voices. Preview QA tokens were revoked, local encrypted handles cleared and protection preserved. The native network-simulation proof deliberately disables HTTP cache and blocks the service worker; normal-Chrome checks do not use those overrides.
+
+The full private book is live at the unchanged [production address](https://lumen-phi-five.vercel.app/) as of 11 October 2026. Production A `dpl_9GjWhaJ2D7FjZATQtS2nqpBpjWAW` and B `dpl_FyFkovg79KUP2pvZ4sQSTysydpag` were staged READY with all 54 runtime tuples equal to reviewed source `48f4b56865b1f6e472aa69bf171a4b346e9d0516`. The PR #15 merge `363c67e5b02454c7b28bfc4013a7f10bc0e51fff` has the same tree. Stage receipts are `f7cd4216ac3e2ad779c6566ca49ec6eebf910b3d6a9440357e54808f0937766c` and `d6f387428bdfcbf35e1b92e425fe720e64c91c6f1534cf6daffa3e3c3a65b981`.
+
+The actual stable-origin sequence **A → B → rollback A → B** passed, ending on B. Each phase checked the alias/runtime identity, access denial, private response/cache policy and both voices with saved nonfirst chapter positions. Rehearsal receipt `fb0c5b7713d70f3c86211839a83af809432ebd6b3aefb281be5180317fdfadb0` records no errors. This proves operational same-release rollback and bookmark continuity. Both deployments use the same `lumen-private-192-v4` manifest/index, unchanged audio and compatible bridge/access policy; it does not establish pilot fallback, backwards release compatibility or cross-release migration.
+
+Final normal installed-Chrome acceptance on the stable origin passed **36/36** at 05:42:03 UTC with no browser errors or native-network issues, no request interception and no preview testing token. The raw manifest hash matched the approved v4 bytes; playback, seeking, both voices, navigation, resume, logout, private-cache exclusion and emulated safe-area layouts passed. Receipt `0e10badbddc906bd441ace464880c066378337d77d26db1d20cb962d0e2dcb87` is bound by owner summary `fc24bb3bb4281889defaa5c48ab82fbc3f1f4e8cbe2059f976cd7b19dcf4ca50`. Physical Android installation, headset/lock-screen behavior and full-book human listening are not claimed.
+
+| Check | Completed evidence | Remaining limit or owner follow-up |
+| --- | --- | --- |
+| Storage and delivery | Full remote object hashes; final-preview HTTP and native/browser acceptance | Account-wide Free limits remain metered; no paid Worker upgrade |
+| Stable-origin publication | Exact production B alias/runtime, same-release A/B rollback/re-promotion and final Chrome36/36 | Pilot fallback and backwards compatibility untested |
+| QA privacy | Preview testing tokens revoked and encrypted handles cleared; final stable run used no preview token | Continue redacting cookies, codes and signed queries |
+| Backup | Drive archive present with expected size; full local hash verification and seven-file local restore | Full cloud ZIP byte/restore proof pending beyond the connector's 256 MiB limit |
+| Devices | Emulated phone/iPad/desktop layouts and safe-area controls pass | Physical Android installation/lock-screen/headset acceptance remains open |
+| Operations | Rob Xie owns support, usage/error review, budget and incidents | First-48-hour/weekly observations and funded ceiling/account alerts remain to record |
+
+No complete human listening pass, artwork completion or whole-roadmap completion is claimed. Character/story art review and later features remain separate from this authorized placeholder release.
 
 ## First 48 hours
 
@@ -32,14 +53,14 @@ Check provider request/error logs, media transfer, budget consumption and reader
 - A new missing immutable asset, repeated 5xx response or interrupted chapter transition requires investigation against the recorded inventory and provider logs. Reproduce before changing the release pointer.
 - Set an account spending alert at 75% of the approved monthly ceiling, plus an alert for a forecast exceeding that ceiling where the account supports it. At the ceiling, stop new invitations and new media publication while reviewing the funded plan. Do not assume an alert is a hard spending cap or silently interrupt current listening.
 
-The monthly ceiling, available account credits and repository privacy change still require the outstanding author decision. Confirm the provider's actual alert/limit behavior before production promotion; no paid Workers upgrade or new spending ceiling is implied by these thresholds.
+The monthly ceiling, account alerts and any repository privacy change remain owner follow-ups. Workers remains Free; no paid upgrade or new spending ceiling is authorized. These follow-ups do not introduce another permission step for the already authorized, technically verified private release. Record the provider's actual alert/limit behavior when configuring the funded operating limits.
 
 ## Coherent rollback
 
 A candidate must retain its own immutable server index and media objects. Record the working app's exact index environment and session/invite configuration privately; do not put credentials in the release receipt. Switching an app deployment must restore its matching index pointer rather than leaving an independently changed pointer in place.
 
-Exercise this on the candidate/preview first: save progress in each voice, switch to the prior coherent app/index pair, reopen paused at the same passage, and switch back. Confirm first/last tracks, native seeking, chapter transitions and anonymous asset denial. A preview rehearsal is separate from a production rollback.
+The completed production rehearsal uses two reviewed full-release app deployments A and B, both bound to the same `lumen-private-192-v4` immutable assets, manifest/index and compatible bridge/policy configuration. It promoted A, then B, rolled the stable alias back to A and re-promoted B while retaining paused places in both voices. For a later exercise, retain the same identity and bookmark checks. Verify exact alias identities, access denial, first/last tracks and relevant playback/resume behavior after each step. Stop further alias changes if an unexpected third deployment has become current. This same-release A/B exercise does not prove pilot-to-private rollback, backward compatibility, or a cross-release/index migration. The retained pilot identity is a historical reference, not an exercised private-release fallback.
 
-For an actual blocking production incident, use the recorded eligible prior deployment with the Vercel rollback command from `web/`, restore any independently changed index/environment coherently, and verify the stable production alias and saved progress. Do not delete old objects or clear local storage. Record the rollback and subsequent promotion evidence; provider rollback alone does not restore object storage or an external pointer.
+For an actual blocking production incident, use a recorded, verified compatible prior full-release deployment with the Vercel rollback command from `web/`, restore any independently changed index/environment coherently, and verify the stable production alias and saved progress. Do not delete old objects or clear local storage. Record the rollback and subsequent promotion evidence; provider rollback alone does not restore object storage or an external pointer.
 
 A compromised shared code is handled by rotating the grant's code/hash and version, or revoking the grant, then deploying the updated server configuration. Every protected request rechecks the grant. Session-secret compromise requires rotating the signing secret as well. Device sessions otherwise last up to 30 days, capped by the grant's expiry; signing out preserves the listener's local bookmark.
