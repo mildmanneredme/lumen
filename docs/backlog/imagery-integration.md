@@ -1,6 +1,8 @@
 # Generated imagery integration
 
-Branch: `codex/incorporate-generated-imagery`. Decision recorded 11 October 2026, Asia/Bangkok.
+Implementation branch: `codex/incorporate-generated-imagery`, merged in PR #13. Decision recorded 11 October 2026, Asia/Bangkok.
+
+Illustration release: the author authorized publication of the prepared selection. `lumen-illustrated-192-v1` is fully uploaded and verified in private R2, with unchanged recordings reused and a separate media Worker deployed. Protected candidate Chrome acceptance passed 108/108 assertions across both voices. The stable URL now serves the illustrated release after actual promotion/rollback/recovery; all 268 historical functional checks passed, with a preserved final header-read shutdown failure. Fresh stable Chrome passed 105/105 with complete CDP Worker headers and normal context closure; final provider postflight and read-only production-routing reconciliation passed. [Release identities and proof scope](illustration-release.md) record the exact receipts. Original pending packets are preserved; source-bound `accepted-with-note` copies cite the publication instruction and make no fresh individual aesthetic-review claim.
 
 Use the existing **private Cloudflare R2 bucket `lumen-private`** for selected reader paintings. The authenticated `/api/assets/` route already grants access to WebPs through the Cloudflare Worker; image bytes stream directly from Cloudflare. Keep this access model and the production origin. No additional public bucket, image proxy or Cloudflare Images service is needed.
 
@@ -46,7 +48,7 @@ The preserved `lumen-private-192-v4` sentence maps originally provided the follo
 | Female edition only | 73 |
 | Neither edition | 64 |
 
-The original selections therefore had 263 unavailable scene/voice anchors across 199 paintings and 78 chapters. Separate measured image cues and explicit narrative corrections address these gaps without changing the original sentence maps. All 1,379 selections still have pending reader release approvals, distinct from the completed production checks and these technical fixes.
+The original selections therefore had 263 unavailable scene/voice anchors across 199 paintings and 78 chapters. Separate measured image cues and explicit narrative corrections address these gaps without changing the original sentence maps. The original 1,379 pending reader approval records remain preserved. The illustrated release uses separate source-bound `accepted-with-note` copies citing the author’s publication authorization, distinct from technical checks and individual aesthetic inspection.
 
 Two original pairs shared a trigger: Chapter 23's gyoza and cat-socks memory paintings, and Chapter 48's packed-bag and checkout paintings. Reviewed after-disclosure corrections now give both paintings in each pair a distinct canonical trigger. The audit flags competing triggers; the exporter and reader reject non-increasing clocks.
 
@@ -64,7 +66,7 @@ Add the source-bound `--metadata`, reviewed `--corrections` and measured
 `--scene-timings` inputs from the ignored `Audiobook/author-audit/imagery-fixes-v1/`
 directory for the corrected draft. The final private audit records their exact
 paths and hashes. Preparation does not upload files or change the live site.
-Painting review remains required before exporting a publishable scene map.
+A publishable scene map requires recording-bound approval records; the illustrated release copies cite the author’s explicit publication instruction.
 
 The corrected private draft validates all 1,379 paintings across 89 chapters and
 178 narrator/chapter combinations. All 2,758 reveal clocks are measured and
@@ -83,9 +85,9 @@ draft/audit. The final audit SHA-256 is
 `47e0cea47c2ef84ee3ce84dfaecfc29e3b19b6363dce191c1d71c957f3b4f376`;
 the strict 178-recording clock validation SHA-256 is
 `5554d33681bb3f1a5a0171a23b0a1522b2c7412ef1b2338e36057b80d03910d0`.
-These files remain ignored and private. All 1,379 painting release approvals
-remain pending; technical narrative corrections do not supply author aesthetic
-approval.
+These files remain ignored and private. The original pending approval packet remains preserved; technical narrative
+corrections do not supply fresh individual aesthetic approval. Separate
+publication-authorized copies were exported for the illustrated release.
 
 Local verification covers the importer, source-bound clock recovery, release
 export, immutable R2 uploads, actual local workerd/R2 behavior and Chrome reader
@@ -96,7 +98,7 @@ fixtures and do not claim hosted artwork acceptance.
 
 ## R2 publication work
 
-Create a new immutable release and index when the reviewed imagery is ready. The temporary upload Worker, its build configuration and operator adapter now accept an explicitly selected exact release prefix. Preserve the old release for rollback.
+The new immutable `lumen-illustrated-192-v1` release and index have been uploaded and independently verified. Its exact-prefix temporary uploader was removed; the old release and unchanged physical audio objects remain retained. Actual hosted publication and cross-release functional continuity are recorded, with fresh stable Chrome 105/105 and final provider postflight passed, with persisted production routing reconciled in [illustration release operations](illustration-release.md).
 
 The uploader can reuse explicitly selected prior immutable audio objects while uploading new paintings and chapter/manifest JSON. Prior releases are read-only and limited to hashed MP3 keys. Reuse requires fresh complete local and remote SHA-256 verification, three sample ranges and unchanged final object metadata. Missing or changed audio fails; it cannot be recreated under the old prefix. Upload budgets exclude reused audio, while verification budgets include the complete reads. No audio regeneration or bookmark migration is required when recording hashes and canonical sentence IDs remain the same.
 

@@ -1,8 +1,19 @@
 # Private release operations
 
-Current access update, 11 October 2026: the code-compatible v18 reader is live at the stable address on deployment `dpl_CqJMWxpYAo9yvVmaqvLfnNzFxefj`, with reviewed implementation `e6b3702be263a7a31a2646e60138f5001c364df0`. Worker `3b3e2aad-c8e4-4460-b7c9-93f877b6330c` serves shared grant version 2. Live new-code access, old-code/session/media denial and normal Chrome 36/36 passed; the v4 book/audio/index, signing keys and expiry are unchanged. Earlier v17/v1 launch and A/B rollback evidence below is historical. Those frontends reject two-word codes, and restoring their Worker policy re-enables old access. Redeploy a compatible reader with the current registry; a compatible v2 rollback has not been exercised. [Current deployment and rotation evidence](../../web/data/deployment.json).
+Illustration release, 11 October 2026: the stable URL now serves
+`lumen-illustrated-192-v1` with 1,379 paintings / 2,758 WebPs and all 182
+unchanged recordings through private R2. Protected candidate acceptance passed
+108/108 assertions; the cross-release rehearsal passed all 268 functional
+checks but failed its final header-read shutdown. Fresh stable Chrome passed
+105/105 with complete CDP Worker headers and normal context closure. Final
+provider postflight and read-only production-routing reconciliation passed. [Illustration release identities
+and evidence](illustration-release.md) distinguish confirmed upload/deployment facts from
+unrecorded publication checks. The v4 launch and access-rotation evidence
+below remains historical provenance.
 
-The first full-book release uses the stable Lumen Vercel project, both unchanged 192 kbps editions, female narration by default, generic illustration placeholders, and one shared access code for approximately 50 readers. Character and artwork review continues separately. The private R2 upload, final Worker deployment and final protected-preview HTTP, normal-Chrome and separate native-recovery checks are complete. The private release is now live after the same-release stable-origin promotion/rollback rehearsal and final production Chrome acceptance. Physical-phone acceptance remains a separate follow-up.
+Historical v4 access update, 11 October 2026: the code-compatible v18 reader was live at the stable address on deployment `dpl_CqJMWxpYAo9yvVmaqvLfnNzFxefj`, with reviewed implementation `e6b3702be263a7a31a2646e60138f5001c364df0`. Worker `3b3e2aad-c8e4-4460-b7c9-93f877b6330c` serves shared grant version 2. Live new-code access, old-code/session/media denial and normal Chrome 36/36 passed; the v4 book/audio/index, signing keys and expiry are unchanged. Earlier v17/v1 launch and A/B rollback evidence below is historical. Those frontends reject two-word codes, and restoring their Worker policy re-enables old access. Redeploy a compatible reader with the current registry; the later compatible cross-release v2 rehearsal is recorded separately in the illustrated release evidence. [Current deployment and rotation evidence](../../web/data/deployment.json).
+
+The initial full-book release used the stable Lumen Vercel project, both unchanged 192 kbps editions, female narration by default, generic illustration placeholders, and one shared access code for approximately 50 readers. Character and artwork review continues separately. The private R2 upload, final Worker deployment and final protected-preview HTTP, normal-Chrome and separate native-recovery checks are complete. It went live after the same-release stable-origin promotion/rollback rehearsal and final production Chrome acceptance. Physical-phone acceptance remains a separate follow-up.
 
 The author has now selected and enabled Cloudflare R2. Its private bucket and Worker gateway replace the proposed Blob delivery. See [Cloudflare delivery](cloudflare-delivery.md) for the sole access authority, direct media streaming, upload verification and candidate promotion procedure. Keep Workers on its free plan while measuring hosted behavior.
 
@@ -23,13 +34,13 @@ Before publishing the full book, retain a private release record containing:
 - The previous production deployment ID/URL, source commit, app shell identity and matching environment/index pointer. Preserve the pilot reference separately from the two full-release candidates used for the completed production rehearsal.
 - Drive backup creation, full local verification and sample restoration records, with cloud sync/checksum status stated separately.
 
-The verified R2 media release is `lumen-private-192-v4`, with 182 original MP3s and 183 JSON files. All 365 assets passed full remote SHA-256 and sample-range verification; the immutable server index was published last and the temporary upload Worker was removed. The full private book is live at the unchanged production address; the historical pilot identity is retained separately. Deploy from `web/` using the existing project configuration; root and web Git deployment guards prevent automatic publication of repository pushes.
+The historical initial R2 media release was `lumen-private-192-v4`, with 182 original MP3s and 183 JSON files. All 365 assets passed full remote SHA-256 and sample-range verification; the immutable server index was published last and the temporary upload Worker was removed. The full private book is live at the unchanged production address; the historical pilot identity is retained separately. Deploy from `web/` using the existing project configuration; root and web Git deployment guards prevent automatic publication of repository pushes.
 
 ## Launch evidence — 11 October 2026
 
-The reviewed release is live. [Cloudflare delivery](cloudflare-delivery.md#final-source-preview-acceptance--11-october-2026) records the exact source, Worker bundle/version/settings, preview receipt hashes and test limits. Final protected-preview acceptance passed HTTP18/18 (365 assets/1,095 samples/full largest-MP3 hash), normal Chrome36/36, and separate throttled/offline same-element recovery in both voices. Preview QA tokens were revoked, local encrypted handles cleared and protection preserved. The native network-simulation proof deliberately disables HTTP cache and blocks the service worker; normal-Chrome checks do not use those overrides.
+The reviewed initial v4 release went live. [Cloudflare delivery](cloudflare-delivery.md#final-source-preview-acceptance--11-october-2026) records the exact source, Worker bundle/version/settings, preview receipt hashes and test limits. Final protected-preview acceptance passed HTTP18/18 (365 assets/1,095 samples/full largest-MP3 hash), normal Chrome36/36, and separate throttled/offline same-element recovery in both voices. Preview QA tokens were revoked, local encrypted handles cleared and protection preserved. The native network-simulation proof deliberately disables HTTP cache and blocks the service worker; normal-Chrome checks do not use those overrides.
 
-The full private book is live at the unchanged [production address](https://lumen-phi-five.vercel.app/) as of 11 October 2026. Production A `dpl_9GjWhaJ2D7FjZATQtS2nqpBpjWAW` and B `dpl_FyFkovg79KUP2pvZ4sQSTysydpag` were staged READY with all 54 runtime tuples equal to reviewed source `48f4b56865b1f6e472aa69bf171a4b346e9d0516`. The PR #15 merge `363c67e5b02454c7b28bfc4013a7f10bc0e51fff` has the same tree. Stage receipts are `f7cd4216ac3e2ad779c6566ca49ec6eebf910b3d6a9440357e54808f0937766c` and `d6f387428bdfcbf35e1b92e425fe720e64c91c6f1534cf6daffa3e3c3a65b981`.
+The historical initial full private book launch reached the unchanged [production address](https://lumen-phi-five.vercel.app/) on 11 October 2026. Production A `dpl_9GjWhaJ2D7FjZATQtS2nqpBpjWAW` and B `dpl_FyFkovg79KUP2pvZ4sQSTysydpag` were staged READY with all 54 runtime tuples equal to reviewed source `48f4b56865b1f6e472aa69bf171a4b346e9d0516`. The PR #15 merge `363c67e5b02454c7b28bfc4013a7f10bc0e51fff` has the same tree. Stage receipts are `f7cd4216ac3e2ad779c6566ca49ec6eebf910b3d6a9440357e54808f0937766c` and `d6f387428bdfcbf35e1b92e425fe720e64c91c6f1534cf6daffa3e3c3a65b981`.
 
 The actual stable-origin sequence **A → B → rollback A → B** passed, ending on B. Each phase checked the alias/runtime identity, access denial, private response/cache policy and both voices with saved nonfirst chapter positions. Rehearsal receipt `fb0c5b7713d70f3c86211839a83af809432ebd6b3aefb281be5180317fdfadb0` records no errors. This proves operational same-release rollback and bookmark continuity. Both deployments use the same `lumen-private-192-v4` manifest/index, unchanged audio and compatible bridge/access policy; it does not establish pilot fallback, backwards release compatibility or cross-release migration.
 
@@ -44,7 +55,7 @@ Final normal installed-Chrome acceptance on the stable origin passed **36/36** a
 | Devices | Emulated phone/iPad/desktop layouts and safe-area controls pass | Physical Android installation/lock-screen/headset acceptance remains open |
 | Operations | Rob Xie owns support, usage/error review, budget and incidents | First-48-hour/weekly observations and funded ceiling/account alerts remain to record |
 
-No complete human listening pass, artwork completion or whole-roadmap completion is claimed. Character/story art review and later features remain separate from this authorized placeholder release.
+No complete human listening pass, artwork completion or whole-roadmap completion is claimed. Character/story art review and later features remain separate from the initial v4 placeholder release.
 
 ## First 48 hours
 
