@@ -126,6 +126,27 @@ test('every existing media grant rechecks sole current invite revocation version
     assert.equal((await f.media(url,'HEAD')).status,401);assert.equal(f.calls.length,count);
   }
 });
+test('custom two-word rotation denies the old code cookie and media grant before allowing fresh ranges',async()=>{
+  const f=fixture(),{url,cookie}=await grant(f),customCode='hidden-horizons';
+  const invite=JSON.parse(f.env.LUMEN_INVITES_JSON)[0];
+  f.env.LUMEN_INVITES_JSON=JSON.stringify([{...invite,tokenHash:digest(customCode),version:invite.version+1}]);
+  const count=f.calls.length;
+  assert.equal((await f.bridge('/api/session','POST',{origin,'content-type':'application/json'},JSON.stringify({invite:code}))).status,401);
+  assert.deepEqual(await (await f.bridge('/api/session','GET',{cookie})).json(),{authenticated:false});
+  assert.equal((await f.bridge('/api/book','GET',{cookie})).status,401);
+  for(const [method,headers] of [['GET',{}],['HEAD',{}],['GET',{Range:'bytes=2-6'}],['GET',{'If-None-Match':'*'}]])
+    assert.equal((await f.media(url,method,headers)).status,401);
+  assert.equal(f.calls.length,count);
+  for(const spelling of [customCode,' HIDDEN HORIZONS ','hidden—horizons']) {
+    const session=await f.bridge('/api/session','POST',{origin,'content-type':'application/json'},JSON.stringify({invite:spelling}));
+    assert.equal(session.status,200);const freshCookie=session.headers.get('set-cookie').split(';')[0];
+    const fresh=await grant(f,audioPath,freshCookie);
+    const response=await f.media(fresh.url,'GET',{Range:'bytes=2-6',Origin:origin});
+    assert.equal(response.status,206);assert.equal(await response.text(),'23456');
+    const claims=JSON.parse(Buffer.from(new URL(fresh.url).searchParams.get('grant').split('.')[0],'base64url').toString());
+    assert.equal(claims.i,invite.id);assert.equal(claims.v,invite.version+1);
+  }
+});
 test('tampered malformed expired and cross-path grants fail before private R2 reads',async()=>{
   const f=fixture(),{url}=await grant(f);const count=f.calls.length;
   const missing=new URL(url);missing.search='';const bad=new URL(url);bad.searchParams.set('grant','x.y');

@@ -730,7 +730,9 @@
   function canonicalAccessCode(value) {
     if (value.length > 256) return '';
     const words = value.trim().toLowerCase().split(/[\s\u2010-\u2015-]+/);
-    return words.length === 6 && words.every(word => /^[a-z]{3,5}$/.test(word)) ? words.join('-') : '';
+    const valid = (words.length === 6 && words.every(word => /^[a-z]{3,5}$/.test(word))) ||
+      (words.length === 2 && words.every(word => /^[a-z]{3,16}$/.test(word)));
+    return valid ? words.join('-') : '';
   }
   function inviteToken(value) {
     const text = value.trim();
@@ -766,7 +768,7 @@
     $('invite-submit').disabled = false;
     if (!valid) {
       if (sessionExchange?.method === 'POST') { ++accessToken; ++inviteRequest; cancelSessionExchange(); }
-      $('access-status').textContent = 'Enter the six-word access code you received, or paste your invitation link.';
+      $('access-status').textContent = 'Enter the access code you received, or paste your invitation link.';
       return;
     }
     const attempt = ++accessToken, request = ++inviteRequest, canceled = cancelSessionExchange();

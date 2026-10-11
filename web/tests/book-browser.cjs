@@ -527,8 +527,8 @@ let browser;
   regression('an invalid invitation cannot cancel an explicit sign-out exchange',(await cookieContext.cookies(origin)).every(cookie=>cookie.name!=='lumen_fixture_session'));
   regression('an invalid invitation during logout cannot keep the old reader unlocked',await cookieReader.evaluate(()=>!window.LUMEN_BOOK && !document.body.classList.contains('authenticated')));
   await cookieContext.close();cookieFixture=null;
-  const sharedCode='acorn-blend-choir-drift-eager-flock',legacyFallback=Buffer.alloc(32,11).toString('base64url');
-  cookieFixture={tokens:new Map([[sharedCode,'A'],[legacyFallback,'B']]),held:new Set(),responses:new Map(),posts:[]};
+  const sharedCode='acorn-blend-choir-drift-eager-flock',customCode='hidden-horizons',legacyFallback=Buffer.alloc(32,11).toString('base64url');
+  cookieFixture={tokens:new Map([[sharedCode,'A'],[legacyFallback,'B'],[customCode,'C']]),held:new Set(),responses:new Map(),posts:[]};
   const openCodeReader=async value=>{
     const context=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,serviceWorkers:'block'}),page=await context.newPage();
     page.on('pageerror',error=>errors.push(String(error)));
@@ -557,6 +557,21 @@ let browser;
   }
   regression('shared-code sign out removes its cookie while another reader stays signed in',sharedReader.opened && sharedPeer.opened &&
     (await sharedReader.context.cookies(origin)).every(cookie=>cookie.name!=='lumen_fixture_session') && await sharedPeer.page.evaluate(()=>!!window.LUMEN_BOOK));
+  const customReader=await openCodeReader('  HIDDEN — horizons  ');
+  regression('the actual form sends a canonical two-word code and opens its cookie session',customReader.opened &&
+    cookieFixture.posts.at(-1)===customCode && (await customReader.context.cookies(origin)).some(cookie=>cookie.value==='C'));
+  regression('custom code access clears the field without persisting its words or URL',customReader.opened && await customReader.page.evaluate(code=>
+    document.querySelector('#invite-code').value==='' && !location.href.includes(code) &&
+    !Object.values(localStorage).some(value=>value.includes(code)) && !Object.values(sessionStorage).some(value=>value.includes(code)),customCode));
+  const customLinkReader=await openCodeReader('https://lumen.example/#invite='+encodeURIComponent('HIDDEN HORIZONS'));
+  regression('invitation links normalize custom two-word codes before exchange',customLinkReader.opened && cookieFixture.posts.at(-1)===customCode);
+  const legacyCodeReader=await openCodeReader(legacyFallback);
+  regression('the access form still preserves opaque legacy token bytes',legacyCodeReader.opened && cookieFixture.posts.at(-1)===legacyFallback &&
+    (await legacyCodeReader.context.cookies(origin)).some(cookie=>cookie.value==='B'));
+  const malformedCodeReader=await openCodeReader('hidden');
+  regression('invalid-code help accepts either supported word count without promising six words',!malformedCodeReader.opened &&
+    await malformedCodeReader.page.locator('#access-status').textContent()==='Enter the access code you received, or paste your invitation link.');
+  for(const reader of [customReader,customLinkReader,legacyCodeReader,malformedCodeReader])await reader.context.close();
   await sharedReader.context.close();await sharedPeer.context.close();cookieFixture=null;
   const voiceRetryFailures=['/fixture/chapter-001-charon.json'],voiceRetryReader=await fixtureContext({failures:voiceRetryFailures});
   await voiceRetryReader.page.goto(origin,{waitUntil:'domcontentloaded'});await ready(voiceRetryReader.page);
