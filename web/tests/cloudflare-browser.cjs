@@ -7,6 +7,7 @@ const fs=require('node:fs');
 const path=require('node:path');
 const os=require('node:os');
 const crypto=require('node:crypto');
+const {observeNativeNetwork,mediaNetworkVerdict}=require('./native-network-observer.cjs');
 const sha256=bytes=>crypto.createHash('sha256').update(bytes).digest('hex');
 const JSON_LIMIT=2*1024*1024;
 const PHONE_INSETS={top:47,bottom:34,left:24,right:32};
@@ -97,6 +98,18 @@ function safeURL(value) {
   try {const url=new URL(value);return {origin:url.origin,path:url.pathname};}
   catch(_){return {origin:'invalid',path:''};}
 }
+function observeRequestScope(context,accept,onViolation) {
+  // Observation leaves native audio/Range and Chrome's HTTP cache untouched.
+  // Abort the whole context on a scope violation instead of routing requests.
+  let closing;
+  context.on('request',request=>{
+    let allowed=false;try{allowed=accept(new URL(request.url()));}catch(_){}
+    if(allowed)return;
+    onViolation(safeURL(request.url()));
+    if(!closing)closing=Promise.resolve().then(()=>context.close()).catch(()=>{});
+  });
+  return async()=>{if(closing)await closing;};
+}
 function prepareOutput(output) {
   let current='/private/tmp';
   for(const part of path.relative(current,output).split(path.sep)) {
@@ -124,15 +137,17 @@ async function run(config) {
   const playwright=playwrightModule();
   const evidence={schemaVersion:1,verificationScope:'hosted-native-chrome-representative-playback',origin:config.origin,
     workerOrigin:config.workerOrigin,expectedReleaseId:config.expectedReleaseId,expectedManifestSha256:config.expectedManifestSha256,
-    indexAPIExposed:false,indexVerifiedThroughAPI:false,physicalDeviceTested:false,humanFullBookListeningApproval:'not-claimed',checks:[],errors:[],requests:[],responses:[],playback:[],manifestObservations:[]};
+    scriptSha256:sha256(fs.readFileSync(__filename)),networkObserverSha256:sha256(fs.readFileSync(require.resolve('./native-network-observer.cjs'))),
+    indexAPIExposed:false,indexVerifiedThroughAPI:false,physicalDeviceTested:false,requestInterceptionUsed:false,requestScopeGuard:'observe-and-close-context',humanFullBookListeningApproval:'not-claimed',checks:[],errors:[],requests:[],responses:[],playwrightResponses:[],networkEvidenceSource:'raw-CDP-response-and-redirect-hop-URLs',playback:[],manifestObservations:[]};
   const check=(name,condition,detail)=>{
     evidence.checks.push({name,pass:!!condition,...(detail===undefined?{}:{detail})});
     assert.ok(condition,name);console.log('PASS '+name);
   };
   let phase='launch',browser;const pending=new Set();
-  const contexts=[];
+  const contexts=[],networkObservers=[],scopeGuards=[];
   const childEnv=browserEnvironment();
   function observe(context) {
+    scopeGuards.push(observeRequestScope(context,u=>u.origin===config.origin||u.origin===config.workerOrigin&&u.pathname.startsWith('/media/'),row=>evidence.errors.push({kind:'unexpected-origin',...row,phase})));
     context.on('request',request=>evidence.requests.push({...safeURL(request.url()),method:request.method(),kind:request.resourceType()}));
     context.on('response',response=>{
       const task=(async()=>{
@@ -142,7 +157,7 @@ async function run(config) {
           entry.corsOrigin=await response.headerValue('access-control-allow-origin');
           entry.contentRange=await response.headerValue('content-range');
         }
-        evidence.responses.push(entry);
+        evidence.playwrightResponses.push(entry);
       })().catch(()=>evidence.errors.push({kind:'response-observer',phase}));
       pending.add(task);task.finally(()=>pending.delete(task));
     });
@@ -156,12 +171,9 @@ async function run(config) {
   }
   async function device(viewport,mobile) {
     const context=await browser.newContext({viewport,isMobile:mobile,hasTouch:mobile,serviceWorkers:'allow'});contexts.push(context);observe(context);
-    await context.route('**/*',route=>{
-      const url=new URL(route.request().url());
-      if(url.origin===config.origin||url.origin===config.workerOrigin&&url.pathname.startsWith('/media/'))return route.continue();
-      evidence.errors.push({kind:'unexpected-origin',...safeURL(url.href),phase});return route.abort();
-    });
-    await previewCookie(context,config);return {context,page:await context.newPage()};
+    await previewCookie(context,config);const page=await context.newPage();
+    networkObservers.push(await observeNativeNetwork(page,{appOrigin:config.origin,workerOrigin:config.workerOrigin,phase:()=>phase}));
+    return {context,page};
   }
   async function waitTrack(page,id,voice,at) {
     await page.waitForFunction(({id,voice,at})=>{
@@ -327,16 +339,26 @@ async function run(config) {
     const locked=await phone.context.request.get(config.origin+'/api/book',{maxRedirects:0});check('sign out restores anonymous API protection',locked.status()===401);await locked.dispose();
     await cacheProof(page,'signed-out browser');
     await login(page);await waitTrack(page,beforeLogout.track,beforeLogout.voice,beforeLogout.time);check('returning with the code resumes the retained place paused',(await state(page)).paused);
-    phase='network-evidence';await Promise.all([...pending]);
-    const media=evidence.responses.filter(r=>r.origin===config.workerOrigin&&r.path.startsWith('/media/')&&r.contentType==='audio/mpeg');
-    const proxied=evidence.responses.filter(r=>r.origin===config.origin&&r.path.startsWith('/api/assets/')&&r.path.endsWith('.mp3'));
-    check('native media receives direct Cloudflare 206 responses with working CORS',media.some(r=>r.status===206)&&media.every(r=>[200,206,304].includes(r.status)&&[config.origin,'null'].includes(r.corsOrigin)));
-    check('Vercel media requests only redirect and never return audio bodies',proxied.length>0&&proxied.every(r=>r.status===307));
+    phase='network-evidence';
+    // Finish native loaders and drain protocol events before evaluating the
+    // ledger. Playwright rows remain diagnostic observations only: native
+    // redirects can pair a Request URL with the next hop's response status.
+    for(const context of contexts)await context.close();
+    await Promise.all(scopeGuards.map(settle=>settle()));await Promise.allSettled([...pending]);
+    const snapshots=networkObservers.map(observer=>observer.snapshot());
+    const wire={requests:snapshots.flatMap(s=>s.requests),responses:snapshots.flatMap(s=>s.responses),
+      unresponded:snapshots.flatMap(s=>s.unresponded),failures:snapshots.flatMap(s=>s.failures),
+      issues:snapshots.flatMap(s=>s.issues),bodyBytes:snapshots.reduce((sum,s)=>sum+s.bodyBytes,0)};
+    evidence.responses=wire.responses;evidence.nativeNetwork=wire;
+    const verdict=mediaNetworkVerdict(wire,{appOrigin:config.origin,workerOrigin:config.workerOrigin});
+    check('native media receives direct Cloudflare 206 responses with working CORS',verdict.workerAudioValid,{workerResponses:verdict.workerResponses});
+    check('Vercel media requests only redirect and never return audio bodies',verdict.apiRedirectsOnly,
+      {apiResponses:verdict.apiResponses,apiBodyBytes:verdict.apiBodyBytes});
     check('Chrome reports no JavaScript, CORS or unexpected-origin errors',evidence.errors.length===0);
     evidence.status='verified';return evidence;
   }catch(_){evidence.status='failed';evidence.errors.push({kind:'check-failure',phase});process.exitCode=1;return evidence;}
   finally{
-    for(const context of contexts)await context.close().catch(()=>{});if(browser)await browser.close().catch(()=>{});await Promise.all([...pending]);
+    for(const context of contexts)await context.close().catch(()=>{});await Promise.all(scopeGuards.map(settle=>settle()));for(const observer of networkObservers)await observer.close();if(browser)await browser.close().catch(()=>{});await Promise.all([...pending]);
     if(evidence.errors.length){evidence.status='failed';process.exitCode=1;}
   }
 }
@@ -357,6 +379,14 @@ async function selfTest() {
   assert.equal(captured.url,good.LUMEN_QA_ORIGIN+'/');assert.equal(captured.options.maxRedirects,0);assert.equal(disposed,true);
   assert.deepEqual(Object.keys(captured.options.headers).sort(),['x-vercel-protection-bypass','x-vercel-set-bypass-cookie']);
   console.log('PASS configuration and query/credential-free URL evidence self-test');
+  const scopeHandlers={},violations=[];let scopeClosed=0;
+  const scopeContext={on:(name,fn)=>{scopeHandlers[name]=fn;},route:()=>{throw Error('Native requests must not be routed');},close:async()=>{scopeClosed++;}};
+  const settleScope=observeRequestScope(scopeContext,u=>u.origin===good.LUMEN_QA_ORIGIN||u.origin===good.LUMEN_QA_WORKER_ORIGIN&&u.pathname.startsWith('/media/'),row=>violations.push(row));
+  scopeHandlers.request({url:()=>good.LUMEN_QA_ORIGIN+'/api/book'});scopeHandlers.request({url:()=>good.LUMEN_QA_WORKER_ORIGIN+'/media/audio.mp3?grant=PRIVATE_SCOPE_GRANT'});await settleScope();
+  assert.equal(scopeClosed,0);assert.deepEqual(violations,[]);console.log('PASS allowed native requests remain observable without routing or cache changes');
+  scopeHandlers.request({url:()=>good.LUMEN_QA_WORKER_ORIGIN+'/bridge?grant=PRIVATE_SCOPE_GRANT'});scopeHandlers.request({url:()=> 'invalid-url-PRIVATE_SCOPE_GRANT'});await settleScope();
+  assert.equal(scopeClosed,1);assert.deepEqual(violations,[{origin:good.LUMEN_QA_WORKER_ORIGIN,path:'/bridge'},{origin:'invalid',path:''}]);
+  assert.equal(JSON.stringify(violations).includes('PRIVATE_SCOPE_GRANT'),false);console.log('PASS unexpected request scope closes the context with sanitized evidence');
   const rect=(left,top,width,height)=>({left,top,width,height,right:left+width,bottom:top+height});
   const base={width:390,height:844,scrollWidth:390,safeArea:{top:0,bottom:0,left:0,right:0},
     player:{...rect(0,704,390,140),paddingLeft:16,paddingRight:16,paddingBottom:9,borderLeft:0,borderRight:0},
@@ -399,7 +429,7 @@ async function localBrowserSelfTest() {
     const browserCDP=await browser.newBrowserCDPSession();
     const identity=chromeIdentity(browser.version(),(await browserCDP.send('Browser.getVersion')).product);await browserCDP.detach();
     const context=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
-    let requests=0;await context.route('**/*',route=>{requests++;return route.abort();});
+    let requests=0;const settleScope=observeRequestScope(context,()=>false,()=>{requests++;});
     const page=await context.newPage(),dist=path.resolve(__dirname,'../dist');
     let html=fs.readFileSync(path.join(dist,'index.html'),'utf8').replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi,'').replace(/<link\b[^>]*>/gi,'').replace('<body>','<body class="authenticated">');
     const css=['styles.css','mobile.css'].map(name=>fs.readFileSync(path.join(dist,name),'utf8')).join('\n');
@@ -410,6 +440,7 @@ async function localBrowserSelfTest() {
     }finally {
       try{await cdp.send('Emulation.setSafeAreaInsetsOverride',{insets:{top:0,bottom:0,left:0,right:0}});reset=await readLayout(page);}finally{await cdp.detach();}
     }
+    await settleScope();
     const proof={scope:'local-installed-Chrome-reader-HTML-CSS-geometry',physicalDeviceTested:false,VercelPreviewTested:false,
       identity,requests,baseline,safe,reset,baselinePass:validLayout(baseline,true),safePass:validLayout(safe,true,PHONE_INSETS),resetPass:validLayout(reset,true)};
     const output=fs.mkdtempSync('/private/tmp/lumen-hosted-proof-local-safearea-');fs.chmodSync(output,0o700);
@@ -428,5 +459,5 @@ async function main() {
   fs.writeFileSync(filename,bytes,{mode:0o600,flag:'wx'});
   console.log(result.status==='verified'?'Hosted Chrome proof verified.':'Hosted Chrome proof failed; inspect the private summary.');
 }
-module.exports={readConfig,safeURL,previewCookie,verifyManifestBytes,verifyReaderManifest,chromeLaunchOptions,chromeIdentity,validLayout,readLayout,PHONE_INSETS};
+module.exports={readConfig,safeURL,observeRequestScope,previewCookie,verifyManifestBytes,verifyReaderManifest,chromeLaunchOptions,chromeIdentity,validLayout,readLayout,PHONE_INSETS};
 if(require.main===module)main().catch(()=>{console.error('Hosted Chrome proof could not run. Check private inputs and evidence permissions.');process.exitCode=1;});
