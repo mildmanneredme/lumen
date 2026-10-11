@@ -122,7 +122,7 @@ export function createWorker({now=Date.now,FixedLengthStream=globalThis.FixedLen
   const indexes=new WeakMap();
   function storage(env,config) {
     const bucket=env.LUMEN_R2;
-    const loadIndex=async signal=>{
+    const loadSnapshot=async signal=>{
       checkSignal(signal);
       const path=env.LUMEN_RELEASE_INDEX_PATH,expectedHash=env.LUMEN_RELEASE_INDEX_SHA256;
       requireValue(typeof path==='string'&&/^lumen\/releases\/[a-z][a-z0-9-]*\/server-index\.[a-f0-9]{64}\.json$/.test(path)&&
@@ -138,13 +138,27 @@ export function createWorker({now=Date.now,FixedLengthStream=globalThis.FixedLen
       }
       const bytes=await boundedBytes(cancellableBody(value.body,signal),JSON_LIMIT);checkSignal(signal);
       requireValue(bytes.length===value.size&&sha256(bytes)===expectedHash);
-      const index=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(bytes));validateIndex(index,config.origin);
+      const index=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(bytes));
+      const assets=validateIndex(index,config.origin),blobs=new Map();
       requireValue(path.startsWith('lumen/releases/'+index.releaseId+'/'));
-      values.set(key,index);return index;
+      for(const asset of index.assets){Object.freeze(asset);blobs.set(asset.blobPath,asset);}
+      Object.freeze(index.assets);Object.freeze(index);
+      const snapshot=Object.freeze({index,assets,blobs});checkSignal(signal);
+      // Concurrent cold requests may each verify bytes. Retain the first valid
+      // snapshot so both callers use exactly the same immutable index identity.
+      if(values.has(key))return values.get(key);
+      values.set(key,snapshot);return snapshot;
+    };
+    const loadIndex=async signal=>(await loadSnapshot(signal)).index;
+    const assetLookup=async(index,origin,path,signal)=>{
+      requireValue(origin===config.origin);
+      const snapshot=await loadSnapshot(signal);
+      requireValue(snapshot.index===index&&index.appOrigin===origin);
+      return snapshot.assets.get(path);
     };
     const getBlob=async(key,options={})=>{
       checkSignal(options.abortSignal);
-      const index=await loadIndex(options.abortSignal),asset=index.assets.find(row=>row.blobPath===key);
+      const snapshot=await loadSnapshot(options.abortSignal),asset=snapshot.blobs.get(key);
       requireValue(asset&&options.access==='private');
       const suppliedRange=options.headers?.Range,range=suppliedRange?parseRange(suppliedRange,asset.bytes):null;
       requireValue(!suppliedRange||range);
@@ -156,7 +170,7 @@ export function createWorker({now=Date.now,FixedLengthStream=globalThis.FixedLen
       if(range)headers.set('Content-Range',`bytes ${range.start}-${range.end}/${asset.bytes}`);
       return {statusCode:200,headers,stream:value.body};
     };
-    return {loadIndex,getBlob};
+    return {loadSnapshot,loadIndex,assetLookup,getBlob};
   }
   async function bridge(request,env,config) {
     let envelope;
@@ -219,9 +233,9 @@ export function createWorker({now=Date.now,FixedLengthStream=globalThis.FixedLen
       return mediaHeaders(new Response(null,{status:204,headers:privateHeaders({
         'Access-Control-Allow-Methods':'GET, HEAD','Access-Control-Allow-Headers':'Range, If-Range, If-None-Match'})}),claims.origin,supplied);
     }
-    const dependencies=storage(env,config),index=await dependencies.loadIndex(request.signal);
+    const dependencies=storage(env,config),snapshot=await dependencies.loadSnapshot(request.signal),index=snapshot.index;
     if(index.releaseId!==claims.releaseId)return failure(401);
-    const asset=validateIndex(index,config.origin).get(claims.path);
+    const asset=snapshot.assets.get(claims.path);
     if(!asset||asset.sha256!==claims.sha256)return failure(401);
     if(!['audio/mpeg','image/webp'].includes(asset.contentType))return failure(403);
     const headers=new Headers();
