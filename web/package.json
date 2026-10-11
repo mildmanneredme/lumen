@@ -2,7 +2,16 @@
   "name": "lumen-private-reader",
   "version": "1.0.0",
   "private": true,
-  "engines": {"node": "24.x"},
-  "scripts": {"test:private": "node --test tests/private-access*.cjs tests/deployment-files.cjs"},
-  "dependencies": {"@vercel/blob": "2.8.1"}
+  "engines": {
+    "node": "24.x"
+  },
+  "scripts": {
+    "test:private": "node --test tests/private-access*.cjs tests/deployment-files.cjs"
+  },
+  "dependencies": {
+    "@vercel/blob": "2.8.1"
+  },
+  "devDependencies": {
+    "@vercel/routing-utils": "6.6.0"
+  }
 }
