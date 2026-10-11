@@ -475,6 +475,51 @@ uploadPrivateRelease({root:values.root,inventory,manifestURL:values.manifestURL,
             self.build(scenes_by_track={self.track["id"]: [scene, second]})
         self.assertFalse(self.staging.exists())
 
+    def scene_gap_fixture(self):
+        timing = copy.deepcopy(self.timing)
+        timing["schemaVersion"] = 2
+        for cue in timing["sentences"]:
+            cue["syncStatus"] = "measured"
+        gap = timing["sentences"][0]
+        gap.update(syncStatus="unavailable", start=None, end=None, reason="low-confidence-ASR-anchor",
+                   evidenceIds=[self.recording["selectedClips"][0]["id"]],
+                   recheckWindow={"start": 0, "end": timing["sentences"][1]["start"],
+                                  "beforeSentenceId": None, "afterSentenceId": timing["sentences"][1]["sentenceId"],
+                                  "scope": "neighbor-recheck-only"})
+        timing["coverage"]["introEnd"] = timing["sentences"][1]["start"]
+        timing["approvals"]["alignment"]["timingSha256"] = release.content.timing_content_hash(timing)
+        clock = {"schemaVersion": 1, "kind": "measured-scene-cues", "trackId": self.track["id"],
+                 "narratorId": "charon", "manuscriptVersion": "v6", "textSha256": self.track["textSha256"],
+                 "audioSha256": self.recording["sha256"], "duration": self.recording["decodedDuration"],
+                 "cues": [{"sentenceId": gap["sentenceId"], "start": 1.2, "method": "unique-measured-ASR-prefix"}],
+                 "evidence": [{"sourcePath": "PRIVATE ASR PATH", "prefixTokens": ["PRIVATE RECOGNIZER TEXT"]}]}
+        return timing, clock
+
+    def test_scene_only_reader_payload_omits_private_proof_and_preserves_null_prose_cues(self):
+        scene, _, _ = self.phone_scene_fixture()
+        timing, clock = self.scene_gap_fixture()
+        public_scenes, _ = release.prepare_scenes(self.root, [scene], self.plan["mediaURLbase"])
+        payload = release.reader_payload(self.registry, self.track, self.recording, timing,
+                                        self.plan["tracks"][0], self.plan, "https://reader.example/api/assets/audio.mp3",
+                                        public_scenes, None, clock)
+        gap = payload["paragraphs"][0]["sentences"][0]
+        self.assertIsNone(gap["start"]); self.assertIsNone(gap["end"])
+        self.assertEqual(gap["syncStatus"], "unavailable")
+        self.assertEqual(payload["scenes"][0]["start"], 1.2)
+        self.assertEqual(payload["scenes"][0]["triggerAudioSha256"], self.recording["sha256"])
+        encoded = json.dumps(payload)
+        for private in ["PRIVATE", "sourcePath", "evidence", "prefixTokens", "recheckWindow"]:
+            self.assertNotIn(private, encoded)
+
+    def test_unverified_scene_only_onset_cannot_publish_even_with_reviewed_image_and_sentence_map(self):
+        scene, _, _ = self.phone_scene_fixture()
+        timing, clock = self.scene_gap_fixture()
+        with self.assertRaisesRegex(release.content.ContentError, "Scene baseline"):
+            self.build(timing_maps={self.track["id"]: {"charon": timing}},
+                       scenes_by_track={self.track["id"]: [scene]},
+                       scene_timing_maps={self.track["id"]: {"charon": clock}})
+        self.assertFalse(self.staging.exists())
+
     def test_schema2_public_payload_keeps_unavailable_sentence_text_without_private_windows(self):
         timing = copy.deepcopy(self.timing); timing["schemaVersion"] = 2
         for cue in timing["sentences"]:

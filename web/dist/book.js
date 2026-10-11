@@ -456,9 +456,13 @@
             safeURL(scene.src) &&
             (scene.phoneSrc === undefined || safeURL(scene.phoneSrc)) &&
             finite(scene.start) &&
-            priorScene <= scene.start &&
+            priorScene < scene.start &&
             scene.start <= value.duration &&
-            (scene.sentenceId === undefined || all.some(s=>s.id===scene.sentenceId && finite(s.start))),
+            (scene.triggerSource === undefined || (scene.triggerSource === 'measured-scene-cue' &&
+              scene.triggerAudioSha256 === value.audio.sha256 && nonempty(scene.sentenceId))) &&
+            (scene.sentenceId === undefined || all.some(s=>s.id===scene.sentenceId &&
+              (finite(s.start) || (scene.triggerSource === 'measured-scene-cue' &&
+                s.syncStatus === 'unavailable' && scene.triggerAudioSha256 === value.audio.sha256)))),
           code,
           'Illustration metadata or its narration trigger is invalid.',
         );

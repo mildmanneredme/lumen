@@ -2,7 +2,7 @@
 const test=require('node:test'),assert=require('node:assert/strict');
 const {Readable}=require('node:stream'),crypto=require('node:crypto');
 const fs=require('node:fs/promises'),os=require('node:os'),path=require('node:path');
-const {createR2WorkerAdapter}=require('../scripts/r2-worker-adapter.cjs');
+const {createR2WorkerAdapter,releasePrefix,releaseIdFromPrefix,createReleaseStoragePolicy}=require('../scripts/r2-worker-adapter.cjs');
 const {uploadR2Release}=require('../scripts/upload_r2_release.cjs');
 const workerPromise=import('../cloudflare/upload-worker.mjs');
 const ORIGIN='https://upload.example',PREFIX='lumen/releases/lumen-private-192-v4/',SECRET='u'.repeat(43);
@@ -66,7 +66,9 @@ test('Worker rejects foreign prefixes, encoded traversal, queries and unsupporte
 });
 test('Worker fail-closed configuration does not access R2',async()=>{
   const f=nativeFixture(),worker=(await workerPromise).default;
-  for(const env of [{...f.env,LUMEN_UPLOAD_SECRET:'short'},{...f.env,LUMEN_UPLOAD_PREFIX:'lumen/releases/foreign/'},{...f.env,LUMEN_R2:null}])
+  for(const env of [{...f.env,LUMEN_UPLOAD_SECRET:'short'},{...f.env,LUMEN_UPLOAD_PREFIX:'lumen/releases/../foreign/'},{...f.env,LUMEN_R2:null},
+    {...f.env,LUMEN_UPLOAD_READ_ONLY_RELEASES_JSON:'not json'},{...f.env,LUMEN_UPLOAD_READ_ONLY_RELEASES_JSON:'{}'},
+    {...f.env,LUMEN_UPLOAD_READ_ONLY_RELEASES_JSON:JSON.stringify(['lumen-private-192-v4'])}])
     assert.equal((await worker.fetch(request(),env)).status,503);
   assert.equal(f.calls.length,0);
 });
@@ -208,5 +210,81 @@ test('Adapter and upload engine integrate full hashes, every range and index-las
     assert.equal(result.status,'uploaded-private-r2');assert.equal(result.rangeReads,6);assert.equal(result.assets.length,2);assert.equal(f.objects.size,3);
     assert.ok(requests.filter(r=>r.init.method==='PUT').at(-1).url.includes('server-index.'));
     const resumed=await uploadR2Release({root,inventory,manifestURL:assets[0].url,r2:adapter,maxUploadBytes:2_000_000,verifyByteBudget:4_000_000});assert.equal(resumed.uploadedBytes,0);
+  }finally{await fs.rm(root,{recursive:true,force:true});}
+});
+test('shared release policy derives exact write prefixes and tightly scoped previous audio reads',()=>{
+  const readOnlyReleaseIds=['lumen-private-192-v4'],policy=createReleaseStoragePolicy({releaseId:'illustrated-v5',readOnlyReleaseIds});
+  const prefix=releasePrefix('illustrated-v5'),audioKey=PREFIX+'assets/tracks/audio.'+digest(bytes)+'.mp3';
+  assert.equal(releaseIdFromPrefix(prefix),'illustrated-v5');assert.equal(policy.prefix,prefix);
+  assert.equal(policy.canWrite(prefix+'assets/new.'+digest(bytes)+'.webp'),true);
+  assert.equal(policy.canRead(audioKey),true);assert.equal(policy.canWrite(audioKey),false);
+  for(const foreign of [key,PREFIX+'assets/art.'+digest(bytes)+'.webp',PREFIX+'server-index.'+digest(bytes)+'.json',
+    PREFIX+'assets/audio.mp3',PREFIX+'assets/%2f/audio.'+digest(bytes)+'.mp3',
+    'lumen/releases/not-allowed/assets/audio.'+digest(bytes)+'.mp3']){
+    assert.equal(policy.canRead(foreign),false);assert.equal(policy.canWrite(foreign),false);
+  }
+  readOnlyReleaseIds.push('not-allowed');assert.equal(policy.canRead('lumen/releases/not-allowed/assets/audio.'+digest(bytes)+'.mp3'),false);
+  assert.ok(Object.isFrozen(policy)&&Object.isFrozen(policy.readOnlyReleaseIds));
+  for(const releaseId of ['',null,'UPPER','../other','with.dot','with_slash/x','a'.repeat(129)])assert.throws(()=>releasePrefix(releaseId));
+  for(const prefix of ['lumen/releases/a','lumen/releases/a//','lumen/releases/a/assets/','lumen/releases/%61/','elsewhere/a/'])assert.throws(()=>releaseIdFromPrefix(prefix));
+  for(const ids of [null,{},['illustrated-v5'],['prior','prior'],['../prior'],Array.from({length:9},(_,i)=>'prior-'+i)])
+    assert.throws(()=>createReleaseStoragePolicy({releaseId:'illustrated-v5',readOnlyReleaseIds:ids}));
+});
+test('Worker supports a new exact release prefix while older audio is read-only and expressly allowlisted',async()=>{
+  const f=nativeFixture(),worker=(await workerPromise).default,releaseId='illustrated-v5',prefix=releasePrefix(releaseId);
+  f.env.LUMEN_UPLOAD_PREFIX=prefix;f.env.LUMEN_UPLOAD_READ_ONLY_RELEASES_JSON=JSON.stringify(['lumen-private-192-v4']);
+  const oldKey=PREFIX+'assets/audio.'+digest(bytes)+'.mp3',newKey=prefix+'assets/book.'+digest(bytes)+'.json';
+  f.seed(oldKey,bytes,'audio/mpeg');
+  const uploaded=await worker.fetch(request(newKey,{method:'PUT',headers:putHeaders(),body:bytes}),f.env);assert.equal(uploaded.status,201);
+  const head=await worker.fetch(request(oldKey,{method:'HEAD'}),f.env);assert.equal(head.status,200);
+  const audio=await worker.fetch(request(oldKey,{headers:{'If-Match':head.headers.get('ETag'),Range:'bytes=2-6'}}),f.env);
+  assert.equal(audio.status,206);assert.deepEqual(Buffer.from(await audio.arrayBuffer()),bytes.subarray(2,7));
+  const count=f.calls.length;
+  for(const objectKey of [key,PREFIX+'assets/art.'+digest(bytes)+'.webp',PREFIX+'server-index.'+digest(bytes)+'.json',
+    'lumen/releases/not-allowed/assets/audio.'+digest(bytes)+'.mp3'])assert.equal((await worker.fetch(request(objectKey,{method:'HEAD'}),f.env)).status,400);
+  assert.equal((await worker.fetch(request(oldKey,{method:'PUT',headers:putHeaders(bytes,'audio/mpeg'),body:bytes}),f.env)).status,400);
+  assert.equal(f.calls.length,count);assert.deepEqual(f.objects.get(oldKey).bytes,bytes);
+  const defaultDenied=await worker.fetch(request(oldKey,{method:'HEAD'}),{...f.env,LUMEN_UPLOAD_READ_ONLY_RELEASES_JSON:undefined});
+  assert.equal(defaultDenied.status,400);assert.equal(f.calls.length,count);
+});
+test('Adapter binds the new prefix and older audio read scope before fetch or body consumption',async()=>{
+  const f=nativeFixture(),requests=[],releaseId='illustrated-v5',readOnlyReleaseIds=['lumen-private-192-v4'];
+  f.env.LUMEN_UPLOAD_PREFIX=releasePrefix(releaseId);f.env.LUMEN_UPLOAD_READ_ONLY_RELEASES_JSON=JSON.stringify(readOnlyReleaseIds);
+  const oldKey=PREFIX+'assets/audio.'+digest(bytes)+'.mp3',newKey=releasePrefix(releaseId)+'assets/book.'+digest(bytes)+'.json';
+  f.seed(oldKey,bytes,'audio/mpeg');
+  const adapter=createR2WorkerAdapter({workerOrigin:ORIGIN,secret:SECRET,releaseId,readOnlyReleaseIds,fetch:bridge(f,requests)});
+  readOnlyReleaseIds.push('foreign');await adapter.put(newKey,bytes,adapterOptions());
+  const head=await adapter.head(oldKey),audio=await adapter.get(oldKey,{onlyIf:{etagMatches:head.etag}});
+  assert.deepEqual(Buffer.from(await new Response(audio.body).arrayBuffer()),bytes);
+  const count=requests.length;let consumed=0;
+  const forbidden=Readable.from((async function*(){consumed++;yield bytes;})());
+  await assert.rejects(adapter.put(oldKey,forbidden,{...adapterOptions(),httpMetadata:{contentType:'audio/mpeg',cacheControl:'private, no-store'}}));
+  assert.equal(consumed,0);assert.equal(requests.length,count);forbidden.destroy();
+  for(const old of [key,'lumen/releases/foreign/assets/audio.'+digest(bytes)+'.mp3'])await assert.rejects(adapter.head(old));
+  assert.equal(requests.length,count);
+});
+test('new-release Worker and adapter reuse old audio with complete independent proofs and index-last writes',async()=>{
+  const root=await fs.mkdtemp(path.join(os.tmpdir(),'lumen-r2-reuse-bridge-'));try{
+    const f=nativeFixture(),requests=[],releaseId='illustrated-v5',readOnlyReleaseIds=['lumen-private-192-v4'],assets=[];
+    f.env.LUMEN_UPLOAD_PREFIX=releasePrefix(releaseId);f.env.LUMEN_UPLOAD_READ_ONLY_RELEASES_JSON=JSON.stringify(readOnlyReleaseIds);
+    const adapter=createR2WorkerAdapter({workerOrigin:ORIGIN,secret:SECRET,releaseId,readOnlyReleaseIds,fetch:bridge(f,requests)});
+    const sources=[Buffer.from('{"bookId":"lumen"}\n'),Buffer.from(Array.from({length:3507},(_,n)=>n%251)),Buffer.from('tiny painting bytes')];
+    for(const [i,body] of sources.entries()){
+      const hash=digest(body),extension=['json','mp3','webp'][i],type=['application/json','audio/mpeg','image/webp'][i];
+      const logical=(i===0?'book-manifest':i===1?'tracks/chapter-001/audio':'images/painting')+'.'+hash+'.'+extension,sourcePath=path.join(root,'source-'+i);
+      await fs.writeFile(sourcePath,body);const width=Math.min(1024,body.length),starts=[0,Math.floor((body.length-width)/2),body.length-width];
+      assets.push({url:'https://lumen.example/api/assets/'+logical,sourcePath,sha256:hash,bytes:body.length,contentType:type,immutable:true,
+        samples:starts.map(start=>({start,end:start+width-1,sha256:digest(body.subarray(start,start+width))}))});
+    }
+    const oldKey=PREFIX+'assets/tracks/chapter-001/audio.'+assets[1].sha256+'.mp3';f.seed(oldKey,sources[1],'audio/mpeg');
+    const inventory={schemaVersion:1,releaseId,accessModel:'private',appOrigin:'https://lumen.example',mediaOrigins:['https://lumen.example'],assets};
+    const result=await uploadR2Release({root,inventory,manifestURL:assets[0].url,r2:adapter,reuseAudio:[{url:assets[1].url,objectKey:oldKey}],
+      maxUploadBytes:2_000_000,verifyByteBudget:4_000_000});
+    assert.equal(result.reusedAssetCount,1);assert.equal(result.reusedBytes,sources[1].length);assert.equal(result.rangeReads,9);
+    assert.deepEqual(result.readOnlyReleaseIds,readOnlyReleaseIds);assert.equal(result.assets[1].objectKey,oldKey);
+    const writes=requests.filter(row=>row.init.method==='PUT');assert.equal(writes.length,3);
+    assert.ok(writes.every(row=>new URL(row.url).pathname.slice(1).startsWith(releasePrefix(releaseId))));
+    assert.ok(writes.at(-1).url.includes('server-index.'));assert.equal(f.objects.get(oldKey).version,'v1');
+    assert.equal(requests.filter(row=>row.init.method==='GET'&&new URL(row.url).pathname==='/'+oldKey).length,4);
   }finally{await fs.rm(root,{recursive:true,force:true});}
 });

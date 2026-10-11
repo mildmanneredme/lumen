@@ -1,13 +1,35 @@
 'use strict';
 // Operator library: no credential lookup, account calls or IO on import.
 const {Readable}=require('node:stream');
-const PREFIX='lumen/releases/lumen-private-192-v4/';
+const DEFAULT_RELEASE_ID='lumen-private-192-v4';
 const SHA=/^[a-f0-9]{64}$/,ETAG=/^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,255}$/;
 const TYPES={'application/json':'.json','audio/mpeg':'.mp3','image/webp':'.webp'};
 function ensure(value){if(!value)throw Error('Invalid R2 worker bridge contract');}
 function positive(value){return Number.isSafeInteger(value)&&value>0;}
-function validKey(value){return typeof value==='string'&&value.length<=1024&&value.startsWith(PREFIX)&&
+function validKey(value){return typeof value==='string'&&value.length<=1024&&
   value.split('/').every(part=>/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(part)&&part!=='.'&&part!=='..');}
+function releasePrefix(releaseId){
+  ensure(typeof releaseId==='string'&&/^[a-z][a-z0-9-]{0,127}$/.test(releaseId));
+  return 'lumen/releases/'+releaseId+'/';
+}
+function releaseIdFromPrefix(prefix){
+  const match=typeof prefix==='string'&&/^lumen\/releases\/([a-z][a-z0-9-]{0,127})\/$/.exec(prefix);
+  ensure(match&&releasePrefix(match[1])===prefix);return match[1];
+}
+function audioObjectIdentity(key){
+  if(!validKey(key))return null;
+  const match=/^lumen\/releases\/([a-z][a-z0-9-]{0,127})\/assets\/.+\.([a-f0-9]{64})\.mp3$/.exec(key);
+  return match?Object.freeze({releaseId:match[1],sha256:match[2]}):null;
+}
+function createReleaseStoragePolicy({releaseId=DEFAULT_RELEASE_ID,readOnlyReleaseIds=[]}={}){
+  const prefix=releasePrefix(releaseId);
+  ensure(Array.isArray(readOnlyReleaseIds)&&readOnlyReleaseIds.length<=8);
+  const readonly=new Set();
+  for(const id of readOnlyReleaseIds){releasePrefix(id);ensure(id!==releaseId&&!readonly.has(id));readonly.add(id);}
+  const canWrite=key=>validKey(key)&&key.startsWith(prefix);
+  const canRead=key=>canWrite(key)||readonly.has(audioObjectIdentity(key)?.releaseId);
+  return Object.freeze({releaseId,prefix,readOnlyReleaseIds:Object.freeze([...readonly]),canRead,canWrite});
+}
 async function cancel(response){if(response?.body&&!response.body.locked)await response.body.cancel().catch(()=>{});}
 function decodedMetadata(response,key){
   const header=response.headers.get('X-Lumen-R2-Metadata');
@@ -23,15 +45,15 @@ function decodedMetadata(response,key){
   return info;
 }
 function contentLength(response,expected){ensure(response.headers.get('Content-Length')===String(expected));}
-function createR2WorkerAdapter({workerOrigin,secret,fetch:fetcher=globalThis.fetch}={}){
+function createR2WorkerAdapter({workerOrigin,secret,releaseId=DEFAULT_RELEASE_ID,readOnlyReleaseIds=[],fetch:fetcher=globalThis.fetch}={}){
   const url=new URL(workerOrigin);
   ensure(url.protocol==='https:'&&url.origin===workerOrigin&&!url.username&&!url.password&&
     typeof secret==='string'&&/^[a-zA-Z0-9_-]{43,128}$/.test(secret)&&typeof fetcher==='function');
   // Capture all trusted context before the first await; callers cannot redirect
   // later operations by mutating their configuration or global fetch.
-  const origin=url.origin,token=secret,transport=fetcher;
+  const origin=url.origin,token=secret,transport=fetcher,policy=createReleaseStoragePolicy({releaseId,readOnlyReleaseIds});
   async function send(key,method,headers,body){
-    ensure(validKey(key));
+    ensure(method==='PUT'?policy.canWrite(key):policy.canRead(key));
     const supplied=new Headers(headers);supplied.set('Authorization','Bearer '+token);supplied.set('Accept-Encoding','identity');
     return transport(origin+'/'+key,{method,headers:supplied,redirect:'error',...(body===undefined?{}:{body,duplex:'half'})});
   }
@@ -61,6 +83,7 @@ function createR2WorkerAdapter({workerOrigin,secret,fetch:fetcher=globalThis.fet
     }catch(error){await cancel(response);throw error;}
   }
   async function put(key,body,options){
+    ensure(policy.canWrite(key));
     ensure(options&&options.onlyIf instanceof Headers&&options.onlyIf.get('If-None-Match')==='*'&&positive(options.contentLength)&&
       SHA.test(options.sha256||'')&&options.customMetadata?.sha256===options.sha256&&TYPES[options.httpMetadata?.contentType]&&
       options.httpMetadata.cacheControl==='private, no-store'&&(!options.httpMetadata.contentEncoding||options.httpMetadata.contentEncoding==='identity'));
@@ -75,4 +98,4 @@ function createR2WorkerAdapter({workerOrigin,secret,fetch:fetcher=globalThis.fet
   }
   return Object.freeze({head,get,put});
 }
-module.exports={createR2WorkerAdapter};
+module.exports={createR2WorkerAdapter,DEFAULT_RELEASE_ID,releasePrefix,releaseIdFromPrefix,audioObjectIdentity,createReleaseStoragePolicy};

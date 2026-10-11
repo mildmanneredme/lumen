@@ -33,6 +33,14 @@ Vercel receives only `LUMEN_APP_ORIGIN`, `LUMEN_WORKER_ORIGIN` and `LUMEN_BRIDGE
 
 Private receipts currently prove the complete 365-asset R2 upload and uploader cleanup. The Vercel candidate remains protected; hosted browser verification and production promotion are pending.
 
+## New R2 releases and audio reuse
+
+The temporary uploader's write scope is one exact `lumen/releases/<releaseId>/` prefix. Set upload-build `LUMEN_UPLOAD_RELEASE_ID` to the prepared inventory ID and `LUMEN_UPLOAD_READ_ONLY_RELEASES_JSON` to the prior release IDs reported by `makePlan`. The build supplies `LUMEN_UPLOAD_PREFIX` and the same read-only JSON to the Worker. Pass matching `releaseId` and `readOnlyReleaseIds` to `createR2WorkerAdapter`; its policy is shared with the Worker/build. Previous release access permits only GET/HEAD of content-hashed MP3 keys under `assets/`, never writes, JSON, paintings or indexes. Defaults retain `lumen-private-192-v4` with no prior-release reads.
+
+Pass `reuseAudio:[{url,objectKey}]` to `makePlan(inventory,manifestURL,{reuseAudio})` and `uploadR2Release`. These are candidate locators containing only the current inventory audio URL and its previous immutable key, not trusted receipts or verification flags. Every current source is freshly checked before storage access. Reused objects then receive complete independent SHA-256 reads, all three sample-range checks and pinned metadata/final HEAD checks. Missing or mismatched old audio fails without rewriting it. Local source identities and remote object identities are checked again before the new index is written last; the index can retain the verified older audio keys.
+
+`plan.uploadBytes` excludes reused audio, while `plan.verificationBytes` includes its complete read and samples. Both explicit ceilings remain required. Plan/result reports identify `uploadPrefix`, `readOnlyReleaseIds`, `reusedAssetCount` and `reusedBytes`. This support has local fixture/build proof only; the historical 365-object release remains the recorded hosted upload. See [Cloudflare delivery](../../docs/backlog/cloudflare-delivery.md) for the focused test commands and release procedure.
+
 ## Legacy Blob server environment
 
 The following values apply only when the Blob fallback is selected. Server-only values are supplied to those Vercel Functions. Locally use

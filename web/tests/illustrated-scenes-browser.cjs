@@ -80,7 +80,8 @@ let browser;
     return canvas.toDataURL('image/webp');
   })).split(',')[1], 'base64');
   await imagePage.close();
-  const fixture = async ({width=390,dpr=3,saveData=false,legacy=false,invalidPhone,failures=new Map()}={}) => {
+  const fixture = async ({width=390,dpr=3,saveData=false,legacy=false,sceneOnly=false,invalidSceneTrigger,
+    invalidPhone,failures=new Map()}={}) => {
     const context = await browser.newContext({viewport:{width,height:900},deviceScaleFactor:dpr,
       reducedMotion:'reduce',serviceWorkers:'block'});
     await context.addInitScript(value => {
@@ -99,6 +100,24 @@ let browser;
       if (payloads.has(pathname)) {
         const payload = JSON.parse(JSON.stringify(payloads.get(pathname)));
         if (legacy) for (const scene of payload.scenes) delete scene.phoneSrc;
+        if (sceneOnly) {
+          payload.schemaVersion = 2;
+          for (const sentence of payload.paragraphs[0].sentences) sentence.syncStatus = 'measured';
+          Object.assign(payload.paragraphs[0].sentences[1],{syncStatus:'unavailable',start:null,end:null});
+          Object.assign(payload.scenes[0],{triggerSource:'measured-scene-cue',triggerAudioSha256:payload.audio.sha256});
+          if (invalidSceneTrigger === 'wrong-voice-hash') {
+            const otherVoice = payload.audio.narratorId === 'autonoe' ? 'charon' : 'autonoe';
+            payload.scenes[0].triggerAudioSha256 = payloads.get('/fixture/' + otherVoice + '.json').audio.sha256;
+          } else if (invalidSceneTrigger === 'unknown-trigger-source') {
+            payload.scenes[0].triggerSource = 'estimated-scene-cue';
+          } else if (invalidSceneTrigger === 'unknown-sentence') {
+            payload.scenes[0].sentenceId = 'v6:chapter-001:p999-s01';
+          } else if (invalidSceneTrigger === 'equal-starts') {
+            payload.scenes[1].start = payload.scenes[0].start;
+          } else if (invalidSceneTrigger === 'reversed-starts') {
+            payload.scenes[1].start = payload.scenes[0].start - .1;
+          }
+        }
         if (invalidPhone !== undefined) payload.scenes[0].phoneSrc = invalidPhone;
         return route.fulfill({headers:privateHeaders,json:payload});
       }
@@ -184,6 +203,64 @@ let browser;
     check(name + ': only the appropriate current and permitted next variant loads',
       f.requests.length > 0 && f.requests.every(url => new URL(url).origin === origin && permitted.includes(new URL(url).pathname)));
     check(name + ': painting requests create no private Cache Storage entries',await f.page.evaluate(async () => (await caches.keys()).length === 0));
+    await f.context.close();
+  }
+  for (const [voice,trigger] of [['autonoe',3],['charon',2]]) {
+    const f = await fixture({sceneOnly:true,saveData:true});
+    await f.page.goto(origin + '/?voice=' + voice,{waitUntil:'domcontentloaded'}); await ready(f.page);
+    await seek(f.page,trigger - .2);
+    check(voice + ': scene-only cue requests no painting before its measured onset',
+      await cleared(f.page) && f.requests.length === 0 && await f.page.evaluate(trigger =>
+        document.querySelector('#narration').currentTime < trigger,trigger));
+    await seek(f.page,trigger); await shown(f.page,'one','phone');
+    check(voice + ': exact scene-only onset displays art while its canonical prose cue remains unmeasured',
+      await f.page.evaluate(({voice,trigger}) => {
+        const chapter = window.LUMEN_CHAPTER, scene = chapter.scenes[0];
+        const cue = chapter.paragraphs[0].sentences.find(sentence => sentence.id === scene.sentenceId);
+        return chapter.audio.narratorId === voice && scene.start === trigger &&
+          scene.triggerSource === 'measured-scene-cue' && scene.triggerAudioSha256 === chapter.audio.sha256 &&
+          cue.syncStatus === 'unavailable' && cue.start === null && cue.end === null;
+      },{voice,trigger}));
+    await seek(f.page,trigger + .3);
+    const clockBeforeClick = await f.page.evaluate(() => document.querySelector('#narration').currentTime);
+    await f.page.evaluate(() => document.getElementById(window.LUMEN_CHAPTER.scenes[0].sentenceId).click());
+    check(voice + ': scene-only proof creates no sentence highlight, seek button or click-to-seek behavior',
+      await f.page.evaluate(clock => {
+        const sentence = document.getElementById(window.LUMEN_CHAPTER.scenes[0].sentenceId);
+        return sentence.textContent === 'A lamp appears.' && sentence.classList.contains('unsynchronized') &&
+          !sentence.classList.contains('active') && sentence.getAttribute('role') === null &&
+          sentence.getAttribute('tabindex') === null && !document.querySelector('#prose .sentence.active') &&
+          Math.abs(document.querySelector('#narration').currentTime - clock) < .01 && document.querySelector('#narration').paused;
+      },clockBeforeClick));
+    const releaseNext = f.hold(artPath('two','phone'));
+    const nextRequest = f.page.waitForRequest(request => new URL(request.url()).pathname === artPath('two','phone'));
+    await seek(f.page,trigger * 2); await nextRequest;
+    await seek(f.page,0);
+    check(voice + ': rewind removes scene-only art while a later painting is pending',await cleared(f.page));
+    const nextResponse = f.page.waitForResponse(response => new URL(response.url()).pathname === artPath('two','phone'));
+    releaseNext(); await nextResponse; await f.page.waitForTimeout(100);
+    check(voice + ': delayed image responses cannot restore art after scene-only rewind',await cleared(f.page));
+    await seek(f.page,trigger); await shown(f.page,'one','phone');
+    const releaseThird = f.hold(artPath('three','phone'));
+    const thirdRequest = f.page.waitForRequest(request => new URL(request.url()).pathname === artPath('three','phone'));
+    await seek(f.page,trigger * 3); await thirdRequest;
+    await f.page.locator('#settings-open').click(); await f.page.locator('#sign-out-settings').click();
+    await f.page.waitForFunction(() => !document.body.classList.contains('authenticated'));
+    const thirdResponse = f.page.waitForResponse(response => new URL(response.url()).pathname === artPath('three','phone'));
+    releaseThird(); await thirdResponse;
+    await f.page.evaluate(() => document.querySelector('#narration').dispatchEvent(new Event('timeupdate')));
+    await f.page.waitForTimeout(100);
+    check(voice + ': sign out clears scene-only art and rejects late image/audio callbacks',
+      await cleared(f.page) && await f.page.evaluate(() => window.LUMEN_CHAPTER === undefined &&
+        !document.querySelector('#narration').getAttribute('src')));
+    await f.context.close();
+  }
+  for (const invalidSceneTrigger of ['wrong-voice-hash','unknown-trigger-source','unknown-sentence','equal-starts','reversed-starts']) {
+    const f = await fixture({sceneOnly:true,invalidSceneTrigger});
+    await f.page.goto(origin,{waitUntil:'domcontentloaded'});
+    await f.page.locator('#transition-retry').waitFor({state:'visible'});
+    check('invalid scene-only proof rejects the chapter before loading art (' + invalidSceneTrigger + ')',
+      f.requests.length === 0 && await cleared(f.page));
     await f.context.close();
   }
   const resized = await fixture({width:1800,dpr:2});

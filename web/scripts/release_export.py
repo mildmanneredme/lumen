@@ -283,7 +283,7 @@ def validate_aliases(registry):
                         and end["trackCompleted"] is False, "Invalid legacy alias excerpt completion")
 
 
-def reader_payload(registry, track, recording, timing, track_plan, plan, audio_url, scenes, part_title):
+def reader_payload(registry, track, recording, timing, track_plan, plan, audio_url, scenes, part_title, scene_clock=None):
     cues = {cue["sentenceId"]: cue for cue in timing["sentences"]}
     paragraphs = []
     for paragraph in track["paragraphs"]:
@@ -300,7 +300,7 @@ def reader_payload(registry, track, recording, timing, track_plan, plan, audio_u
         measured = [row for row in public["sentences"] if content.finite_number(row["start"]) and content.finite_number(row["end"])]
         public.update(start=measured[0]["start"] if measured else None, end=measured[-1]["end"] if measured else None)
         paragraphs.append(public)
-    resolved = content.resolve_scenes(track, recording, timing, scenes)
+    resolved = content.resolve_scenes(track, recording, timing, scenes, scene_clock)
     for index, scene in enumerate(resolved):
         scene["end"] = resolved[index + 1]["start"] if index + 1 < len(resolved) else recording["decodedDuration"]
     extent = track_plan.get("extentId", track["id"] + "-full")
@@ -328,7 +328,7 @@ def validate_staging(root, plan, staging):
     return root, staging
 
 
-def build_release(root, registry, inventory, timing_maps, scenes_by_track, plan, staging):
+def build_release(root, registry, inventory, timing_maps, scenes_by_track, plan, staging, scene_timing_maps=None):
     """Validate an explicit subset, freshly verify bytes, and stage immutable JSON.
 
     This is preparation only. Access control and remote promotion are separate.
@@ -338,6 +338,8 @@ def build_release(root, registry, inventory, timing_maps, scenes_by_track, plan,
     validate_aliases(registry)
     app_base, media_base, app_origin, media_origins = validate_plan(plan, registry)
     content.require(isinstance(timing_maps, dict) and isinstance(scenes_by_track, dict), "Missing reviewed timing/scene mappings")
+    scene_timing_maps = {} if scene_timing_maps is None else scene_timing_maps
+    content.require(isinstance(scene_timing_maps, dict), "Invalid measured scene clock mappings")
     recordings = current_inventory(root, registry, inventory)
     tracks = {track["id"]: track for track in registry["tracks"]}
     titles = part_titles(registry)
@@ -385,8 +387,14 @@ def build_release(root, registry, inventory, timing_maps, scenes_by_track, plan,
                                 "Missing/stale human timing or alignment approval")
                 verified = content.verify_recording_sources(content.verify_recording_file(recording, root), root)
             content.validate_timing_map(track, verified, timing, require_approved=True, alignment_verification=proof)
+            scene_maps = scene_timing_maps.get(track["id"], {})
+            content.require(isinstance(scene_maps, dict), "Invalid selected track scene clocks")
+            scene_clock = scene_maps.get(narrator_id)
+            if scene_clock is not None:
+                from recover_scene_timings import verify_scene_clock
+                verified, _ = verify_scene_clock(root, track, verified, timing, scene_clock)
             audio_url = media_base + "audio/" + narrator_id + "/" + track["id"] + "." + verified["sha256"] + ".mp3"
-            payload = reader_payload(registry, track, verified, timing, selected, plan, audio_url, scene_data, row["partTitle"])
+            payload = reader_payload(registry, track, verified, timing, selected, plan, audio_url, scene_data, row["partTitle"], scene_clock)
             digest = content.object_hash(payload)
             relative = "tracks/" + track["id"] + "/reader-" + narrator_id + "." + digest + ".json"
             row["recordings"][narrator_id] = {"status": "ready", "url": app_base + relative, "audioSha256": verified["sha256"]}
@@ -425,6 +433,7 @@ def main():
     parser.add_argument("--inventory", type=Path, required=True)
     parser.add_argument("--timings", type=Path, required=True, help="Track ID -> narrator ID -> reviewed map")
     parser.add_argument("--scenes", type=Path, help="Track ID -> reviewed scene list; omission means text-only")
+    parser.add_argument("--scene-timings", type=Path, help="Track -> narrator -> independently measured scene-onset proofs")
     parser.add_argument("--plan", type=Path, required=True)
     parser.add_argument("--out", type=Path, help="Private/authenticated staging defaults to Audiobook/author-audit/lumen-release-<releaseId> under --root; public staging defaults to /private/tmp")
     args = parser.parse_args()
@@ -434,7 +443,8 @@ def main():
               else Path("/private/tmp"))
     _, staging = validate_staging(args.root, plan, args.out or parent / ("lumen-release-" + plan["releaseId"]))
     result = build_release(args.root, content.read_json(args.registry), content.read_json(args.inventory),
-                           content.read_json(args.timings), content.read_json(args.scenes) if args.scenes else {}, plan, staging)
+                           content.read_json(args.timings), content.read_json(args.scenes) if args.scenes else {}, plan, staging,
+                           content.read_json(args.scene_timings) if args.scene_timings else None)
     print(json.dumps({key: result[key] for key in ["manifestURL", "manifestPath", "manifestSha256",
                                                   "uploadInventoryPath", "publicationStatus"]}, indent=2))
 

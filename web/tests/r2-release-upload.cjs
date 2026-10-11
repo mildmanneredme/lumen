@@ -42,6 +42,12 @@ async function fixture(count=2) {
   };
   return {root,bodies,inventory,r2,objects,calls,manifestURL:assets[0].url,clean:()=>fs.rm(root,{recursive:true,force:true})};
 }
+async function reuseFixture(){
+  const f=await fixture(),asset=f.inventory.assets[1],oldKey='lumen/releases/previous-audio/assets/tracks/chapter-001/audio.'+asset.sha256+'.mp3';
+  f.reuseAudio=[{url:asset.url,objectKey:oldKey}];f.oldKey=oldKey;
+  f.objects.set(oldKey,{bytes:f.bodies[1],type:'audio/mpeg',customMetadata:{sha256:asset.sha256},etag:'etag-'+asset.sha256,version:'original-v1'});
+  return f;
+}
 test('R2 plan retains stable API paths and exact server-index compatibility',async()=>{
   const f=await fixture();try {
     const plan=makePlan(f.inventory,f.manifestURL),map=validateIndex(plan.index,origin);
@@ -239,4 +245,104 @@ test('missing or altered R2 SHA metadata cannot certify otherwise correct bytes'
 });
 test('importing the operator tool is inert and does not read credentials or call storage',()=>{
   assert.equal(typeof uploadR2Release,'function');assert.equal(typeof makePlan,'function');assert.equal(typeof sourceProof,'function');
+});
+test('audio reuse plan keeps stable URLs, old immutable keys and separate upload/read budgets',async()=>{
+  const f=await reuseFixture();try{
+    const plan=makePlan(f.inventory,f.manifestURL,{reuseAudio:f.reuseAudio});
+    assert.equal(plan.uploadPrefix,'lumen/releases/r2-fixture/');assert.deepEqual(plan.readOnlyReleaseIds,['previous-audio']);
+    assert.equal(plan.receipts[1].objectKey,f.oldKey);assert.equal(plan.receipts[1].reused,true);
+    assert.equal(validateIndex(plan.index,origin).get(f.inventory.assets[1].url.slice((origin+'/api/assets/').length)).blobPath,f.oldKey);
+    assert.equal(plan.reusedAssetCount,1);assert.equal(plan.reusedBytes,f.bodies[1].length);
+    assert.equal(plan.uploadBytes,f.bodies[0].length+plan.indexBytes.length);
+    assert.equal(plan.verificationBytes,plan.uploadBytes+plan.reusedBytes+f.inventory.assets.reduce((n,a)=>n+a.samples.reduce((m,s)=>m+s.end-s.start+1,0),0));
+    assert.ok(!plan.indexBytes.includes('reused'));assert.ok(!plan.indexBytes.includes('sourcePath'));
+  }finally{await f.clean();}
+});
+test('reuse freshly verifies full old audio and all samples, writes only new objects and publishes index last',async()=>{
+  const f=await reuseFixture();try{
+    const plan=makePlan(f.inventory,f.manifestURL,{reuseAudio:f.reuseAudio});
+    const result=await uploadR2Release({...f,maxUploadBytes:plan.uploadBytes,verifyByteBudget:plan.verificationBytes});
+    assert.equal(result.reusedAssetCount,1);assert.equal(result.reusedBytes,f.bodies[1].length);
+    assert.equal(result.uploadedBytes,plan.uploadBytes);assert.equal(result.verificationBytes,plan.verificationBytes);
+    assert.equal(f.calls.filter(c=>c.key===f.oldKey&&c.method==='get').length,4);
+    assert.equal(f.calls.filter(c=>c.key===f.oldKey&&c.method==='get'&&c.options.range).length,3);
+    assert.ok(!f.calls.some(c=>c.key===f.oldKey&&c.method==='put'));
+    assert.equal(f.calls.filter(c=>c.method==='put').length,2);assert.equal(f.calls.filter(c=>c.method==='put').at(-1).key,result.indexPath);
+    assert.ok(result.assets[1].reused&&result.assets[1].fullSha256Verified&&result.assets[1].sampleSha256Verified&&result.assets[1].headVerified);
+    assert.equal(f.objects.get(f.oldKey).version,'original-v1');
+    f.calls.length=0;const resumed=await uploadR2Release({...f,...budgets});
+    assert.equal(resumed.uploadedBytes,0);assert.equal(f.calls.filter(c=>c.method==='put').length,0);
+    assert.equal(f.calls.filter(c=>c.key===f.oldKey&&c.method==='get').length,4);
+  }finally{await f.clean();}
+});
+test('reuse rejects unsafe, foreign, mismatched, non-audio and duplicate locators before storage access',async()=>{
+  const f=await reuseFixture();try{
+    const locator=f.reuseAudio[0],invalid=[null,{},[{}],[{...locator,fullSha256Verified:true}],
+      [{...locator,url:f.inventory.assets[0].url}],[{...locator,url:origin+'/api/assets/foreign.'+f.inventory.assets[1].sha256+'.mp3'}],
+      [{...locator,objectKey:locator.objectKey.replace('previous-audio','r2-fixture')}],
+      [{...locator,objectKey:locator.objectKey.replace(f.inventory.assets[1].sha256,'0'.repeat(64))}],
+      [{...locator,objectKey:'lumen/releases/previous-audio/assets/../audio.'+f.inventory.assets[1].sha256+'.mp3'}],
+      [{...locator,objectKey:'lumen/releases/previous-audio/assets/audio.%2f'+f.inventory.assets[1].sha256+'.mp3'}],
+      [{...locator,objectKey:locator.objectKey.replace('.mp3','.webp')}],[locator,locator]];
+    for(const reuseAudio of invalid){await assert.rejects(uploadR2Release({...f,...budgets,reuseAudio}));assert.equal(f.calls.length,0);}
+    for(const releaseId of ['', 'UPPER', '../other', 'release.with-dot', 'a'.repeat(129)]){
+      await assert.rejects(uploadR2Release({...f,...budgets,inventory:{...f.inventory,releaseId}}));assert.equal(f.calls.length,0);
+    }
+  }finally{await f.clean();}
+});
+test('reuse requires the full source and full verification budget even when its upload ceiling is small',async()=>{
+  const f=await reuseFixture();try{
+    const plan=makePlan(f.inventory,f.manifestURL,{reuseAudio:f.reuseAudio});
+    for(const limits of [{maxUploadBytes:plan.uploadBytes-1,verifyByteBudget:plan.verificationBytes},
+      {maxUploadBytes:plan.uploadBytes,verifyByteBudget:plan.verificationBytes-1}]){
+      await assert.rejects(uploadR2Release({...f,...limits}),/budget/);assert.equal(f.calls.length,0);
+    }
+    await fs.writeFile(f.inventory.assets[1].sourcePath,Buffer.alloc(f.bodies[1].length));
+    await assert.rejects(uploadR2Release({...f,...budgets}),/SHA/);assert.equal(f.calls.length,0);
+  }finally{await f.clean();}
+});
+test('missing previous audio cannot be reuploaded, recreated or referenced by a published index',async()=>{
+  const f=await reuseFixture();try{
+    f.objects.delete(f.oldKey);await assert.rejects(uploadR2Release({...f,...budgets}),/missing/);
+    assert.ok(!f.calls.some(c=>c.method==='put'&&(c.key===f.oldKey||c.key.includes('server-index'))));
+  }finally{await f.clean();}
+});
+test('old object metadata and independent full/range byte corruption cannot certify reused audio',async()=>{
+  for(const mode of ['size','type','sha','full','range','version']){
+    const f=await reuseFixture();try{
+      if(mode==='size')f.objects.get(f.oldKey).bytes=Buffer.alloc(1);
+      if(mode==='type')f.objects.get(f.oldKey).type='application/json';
+      if(mode==='sha')f.objects.get(f.oldKey).customMetadata.sha256='0'.repeat(64);
+      const original=f.r2.get;
+      f.r2.get=async(key,options)=>{
+        const result=await original(key,options);if(key!==f.oldKey)return result;
+        if(mode==='version')result.version='replaced-version';
+        if(mode==='full'&&!options.range){await result.body.cancel();result.body=new Response(Buffer.alloc(f.bodies[1].length)).body;}
+        if(mode==='range'&&options.range){await result.body.cancel();result.body=new Response(Buffer.alloc(options.range.length)).body;}
+        return result;
+      };
+      await assert.rejects(uploadR2Release({...f,...budgets}),/metadata|identity|SHA/);
+      assert.ok(!f.calls.some(c=>c.method==='put'&&(c.key===f.oldKey||c.key.includes('server-index'))));
+    }finally{await f.clean();}
+  }
+});
+test('reuse rechecks remote identity and current local source before index publication',async()=>{
+  for(const mode of ['remote','local']){
+    const f=await reuseFixture();try{
+      await assert.rejects(uploadR2Release({...f,...budgets,onProgress:async record=>{
+        if(!record.assets.some(asset=>asset.reused))return;
+        if(mode==='remote')f.objects.get(f.oldKey).version='replaced-after-verification';
+        else await fs.writeFile(f.inventory.assets[1].sourcePath,Buffer.alloc(f.bodies[1].length));
+      }}),/identity changed/);
+      assert.ok(!f.calls.some(c=>c.method==='put'&&c.key.includes('server-index')));
+    }finally{await f.clean();}
+  }
+});
+test('caller mutation cannot redirect already planned reused audio',async()=>{
+  const f=await reuseFixture();try{
+    const original=f.r2.head;let changed=false;
+    f.r2.head=async(...args)=>{if(!changed){changed=true;f.reuseAudio[0].objectKey='lumen/releases/foreign/assets/wrong.mp3';}return original(...args);};
+    const result=await uploadR2Release({...f,...budgets});
+    assert.equal(result.assets[1].objectKey,f.oldKey);assert.ok(!f.calls.some(call=>call.key.includes('foreign')));
+  }finally{await f.clean();}
 });

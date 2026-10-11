@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import copy
+from datetime import datetime
 import hashlib
 import json
 from pathlib import Path
@@ -20,6 +21,44 @@ import release_export as release
 
 SELECTION_NAME = re.compile(r"(chapter-[0-9]{3})-selected-scenes\.json")
 DEFAULT_NARRATORS = ("autonoe", "charon")
+CORRECTION_FIELDS = {"sourceSentenceId", "sourceSentenceTextSha256", "sourceSha256", "phoneSha256",
+                     "sentenceId", "sentenceTextSha256", "review"}
+
+
+def anchor_correction_hash(scene_id, correction):
+    return content.object_hash({"id": scene_id, **{key: correction.get(key)
+                               for key in sorted(CORRECTION_FIELDS - {"review"})}})
+
+
+def apply_anchor_correction(source, sentence_by_id, correction):
+    """Apply an explicitly reviewed, source-bound canonical edit, never seconds."""
+    if correction is None:
+        return source["sentenceId"], source["sentenceTextSha256"]
+    content.require(isinstance(correction, dict) and set(correction) == CORRECTION_FIELDS,
+                    "Anchor correction requires exact source, target and review fields")
+    bindings = {"sourceSentenceId": source["sentenceId"],
+                "sourceSentenceTextSha256": source["sentenceTextSha256"],
+                "sourceSha256": source["sha256"], "phoneSha256": (source.get("phone") or {}).get("sha256")}
+    content.require(all(correction.get(key) == value for key, value in bindings.items()),
+                    "Anchor correction selected source changed")
+    sentence_id = correction.get("sentenceId")
+    content.require(isinstance(sentence_id, str) and sentence_id in sentence_by_id,
+                    "Anchor correction target must belong to the same canonical chapter")
+    digest = hashlib.sha256(sentence_by_id[sentence_id]["text"].encode("utf-8")).hexdigest()
+    content.require(correction.get("sentenceTextSha256") == digest,
+                    "Anchor correction canonical target text differs")
+    review = correction.get("review")
+    content.require(isinstance(review, dict) and review.get("status") == "accepted-with-note"
+                    and isinstance(review.get("reviewer"), str) and review["reviewer"].strip()
+                    and isinstance(review.get("note"), str) and review["note"].strip()
+                    and review.get("correctionSha256") == anchor_correction_hash(source["id"], correction),
+                    "Anchor correction requires a current hash-bound narrative review")
+    try:
+        reviewed = datetime.fromisoformat(review.get("reviewedAt", "").replace("Z", "+00:00"))
+    except (ValueError, TypeError, AttributeError) as exc:
+        raise content.ContentError("Anchor correction review requires a timestamp") from exc
+    content.require(reviewed.tzinfo is not None, "Anchor correction review requires a timezone")
+    return sentence_id, digest
 
 
 def selected_tracks(root, registry, selections_dir, track_ids=None):
@@ -94,20 +133,56 @@ def timing_cues(track, narrator_id, timing):
     return {cue["sentenceId"]: cue for cue in rows}
 
 
+def scene_clock_cues(track, narrator_id, timing, scene_map):
+    """Check diagnostic map bindings; publication freshly reproduces its proof."""
+    if scene_map is None:
+        return {}
+    content.require(isinstance(timing, dict) and isinstance(scene_map, dict)
+                    and type(scene_map.get("schemaVersion")) is int and scene_map["schemaVersion"] == 1
+                    and scene_map.get("kind") == "measured-scene-cues"
+                    and scene_map.get("trackId") == track["id"] and scene_map.get("narratorId") == narrator_id
+                    and scene_map.get("manuscriptVersion") == track["manuscriptVersion"]
+                    and scene_map.get("textSha256") == track["textSha256"]
+                    and scene_map.get("audioSha256") == timing["audioSha256"]
+                    and scene_map.get("duration") == timing["duration"],
+                    "Measured scene clock identity differs from the selected recording")
+    rows = scene_map.get("cues")
+    ids = [sentence["id"] for sentence in content.sentences(track)]
+    content.require(isinstance(rows, list) and all(isinstance(cue, dict) for cue in rows),
+                    "Invalid measured scene clock cues")
+    cue_ids = [cue.get("sentenceId") for cue in rows]
+    content.require(all(isinstance(value, str) and value in ids for value in cue_ids)
+                    and cue_ids == [value for value in ids if value in cue_ids]
+                    and all(cue.get("method") == "unique-measured-ASR-prefix"
+                            and content.finite_number(cue.get("start"))
+                            and 0 <= cue["start"] < timing["duration"] for cue in rows),
+                    "Measured scene clock requires ordered distinct canonical onsets")
+    content.require(all(after["start"] > before["start"] for before, after in zip(rows, rows[1:])),
+                    "Measured scene clock onsets must be strictly increasing")
+    return {cue["sentenceId"]: cue for cue in rows}
+
+
 def prepare_scenes(root, registry, selections_dir, timing_maps, *, track_ids=None,
-                   narrator_ids=DEFAULT_NARRATORS, metadata=None):
+                   narrator_ids=DEFAULT_NARRATORS, metadata=None, corrections=None, scene_timing_maps=None):
     """Return normalized scenesByTrack and a private source/clock/review audit."""
     root = Path(root).resolve()
     content.validate_registry(registry)
     directory, ids = selected_tracks(root, registry, selections_dir, track_ids)
     content.require(isinstance(timing_maps, dict), "Invalid scene timing mapping")
+    scene_timing_maps = {} if scene_timing_maps is None else scene_timing_maps
+    content.require(isinstance(scene_timing_maps, dict), "Invalid measured scene clock mapping")
     narrators = list(narrator_ids)
     content.require(bool(narrators) and all(release.safe_id(narrator) for narrator in narrators)
                     and len(set(narrators)) == len(narrators), "Invalid explicit scene narrator IDs")
     metadata = {} if metadata is None else metadata
+    metadata_fields = {"title", "alt", "approval", "sourceSha256", "phoneSha256", "sourceManifestSha256"}
     content.require(isinstance(metadata, dict) and all(release.safe_id(scene_id) and isinstance(value, dict)
-                    and set(value).issubset({"title", "alt", "approval"}) for scene_id, value in metadata.items()),
+                    and set(value).issubset(metadata_fields) for scene_id, value in metadata.items()),
                     "Invalid explicit reader scene metadata")
+    corrections = {} if corrections is None else corrections
+    content.require(isinstance(corrections, dict) and all(release.safe_id(scene_id)
+                    and isinstance(value, dict) for scene_id, value in corrections.items()),
+                    "Invalid reviewed anchor correction mapping")
     tracks = {track["id"]: track for track in registry["tracks"]}
     scenes_by_track, audit_tracks, seen, unique_images = {}, [], set(), {}
     selection_sources, timing_sources = [], []
@@ -115,6 +190,8 @@ def prepare_scenes(root, registry, selections_dir, timing_maps, *, track_ids=Non
               "pendingApprovals": 0, "measuredNarratorAnchors": 0, "blockedNarratorAnchors": 0,
               "scenesMeasuredForAllNarrators": 0, "scenesWithBlockedNarratorAnchors": 0,
               "duplicateTriggerGroups": 0, "scenesWithDuplicateTrigger": 0,
+              "correctedSceneAnchors": 0,
+              "measuredSceneOnlyAnchors": 0,
               "referencedImageBytes": 0, "fullImageBytes": 0, "phoneImageBytes": 0}
     for track_id in ids:
         track = tracks[track_id]
@@ -141,8 +218,13 @@ def prepare_scenes(root, registry, selections_dir, timing_maps, *, track_ids=Non
         track_maps = timing_maps.get(track_id, {})
         content.require(isinstance(track_maps, dict), "Invalid selected track timing mapping")
         cues_by_narrator = {}
+        scene_cues_by_narrator = {}
+        scene_maps = scene_timing_maps.get(track_id, {})
+        content.require(isinstance(scene_maps, dict), "Invalid selected track scene clock mapping")
         for narrator_id in narrators:
             timing = track_maps.get(narrator_id)
+            scene_cues_by_narrator[narrator_id] = scene_clock_cues(
+                track, narrator_id, timing, scene_maps.get(narrator_id))
             if timing is None:
                 cues_by_narrator[narrator_id] = None
                 continue
@@ -159,9 +241,14 @@ def prepare_scenes(root, registry, selections_dir, timing_maps, *, track_ids=Non
             seen.add(scene_id)
             content.require(source.get("trackId") == track_id and isinstance(sentence_id, str)
                             and sentence_id in sentence_by_id, "Selected scene canonical sentence is unknown")
+            content.require(source.get("phone") is None or isinstance(source["phone"], dict),
+                            "Invalid selected phone image")
             sentence_digest = hashlib.sha256(sentence_by_id[sentence_id]["text"].encode("utf-8")).hexdigest()
             content.require(source.get("sentenceTextSha256") == sentence_digest,
                             "Selected scene canonical sentence text hash differs")
+            original_sentence_id = sentence_id
+            sentence_id, sentence_digest = apply_anchor_correction(source, sentence_by_id, corrections.get(scene_id))
+            totals["correctedSceneAnchors"] += int(scene_id in corrections)
             content.require(sentence_indices[sentence_id] >= previous_index,
                             "Selected scene canonical triggers are out of order")
             previous_index = sentence_indices[sentence_id]
@@ -169,6 +256,11 @@ def prepare_scenes(root, registry, selections_dir, timing_maps, *, track_ids=Non
                             "Shared selected scene must not contain a narrator clock")
             source_path, image_bytes = verified_image(root, source.get("sourcePath"), source.get("sha256"), "Full")
             overrides = metadata.get(scene_id, {})
+            metadata_bindings = {"sourceSha256": source["sha256"],
+                                 "phoneSha256": (source.get("phone") or {}).get("sha256"),
+                                 "sourceManifestSha256": manifest_hash}
+            content.require(all(overrides[key] == expected for key, expected in metadata_bindings.items()
+                                if key in overrides), "Reader metadata selected source changed")
             title = release.visible_text(overrides.get("title", f"Illustration {index:02d}"), "scene title")
             alt = release.visible_text(overrides.get("alt", "Painted illustration for the current passage."), "scene alt")
             scene = {"id": scene_id, "sentenceId": sentence_id, "sentenceTextSha256": sentence_digest,
@@ -204,7 +296,12 @@ def prepare_scenes(root, registry, selections_dir, timing_maps, *, track_ids=Non
                 elif cue.get("syncStatus") == "unavailable":
                     clock["reason"] = cue["reason"]
                 else:
-                    clock.update(status="measured", startSeconds=cue["start"])
+                    clock.update(status="measured", startSeconds=cue["start"], source="measured-sentence")
+                scene_cue = scene_cues_by_narrator[narrator_id].get(sentence_id)
+                if clock["status"] == "blocked" and scene_cue is not None:
+                    clock.pop("reason", None)
+                    clock.update(status="measured", startSeconds=scene_cue["start"], source="measured-scene-cue")
+                    totals["measuredSceneOnlyAnchors"] += 1
                 clocks[narrator_id] = clock
                 totals["measuredNarratorAnchors"] += int(clock["status"] == "measured")
                 totals["blockedNarratorAnchors"] += int(clock["status"] == "blocked")
@@ -221,6 +318,8 @@ def prepare_scenes(root, registry, selections_dir, timing_maps, *, track_ids=Non
                 totals["fullImageBytes" if image["variant"] == "full" else "phoneImageBytes"] += image["bytes"]
                 unique_images[(image["sourcePath"], image["sha256"])] = image["bytes"]
             audit_rows.append({"id": scene_id, "sentenceId": sentence_id,
+                               "sourceSentenceId": original_sentence_id,
+                               "anchorCorrection": copy.deepcopy(corrections.get(scene_id)),
                                "sentenceTextSha256": sentence_digest,
                                "sourceTitle": copy.deepcopy(source.get("title")),
                                "sourceAlt": copy.deepcopy(source.get("alt")),
@@ -247,12 +346,15 @@ def prepare_scenes(root, registry, selections_dir, timing_maps, *, track_ids=Non
         totals["scenesWithDuplicateTrigger"] += len(collided_ids)
         audit_tracks.append({"trackId": track_id, "duplicateTriggerGroups": collisions, "scenes": audit_rows})
     content.require(set(metadata).issubset(seen), "Reader metadata contains an unselected scene ID")
+    content.require(set(corrections).issubset(seen), "Anchor corrections contain an unselected scene ID")
     totals.update(uniqueImageFiles=len(unique_images), uniqueImageBytes=sum(unique_images.values()))
     audit = {"schemaVersion": 1, "kind": "private-illustration-preparation", "bookId": registry["bookId"],
              "manuscriptVersion": registry["manuscriptVersion"],
              "registrySha256": registry.get("registrySha256", content.object_hash(registry)),
              "trackIds": ids, "narratorIds": narrators, "selectionSources": selection_sources,
              "timingSources": timing_sources, "readerMetadataSha256": content.object_hash(metadata),
+             "anchorCorrectionsSha256": content.object_hash(corrections),
+             "sceneTimingMapsSha256": content.object_hash(scene_timing_maps),
              "scenesSha256": content.object_hash(scenes_by_track), "totals": totals, "tracks": audit_tracks,
              "publicationStatus": "private-candidates-review-pending"}
     return {"scenesByTrack": scenes_by_track, "audit": audit}
@@ -290,10 +392,13 @@ def main():
     parser.add_argument("--tracks", nargs="+", help="Explicit canonical track subset; otherwise select exact manifests")
     parser.add_argument("--narrators", nargs="+", default=list(DEFAULT_NARRATORS))
     parser.add_argument("--metadata", type=Path, help="Explicit scene ID -> title/alt/approval overrides")
+    parser.add_argument("--corrections", type=Path, help="Explicit source-bound reviewed canonical trigger corrections")
+    parser.add_argument("--scene-timings", type=Path, help="Track -> narrator -> measured scene-onset proof; sentence gaps stay null")
     args = parser.parse_args()
     root = args.root.resolve()
     values, bindings = {}, []
-    for kind, source in [("registry", args.registry), ("timings", args.timings), ("metadata", args.metadata)]:
+    for kind, source in [("registry", args.registry), ("timings", args.timings), ("metadata", args.metadata),
+                         ("corrections", args.corrections), ("scene-timings", args.scene_timings)]:
         if source is None:
             continue
         path = content.project_file(root, source)
@@ -303,7 +408,8 @@ def main():
         bindings.append({"kind": kind, "sourcePath": path.relative_to(root).as_posix(), "sha256": digest})
     registry, timings, metadata = values["registry"], values["timings"], values.get("metadata")
     prepared = prepare_scenes(root, registry, args.selections, timings, track_ids=args.tracks,
-                              narrator_ids=args.narrators, metadata=metadata)
+                              narrator_ids=args.narrators, metadata=metadata, corrections=values.get("corrections"),
+                              scene_timing_maps=values.get("scene-timings"))
     for binding in bindings:
         content.require(content.project_file_hash(root, binding["sourcePath"]) == binding["sha256"],
                         f"Scene {binding['kind']} input changed during verification")

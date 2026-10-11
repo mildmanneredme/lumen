@@ -228,6 +228,64 @@ class IllustratedScenePreparationTests(unittest.TestCase):
         with self.assertRaises(images.content.ContentError):
             self.prepare(metadata={"unselected-scene": {"title": "Unused"}})
 
+    def correction_fixture(self):
+        first, second = self.selection["scenes"]
+        target = next(sentence for sentence in images.content.sentences(self.track)
+                      if sentence["id"] == second["sentenceId"])
+        second.update(sentenceId=first["sentenceId"], sentenceTextSha256=first["sentenceTextSha256"])
+        self.save_selection()
+        correction = {"sourceSentenceId": second["sentenceId"],
+                      "sourceSentenceTextSha256": second["sentenceTextSha256"],
+                      "sourceSha256": second["sha256"], "phoneSha256": second["phone"]["sha256"],
+                      "sentenceId": target["id"],
+                      "sentenceTextSha256": hashlib.sha256(target["text"].encode()).hexdigest(),
+                      "review": {"status": "accepted-with-note", "reviewer": "Fixture narrative reviewer",
+                                 "reviewedAt": "2026-10-11T08:00:00+07:00",
+                                 "note": "The second painting follows the narrated action at the next measured sentence."}}
+        correction["review"]["correctionSha256"] = images.anchor_correction_hash(second["id"], correction)
+        return second["id"], correction
+
+    def test_reviewed_canonical_correction_resolves_collision_without_mutating_source_or_clocks(self):
+        scene_id, correction = self.correction_fixture()
+        original = self.manifest_path.read_bytes()
+        self.assertEqual(self.prepare()["audit"]["totals"]["duplicateTriggerGroups"], 1)
+        result = self.prepare(corrections={scene_id: correction})
+        self.assertEqual(self.manifest_path.read_bytes(), original)
+        self.assertEqual(result["audit"]["totals"]["duplicateTriggerGroups"], 0)
+        self.assertEqual(result["audit"]["totals"]["correctedSceneAnchors"], 1)
+        scene = result["audit"]["tracks"][0]["scenes"][1]
+        self.assertEqual(scene["sourceSentenceId"], correction["sourceSentenceId"])
+        self.assertEqual(scene["sentenceId"], correction["sentenceId"])
+        for voice in ("autonoe", "charon"):
+            target = next(cue for cue in self.timings[self.track["id"]][voice]["sentences"]
+                          if cue["sentenceId"] == correction["sentenceId"])
+            self.assertEqual(scene["narrators"][voice]["startSeconds"], target["start"])
+        self.assertIsNone(result["scenesByTrack"][self.track["id"]][1]["approval"])
+
+    def test_stale_correction_review_source_and_target_cannot_shift_reveal(self):
+        scene_id, correction = self.correction_fixture()
+        changes = [{"sourceSha256": "f" * 64}, {"phoneSha256": "f" * 64},
+                   {"sourceSentenceId": "v6:chapter-099:p001-s01"},
+                   {"sentenceId": "v6:chapter-099:p001-s01"},
+                   {"sentenceTextSha256": "f" * 64}, {"start": 1.25},
+                   {"review": dict(correction["review"], correctionSha256="f" * 64)},
+                   {"review": dict(correction["review"], reviewedAt="2026-10-11T08:00:00")}]
+        for change in changes:
+            with self.subTest(change=change), self.assertRaises(images.content.ContentError):
+                self.prepare(corrections={scene_id: dict(correction, **change)})
+        with self.assertRaisesRegex(images.content.ContentError, "unselected scene"):
+            self.prepare(corrections={"unselected-scene": correction})
+
+    def test_source_bound_reader_metadata_rejects_changed_art_or_selection(self):
+        source = self.selection["scenes"][0]
+        row = {"title": "Evening light", "alt": "Warm light across a room.",
+               "sourceSha256": source["sha256"], "phoneSha256": source["phone"]["sha256"],
+               "sourceManifestSha256": images.content.file_hash(self.manifest_path)}
+        self.assertEqual(self.first_scene(self.prepare(metadata={source["id"]: row}))["alt"], row["alt"])
+        for key in ("sourceSha256", "phoneSha256", "sourceManifestSha256"):
+            with self.subTest(key=key), self.assertRaisesRegex(images.content.ContentError, "selected source changed"):
+                self.prepare(metadata={source["id"]: dict(row, **{key: "f" * 64})})
+
     def test_unavailable_missing_cue_and_missing_narrator_keep_null_clocks(self):
         track_maps = self.timings[self.track["id"]]
         gap = track_maps["autonoe"]["sentences"][0]
@@ -241,6 +299,31 @@ class IllustratedScenePreparationTests(unittest.TestCase):
         audit = self.prepare()["audit"]["tracks"][0]["scenes"][0]
         self.assertEqual(audit["narrators"]["charon"]["reason"], "missing-timing-map")
         self.assertIsNone(audit["narrators"]["charon"]["audioSha256"])
+
+    def test_scene_only_onset_audit_keeps_full_sentence_unmeasured_and_checks_recording(self):
+        timing = self.timings[self.track["id"]]["autonoe"]
+        cue = timing["sentences"][0]
+        cue.update(syncStatus="unavailable", start=None, end=None, reason="low-confidence-ASR-anchor")
+        original = copy.deepcopy(timing)
+        clock = {"schemaVersion": 1, "kind": "measured-scene-cues", "trackId": self.track["id"],
+                 "narratorId": "autonoe", "manuscriptVersion": "v6", "textSha256": self.track["textSha256"],
+                 "audioSha256": timing["audioSha256"], "duration": timing["duration"],
+                 "cues": [{"sentenceId": cue["sentenceId"], "start": 1.25, "method": "unique-measured-ASR-prefix"}]}
+        result = self.prepare(scene_timing_maps={self.track["id"]: {"autonoe": clock}})
+        audit = result["audit"]["tracks"][0]["scenes"][0]
+        self.assertEqual(audit["narrators"]["autonoe"]["startSeconds"], 1.25)
+        self.assertEqual(audit["narrators"]["autonoe"]["source"], "measured-scene-cue")
+        self.assertEqual(result["audit"]["totals"]["measuredSceneOnlyAnchors"], 1)
+        self.assertEqual(timing, original)
+        for change in [{"audioSha256": "f" * 64}, {"textSha256": "f" * 64},
+                       {"cues": clock["cues"] * 2}, {"cues": [dict(clock["cues"][0], start=float('nan'))]}]:
+            with self.subTest(change=change), self.assertRaises(images.content.ContentError):
+                self.prepare(scene_timing_maps={self.track["id"]: {"autonoe": dict(clock, **change)}})
+        for second_start in [1.25, 1.0]:
+            rows = clock["cues"] + [dict(clock["cues"][0], sentenceId=timing["sentences"][1]["sentenceId"],
+                                         start=second_start)]
+            with self.subTest(second_start=second_start), self.assertRaisesRegex(images.content.ContentError, "strictly increasing"):
+                self.prepare(scene_timing_maps={self.track["id"]: {"autonoe": dict(clock, cues=rows)}})
 
     def test_unavailable_cue_with_estimated_clock_and_stale_timing_identity_fail(self):
         original = copy.deepcopy(self.timings)
