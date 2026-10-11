@@ -178,7 +178,7 @@ function buildServerIndex(inventory, receipts, manifestURL) {
   validateIndex(index,origin);
   return index;
 }
-function exactStream(stream, expected) {
+function exactStream(stream, expected, {signal} = {}) {
   let count = 0;
   return stream.pipeThrough(new TransformStream({
     transform(chunk, controller) {
@@ -187,11 +187,12 @@ function exactStream(stream, expected) {
       controller.enqueue(chunk);
     },
     flush() { if (count !== expected) throw new Error('Private asset length mismatch'); }
-  }));
+  }), {signal});
 }
-function createPrivateReader({env = process.env, now = Date.now, loadIndex, getBlob, assetResponse}) {
+function createPrivateReader({env = process.env, now = Date.now, loadIndex, getBlob, assetResponse, protectStream = exactStream}) {
   requireValue(typeof loadIndex === 'function' && typeof getBlob === 'function');
   requireValue(assetResponse === undefined || typeof assetResponse === 'function');
+  requireValue(typeof protectStream === 'function');
   return async function privateReader(request) {
     let config;
     try { config = readConfig(env); } catch (_) { return failure(503); }
@@ -261,7 +262,16 @@ function createPrivateReader({env = process.env, now = Date.now, loadIndex, getB
         if(result?.stream) await result.stream.cancel();
         throw new Error('Private asset metadata differs');
       }
-      let stream = exactStream(result.stream,count);
+      // Trusted storage adapters may enforce the same length contract natively.
+      // Metadata must pass above before any bytes enter the protector.
+      let stream;
+      try {
+        stream = protectStream(result.stream,count,{signal:request.signal});
+        requireValue(stream && typeof stream.getReader === 'function');
+      } catch (error) {
+        try { await result.stream.cancel(); } catch (_) {}
+        throw error;
+      }
       if (!range && asset.contentType === 'application/json') {
         const bytes = await boundedBytes(stream,JSON_LIMIT);
         requireValue(sha256(bytes) === asset.sha256);

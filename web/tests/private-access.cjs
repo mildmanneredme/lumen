@@ -334,3 +334,23 @@ test('Vercel Node adapter uses trusted preview origin for login and book reads, 
   }
   const absolute=outgoing();await handler(incoming('https://evil.example/api/book','GET',{cookie}),absolute);assert.equal(absolute.statusCode,403);
 });
+
+
+test('trusted stream protector receives only validated full or range length and the request signal',async()=>{
+  const seen=[];const f=fixture({protectStream:(stream,count,options)=>{seen.push({count,signal:options.signal});return stream;}}),cookie=await login(f);
+  for(const [range,count]of [[undefined,audio.length],['bytes=2-6',5],['bytes=20-',16],['bytes=-5',5]]){
+    const request=f.request('/api/assets/'+audioPath,'GET',{Cookie:cookie,...(range?{Range:range}:{})});
+    const response=await f.reader(request);assert.equal(response.status,range?206:200);assert.equal((await response.arrayBuffer()).byteLength,count);
+    assert.equal(seen.at(-1).count,count);assert.equal(seen.at(-1).signal,request.signal);
+  }
+  assert.equal(seen.length,4);
+  const bad=fixture({protectStream:()=>assert.fail('Invalid upstream metadata cannot reach the protector'),getBlob:async()=>({statusCode:200,headers:new Headers({'content-length':'1'}),stream:new Response(audio).body})});
+  const denied=await bad.reader(bad.request('/api/assets/'+audioPath,'GET',{Cookie:await login(bad)}));assert.equal(denied.status,503);
+});
+test('invalid or failed trusted stream protectors fail closed and release the original body',async()=>{
+  assert.throws(()=>fixture({protectStream:'invalid'}));
+  for(const protectStream of [()=>{throw Error('fixture failure');},()=>null,()=>Promise.resolve(new ReadableStream())]){
+    let cancelled=0;const f=fixture({protectStream,getBlob:async()=>({statusCode:200,headers:new Headers({'content-length':String(audio.length)}),stream:new ReadableStream({cancel(){cancelled++;}})})});
+    const result=await f.reader(f.request('/api/assets/'+audioPath,'GET',{Cookie:await login(f)}));assert.equal(result.status,503);assert.equal(cancelled,1);
+  }
+});

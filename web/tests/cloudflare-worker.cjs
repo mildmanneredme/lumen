@@ -2,8 +2,8 @@
 const {test,before}=require('node:test');
 const assert=require('node:assert/strict');
 const crypto=require('node:crypto');
-let createWorker;
-before(async()=>({createWorker}=await import('../cloudflare/worker.mjs')));
+let createWorker,createNativeStreamProtector;
+before(async()=>({createWorker,createNativeStreamProtector}=await import('../cloudflare/worker.mjs')));
 const digest=bytes=>crypto.createHash('sha256').update(bytes).digest('hex');
 const origin='https://lumen.example',workerOrigin='https://media.example';
 const code='acorn-blend-choir-drift-eager-flock';
@@ -13,7 +13,7 @@ const manuscript=Buffer.from('{"bookId":"lumen","privateText":"fixture"}\n');
 const manifestPath=`tracks/chapter-000/book-manifest.${digest(manuscript)}.json`;
 const audioPath=`audio/autonoe/chapter-001.${digest(audio)}.mp3`;
 const artPath=`art/scene-one.${digest(painting)}.webp`;
-function fixture() {
+function fixture(options={}) {
   let clock=1_800_000_000_000;
   const rows=[[manifestPath,manuscript,'application/json'],[audioPath,audio,'audio/mpeg'],[artPath,painting,'image/webp']];
   const index={schemaVersion:1,releaseId:'release-one',appOrigin:origin,manifestPath,
@@ -35,7 +35,7 @@ function fixture() {
     LUMEN_MEDIA_SECRET:Buffer.alloc(32,11).toString('base64url'),
     LUMEN_INVITES_JSON:JSON.stringify([{id:'shared-readers',tokenHash:digest(code),version:1,expiresAt:1_900_000_000,revoked:false}]),
     LUMEN_RELEASE_INDEX_PATH:indexPath,LUMEN_RELEASE_INDEX_SHA256:indexHash,LUMEN_R2:bucket};
-  const worker=createWorker({now:()=>clock});
+  const worker=createWorker({now:()=>clock,...options});
   const raw=(url,method='GET',headers={},body)=>worker.fetch(new Request(url,{method,headers,...(body!==undefined?{body}:{})}),env);
   const bridge=(path,method='GET',headers={},body)=>{
     const envelope=JSON.stringify({url:origin+path,method,headers,...(body!==undefined?{body}:{})});
@@ -263,4 +263,47 @@ test('CORS preflight uses the valid current grant and exact allowed origin witho
   for(const headers of [{},{Origin:origin,'Access-Control-Request-Method':'POST'},{Origin:origin,'Access-Control-Request-Method':'GET','Access-Control-Request-Headers':'Authorization'},{Origin:'https://evil.example','Access-Control-Request-Method':'GET'}])assert.ok([400,403,405].includes((await f.media(url,'OPTIONS',headers)).status));
   const invite=JSON.parse(f.env.LUMEN_INVITES_JSON)[0];invite.revoked=true;f.env.LUMEN_INVITES_JSON=JSON.stringify([invite]);
   assert.equal((await f.media(url,'OPTIONS',{Origin:origin,'Access-Control-Request-Method':'GET'})).status,401);assert.equal(f.calls.length,count);
+});
+
+
+const TestTransformStream=globalThis.TransformStream;
+class FixtureFixedLengthStream{
+  static lengths=[];
+  constructor(expected){FixtureFixedLengthStream.lengths.push(expected);let count=0;const pair=new TestTransformStream({transform(chunk,controller){count+=chunk.byteLength;if(count>expected)throw Error('Fixture native overflow');controller.enqueue(chunk);},flush(){if(count!==expected)throw Error('Fixture native underflow');}});this.readable=pair.readable;this.writable=pair.writable;}
+}
+test('native Worker protects raw R2 media with one fixed-length pipe and no generic per-chunk transforms',async()=>{
+  const f=fixture({FixedLengthStream:FixtureFixedLengthStream}),{url}=await grant(f);await (await f.bridge('/api/book','GET',{cookie:await login(f)})).arrayBuffer();
+  FixtureFixedLengthStream.lengths=[];let generic=0;const original=globalThis.TransformStream;
+  globalThis.TransformStream=class extends TestTransformStream{constructor(...args){generic++;super(...args);}};
+  try{const response=await f.media(url,'GET',{Range:'bytes=2-6'});assert.equal(response.status,206);assert.deepEqual(Buffer.from(await response.arrayBuffer()),audio.subarray(2,7));
+    assert.deepEqual(FixtureFixedLengthStream.lengths,[5]);assert.equal(generic,0);
+  }finally{globalThis.TransformStream=original;}
+  f.objects.get(f.index.assets.find(row=>row.path===audioPath).blobPath).size++;
+  FixtureFixedLengthStream.lengths=[];
+  assert.equal((await f.media(url)).status,503);assert.deepEqual(FixtureFixedLengthStream.lengths,[]);
+});
+test('native protector returns immediately and slow chunky consumption retains exact bytes',async()=>{
+  assert.equal(typeof createNativeStreamProtector,'function');const protect=createNativeStreamProtector(FixtureFixedLengthStream);
+  let cursor=0;const source=new ReadableStream({pull(controller){if(cursor===audio.length){controller.close();return;}controller.enqueue(audio.subarray(cursor,cursor+3));cursor+=3;}});
+  const result=protect(source,audio.length,{});assert.equal(typeof result.getReader,'function');const reader=result.getReader(),chunks=[];
+  try{for(;;){const row=await reader.read();if(row.done)break;chunks.push(Buffer.from(row.value));await new Promise(resolve=>setTimeout(resolve,1));}}finally{reader.releaseLock();}
+  assert.deepEqual(Buffer.concat(chunks),audio);
+});
+test('native fixed-length protector rejects both premature EOF and overflow instead of successful truncation',async()=>{
+  const protect=createNativeStreamProtector(FixtureFixedLengthStream);for(const bytes of [audio.subarray(0,5),audio.subarray(0,7)]){
+    const protectedBody=protect(new Response(bytes).body,6,{});await assert.rejects(()=>new Response(protectedBody).arrayBuffer());
+  }
+  for(const count of [-1,NaN,Number.MAX_SAFE_INTEGER+1])assert.throws(()=>protect(new Response(audio).body,count,{}));
+});
+test('native stream guard forwards pre-read and active abort to raw source cancellation',async()=>{
+  const protect=createNativeStreamProtector(FixtureFixedLengthStream),before=new AbortController();before.abort();let early=0;
+  const earlyBody=new ReadableStream({cancel(){early++;}});assert.throws(()=>protect(earlyBody,audio.length,{signal:before.signal}));await new Promise(resolve=>setImmediate(resolve));assert.equal(early,1);
+  let cancelled=0;const controller=new AbortController(),body=new ReadableStream({start(output){output.enqueue(audio.subarray(0,2));},cancel(){cancelled++;}});
+  const reader=protect(body,audio.length,{signal:controller.signal}).getReader();assert.deepEqual(Buffer.from((await reader.read()).value),audio.subarray(0,2));controller.abort();
+  await assert.rejects(()=>reader.read());reader.releaseLock();await new Promise(resolve=>setImmediate(resolve));assert.equal(cancelled,1);
+});
+test('downstream native response cancellation reaches R2 even without an incoming abort signal',async()=>{
+  const protect=createNativeStreamProtector(FixtureFixedLengthStream);let cancelled=0;
+  const source=new ReadableStream({start(controller){controller.enqueue(audio.subarray(0,2));},cancel(){cancelled++;}});
+  const reader=protect(source,audio.length,{}).getReader();await reader.read();await reader.cancel();reader.releaseLock();await new Promise(resolve=>setImmediate(resolve));assert.equal(cancelled,1);
 });

@@ -1,7 +1,7 @@
 # Approved release export
 
 `web/scripts/release_export.py` prepares immutable reader JSON and a private
-upload inventory. It does not upload files, change the live pilot, create
+upload inventory. It does not upload files, change the live reader, create
 approval records, align recordings, or generate characters or paintings.
 
 Run the focused contract tests:

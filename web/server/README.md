@@ -2,7 +2,7 @@
 
 Only the empty reader shell is static. The selected full-book release uses **private Cloudflare R2** and a Worker gateway. Vercel sends small session/book/JSON requests over a secret-authenticated bridge and redirects audio to the Worker. The Worker owns the invite registry, sessions, signed media grants and immutable index. See [Cloudflare delivery](../../docs/backlog/cloudflare-delivery.md) for the reviewed build/upload procedure and current hosted evidence.
 
-The previous private Blob implementation remains a supported fallback. Its configuration and uploader are documented separately below; no Blob store was provisioned for this release.
+The previous private Blob implementation is retained for possible future deployment. Its configuration and uploader are documented separately below; no Blob store was provisioned for this release.
 
 `api/session.js`, `api/book.js`, and `api/assets.js` use the shared
 Node adapter. `LUMEN_WORKER_ORIGIN` selects the Cloudflare bridge; without it, the adapter uses the server-only, pinned `@vercel/blob` fallback SDK. The existing Vercel
@@ -42,7 +42,7 @@ Responses use `private, no-store`. Unauthenticated requests fail before reading 
 
 Vercel receives only `LUMEN_APP_ORIGIN`, `LUMEN_WORKER_ORIGIN` and `LUMEN_BRIDGE_KEY`. The Worker receives the sole session/invite configuration, immutable R2 index pointer/hash, separate media signing secret, exact allowed origins and private R2 binding. The temporary uploader uses a separate secret and is deleted after integrity verification. Keep all secret values in the machine’s encrypted ignored dotenvx files and transfer only declared bindings privately; the owner’s plaintext code never enters either deployed service. Rotations/revocations require deploying the updated Worker policy.
 
-Private receipts currently prove the complete 365-asset R2 upload and uploader cleanup. The Vercel candidate remains protected; hosted browser verification and production promotion are pending.
+Private receipts prove the complete 365-asset R2 upload and uploader cleanup, final protected-preview HTTP/native/browser acceptance, and the stable-origin launch. The full private release is live after verified same-release A → B → rollback A → B; final stable Chrome passed 36/36 without a testing token. Preview protection remains enabled and completed QA tokens are revoked/cleared. [Current deployment record](../data/deployment.json) identifies production B and the exercised compatible full-release rollback A; the pilot is historical with untested private fallback compatibility. [Launch operations](../../docs/backlog/private-launch.md) records remaining physical-device, artwork, operating-budget and cloud-backup follow-ups.
 
 ## New R2 releases and audio reuse
 

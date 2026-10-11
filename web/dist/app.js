@@ -513,6 +513,9 @@
     $('narrator').value = narratorId;
     $('narrator').disabled = !Array.from($('narrator').options).some(option => !option.disabled);
   }
+  function requestedNarrator() {
+    return pendingTransition?.narratorId || chapter.audio.narratorId;
+  }
   function makeChapterList() {
     $('chapter-list').replaceChildren(); let lastPart;
     for (const track of manifest.tracks) {
@@ -529,7 +532,7 @@
       const state = document.createElement('span'); state.className = 'chapter-state'; state.textContent = button.dataset.available;
       button.append(label,state);
       button.addEventListener('click',() => {
-        $('chapters').close(); transitionTo(track.id, chapter.audio.narratorId, {reason:'chapter'});
+        $('chapters').close(); transitionTo(track.id, requestedNarrator(), {reason:'chapter'});
       });
       $('chapter-list').append(button);
     }
@@ -586,23 +589,25 @@
     const token = ++transitionToken, oldActive = book.getActive();
     const listen = options.listen ?? pendingTransition?.listen ?? (!audio.paused || resumeAfterSeek);
     const resumePrevious = pendingTransition?.resumePrevious ?? (!audio.paused && !audio.ended && !completed);
-    pendingTransition = {listen,resumePrevious};
+    const persistNarrator = options.reason === 'voice' || options.persistNarrator === true ||
+      (options.reason === 'chapter' && pendingTransition?.persistNarrator === true && pendingTransition.narratorId === narratorId);
+    pendingTransition = {listen,resumePrevious,narratorId,persistNarrator};
     const sameTrackVoice = options.reason === 'voice' && oldActive?.trackId === trackId;
     const bookmark = options.bookmark === undefined && sameTrackVoice ? book.capture(currentPosition(),{completed}) : options.bookmark;
     if (oldActive) savePosition(true);
     resumeAfterSeek = false; audio.pause();
     $('transition-panel').hidden = false; $('transition-status').textContent = 'Loading chapter…'; $('transition-retry').hidden = true;
     transitionStart.hidden = true;
-    retryTransition = {trackId,narratorId,options:{...options,bookmark,listen}};
+    retryTransition = {trackId,narratorId,options:{...options,bookmark,listen,persistNarrator}};
     narratorOptions(trackId,narratorId);
     setPlayState();
     try {
       const result = await book.load(trackId,narratorId,{bookmark,startFromBeginning:options.startFromBeginning === true});
       if (result.status === 'stale' || token !== transitionToken) return;
-      const requestedListening = pendingTransition.listen;
+      const requestedListening = pendingTransition.listen, persistCommittedNarrator = pendingTransition.persistNarrator;
       pendingTransition = null;
       commitChapter(result.chapter,result.position,{initial:options.initial,listen:requestedListening});
-      if (options.reason === 'voice') book.savePreferences({narratorId:result.chapter.audio.narratorId});
+      if (persistCommittedNarrator) book.savePreferences({narratorId:result.chapter.audio.narratorId});
       updateURL(trackId,narratorId,options.history || (sameTrackVoice || options.initial ? 'replace' : 'push'));
       $('transition-panel').hidden = true; retryTransition = null;
     } catch (error) {
@@ -619,7 +624,7 @@
   }
   function moveTrack(offset,listen) {
     const track = nextTrack(offset);
-    if (track) transitionTo(track.id,chapter.audio.narratorId,{reason:'chapter',listen});
+    if (track) transitionTo(track.id,requestedNarrator(),{reason:'chapter',listen});
   }
   $('track-prev').addEventListener('click',() => moveTrack(-1));
   $('track-next').addEventListener('click',() => moveTrack(1));

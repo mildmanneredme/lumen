@@ -1,12 +1,21 @@
 'use strict';
 // Local workerd/R2/HTTPS regression proof; every credential and byte is a fixture.
-// First run: npm --prefix web/cloudflare ci && npm --prefix web/cloudflare run build
-const {Miniflare,Log,LogLevel,convertV4MiniflareOptions}=require('../cloudflare/node_modules/miniflare');
+// Uses the already installed Cloudflare test dependencies and current source.
+// The fixture bundle stays in memory; no CLI account/configuration is accessed.
+const fixtureRequire=require('node:module').createRequire(require('node:path').resolve(__dirname,'../cloudflare/package.json'));
+const {Miniflare,Log,LogLevel,convertV4MiniflareOptions}=fixtureRequire('miniflare');
 const https=require('node:https'),crypto=require('node:crypto'),assert=require('node:assert/strict'),fs=require('node:fs');
 const path=require('node:path'),os=require('node:os'),{test}=require('node:test');
 const {createCloudflareBridge}=require('../server/cloudflare-bridge.cjs');
 const webRoot=path.resolve(__dirname,'..');
-const bundlePath=path.join(webRoot,'cloudflare','.cloudflare','output','v0','workers','default','bundle','worker.js');
+async function fixtureBundle(contents) {
+  const result=await fixtureRequire('esbuild').build({stdin:{contents,resolveDir:webRoot},bundle:true,write:false,format:'esm',platform:'neutral',target:'es2022',
+    plugins:[{name:'fixture-node-builtins',setup(build){
+      build.onResolve({filter:/^node:/},args=>args.kind==='require-call'?{path:args.path,namespace:'fixture-node-require'}:{path:args.path,external:true});
+      build.onLoad({filter:/.*/,namespace:'fixture-node-require'},args=>({contents:'import value from '+JSON.stringify(args.path)+';module.exports=value;',loader:'js'}));
+    }}]});
+  return result.outputFiles[0].text;
+}
 const digest=bytes=>crypto.createHash('sha256').update(bytes).digest('hex');
 const origin='https://lumen-fixture.example',code='acorn-blend-choir-drift-eager-flock';
 const audio=Buffer.from('0123456789abcdefghijklmnopqrstuvwxyz'),text=Buffer.from('{"bookId":"tiny-fixture"}\n');
@@ -18,7 +27,7 @@ const env={LUMEN_APP_ORIGIN:origin,LUMEN_WORKER_ORIGIN:'https://media-fixture.ex
   LUMEN_SESSION_SECRET:Buffer.alloc(32,9).toString('base64url'),LUMEN_BRIDGE_KEY:Buffer.alloc(32,10).toString('base64url'),LUMEN_MEDIA_SECRET:Buffer.alloc(32,11).toString('base64url'),
   LUMEN_INVITES_JSON:JSON.stringify([{id:'fixture-readers',tokenHash:digest(code),version:1,expiresAt:2_100_000_000,revoked:false}]),
   LUMEN_RELEASE_INDEX_PATH:indexPath,LUMEN_RELEASE_INDEX_SHA256:indexHash};
-const options={modules:true,scriptPath:bundlePath,compatibilityDate:'2026-10-10',compatibilityFlags:['nodejs_compat'],
+const options={modules:true,cf:false,compatibilityDate:'2026-10-10',compatibilityFlags:['nodejs_compat'],
   host:'127.0.0.1',port:0,https:true,bindings:env,r2Buckets:{LUMEN_R2:'tiny-fixture-bucket'},log:new Log(LogLevel.NONE)};
 const checks=[];
 const check=(label,condition)=>{assert.ok(condition,label);checks.push(label);};
@@ -32,7 +41,9 @@ function raw(url,init={}) {
   });
 }
 test('actual workerd private bridge and R2 media preserve auth, native lengths and range bytes',{timeout:30000},async(context)=>{
-  assert.ok(fs.existsSync(bundlePath),'Run npm --prefix web/cloudflare run build before runtime fixtures.');
+  const fixtureRoot=fs.mkdtempSync(path.join(os.tmpdir(),'lumen-private-reader-runtime-'));
+  const script=await fixtureBundle('export {default} from '+JSON.stringify(path.join(webRoot,'cloudflare/worker.mjs'))+';');
+  options.script=script;options.rootPath=fixtureRoot;
   const mf=new Miniflare(convertV4MiniflareOptions(options));
   try {
     const ready=await mf.ready;env.LUMEN_WORKER_ORIGIN=ready.origin;options.port=Number(ready.port);options.bindings={...env};await mf.setOptions(convertV4MiniflareOptions(options));await mf.ready;
@@ -78,8 +89,79 @@ test('actual workerd private bridge and R2 media preserve auth, native lengths a
     const deniedHead=await raw(url,{method:'HEAD'});check('revocation also denies a bodyless media HEAD',deniedHead.status===401&&deniedHead.bytes.length===0);
     const session=await bridge(request('/api/session','GET',{Cookie:cookie}));check('same policy update also rejects same-origin device session',(await session.json()).authenticated===false);
     const report={schemaVersion:1,scope:'tiny local workerd/R2/HTTPS fixtures only',checks,passed:checks.length,bulkSourcesRead:false,accountAccessed:false,deploymentPerformed:false,
-      workerSha256:digest(fs.readFileSync(path.join(webRoot,'cloudflare','worker.mjs'))),unitTestSha256:digest(fs.readFileSync(path.join(__dirname,'cloudflare-worker.cjs'))),runtimeTestSha256:digest(fs.readFileSync(__filename)),bundleSha256:digest(fs.readFileSync(bundlePath)),fixtureAudioBytes:audio.length,fixtureTextBytes:text.length};
+      workerSha256:digest(fs.readFileSync(path.join(webRoot,'cloudflare','worker.mjs'))),unitTestSha256:digest(fs.readFileSync(path.join(__dirname,'cloudflare-worker.cjs'))),runtimeTestSha256:digest(fs.readFileSync(__filename)),bundleSha256:digest(Buffer.from(script)),bundleSource:'current source compiled in memory',fixtureAudioBytes:audio.length,fixtureTextBytes:text.length};
     const reportPath=path.join(fs.mkdtempSync(path.join(os.tmpdir(),'lumen-cloudflare-runtime-')),'report.json');
     fs.writeFileSync(reportPath,JSON.stringify(report,null,2)+'\n',{mode:0o600,flag:'wx'});context.diagnostic(JSON.stringify({passed:checks.length,report:reportPath}));
-  }finally{await mf.dispose();}
+  }finally{await mf.dispose();fs.rmSync(fixtureRoot,{recursive:true,force:true});}
+});
+
+
+test('actual workerd native protector preserves fixed length and rejects wrong length, aborts and cancellations',{timeout:30000},async(context)=>{
+  const source=`import {createNativeStreamProtector} from ${JSON.stringify(path.join(webRoot,'cloudflare/worker.mjs'))};
+  const protect=createNativeStreamProtector();
+  export default {async fetch(request){
+    const mode=new URL(request.url).pathname.slice(1);let cancelled=0,cursor=0;
+    if(mode.startsWith('writer-')){
+      const fixed=new FixedLengthStream(8),writer=fixed.writable.getWriter(),reader=fixed.readable.getReader();
+      let readRejected=false,writeRejected=false,received=[];
+      const read=async()=>{try{for(;;){const row=await reader.read();if(row.done)break;received.push(...row.value);}}catch(_){readRejected=true;}finally{reader.releaseLock();}};
+      const reading=read();
+      try{await writer.write(new Uint8Array(mode==='writer-short'?[0,1,2,3,4,5,6]:[0,1,2,3,4,5,6,7]));
+        if(mode==='writer-long')await writer.write(new Uint8Array([8]));await writer.close();}catch(_){writeRejected=true;}finally{writer.releaseLock();}
+      await reading;return Response.json({readRejected,writeRejected,received});
+    }
+    const total=mode==='short'?7:['long','legacy-long','overflow','oversized'].includes(mode)?9:8;
+    const body=new ReadableStream({pull(controller){if(cursor===total){controller.close();return;}
+      if(mode==='oversized'){controller.enqueue(new Uint8Array([0,1,2,3,4,5,6,7,8]));cursor=9;}
+      else controller.enqueue(new Uint8Array([cursor++]));},cancel(){cancelled++;}});
+    const abort=new AbortController();let guarded;
+    if(mode==='legacy-long'){
+      let count=0;const checked=body.pipeThrough(new TransformStream({transform(chunk,controller){count+=chunk.byteLength;if(count>8)throw Error('length');controller.enqueue(chunk);},flush(){if(count!==8)throw Error('length');}}));
+      const oldFixed=new FixedLengthStream(8);checked.pipeTo(oldFixed.writable).catch(()=>{});guarded=oldFixed.readable;
+    }else guarded=protect(body,8,{signal:abort.signal});
+    if(mode==='overflow'){
+      const reader=guarded.getReader();let rejected=false,received=[];
+      try{for(;;){const row=await reader.read();if(row.done)break;received.push(...row.value);}}catch(_){rejected=true;}finally{reader.releaseLock();}
+      return Response.json({rejected,received});
+    }
+    if(['abort','cancel','slow'].includes(mode)){
+      const reader=guarded.getReader();let received=[];received.push(...(await reader.read()).value);
+      if(mode==='abort'){abort.abort();let rejected=false;try{for(;;){const row=await reader.read();if(row.done)break;}}catch(_){rejected=true;}reader.releaseLock();await new Promise(resolve=>setTimeout(resolve,0));return Response.json({cancelled,rejected});}
+      if(mode==='cancel'){await reader.cancel();reader.releaseLock();await new Promise(resolve=>setTimeout(resolve,0));return Response.json({cancelled});}
+      for(;;){await new Promise(resolve=>setTimeout(resolve,1));const row=await reader.read();if(row.done)break;received.push(...row.value);}reader.releaseLock();return Response.json({received});
+    }
+    return new Response(guarded,{headers:{'Content-Type':'application/octet-stream'}});
+  }};`;
+  // Compile the actual exported guard with native built-in module interop.
+  const script=await fixtureBundle(source);
+  const fixtureRoot=fs.mkdtempSync(path.join(os.tmpdir(),'lumen-native-stream-runtime-'));
+  const mf=new Miniflare(convertV4MiniflareOptions({rootPath:fixtureRoot,cf:false,modules:true,script,compatibilityDate:'2026-10-10',compatibilityFlags:['nodejs_compat'],host:'127.0.0.1',port:0,log:new Log(LogLevel.NONE)}));
+  try{
+    await mf.ready;const full=await mf.dispatchFetch('https://fixture.example/full');assert.equal(full.status,200);assert.equal(full.headers.get('content-length'),'8');assert.deepEqual(Buffer.from(await full.arrayBuffer()),Buffer.from([0,1,2,3,4,5,6,7]));
+    for(const mode of ['short','oversized']){
+      let rejected=false,result;try{const response=await mf.dispatchFetch('https://fixture.example/'+mode);result={status:response.status,bytes:Buffer.from(await response.arrayBuffer())};}catch(_){rejected=true;}
+      // workerd may reject the stream or replace an error before first byte
+      // with HTTP 500; neither may yield a successful truncated response.
+      assert.ok(rejected||result.status>=500,'Native '+mode+' length violation must fail, not finish HTTP 200');
+    }
+    const nativeLong=await mf.dispatchFetch('https://fixture.example/long'),legacyLong=await mf.dispatchFetch('https://fixture.example/legacy-long');
+    assert.equal(nativeLong.status,200);assert.equal(legacyLong.status,200);
+    assert.deepEqual(Buffer.from(await nativeLong.arrayBuffer()),Buffer.from([0,1,2,3,4,5,6,7]));
+    assert.deepEqual(Buffer.from(await legacyLong.arrayBuffer()),Buffer.from([0,1,2,3,4,5,6,7]));
+    // Neither pipeline can retract a Content-Length body after its exact eight
+    // bytes reached HTTP. Direct native consumption must still reject the ninth
+    // byte; no extra byte may pass through direct or HTTP consumption. Native
+    // errors can surface on the readable rather than the write/pipe promise.
+    const overflow=await(await mf.dispatchFetch('https://fixture.example/overflow')).json();
+    assert.equal(overflow.rejected,true);assert.deepEqual(overflow.received,[0,1,2,3,4,5,6,7]);
+    for(const mode of ['writer-short','writer-long']){
+      const writer=await(await mf.dispatchFetch('https://fixture.example/'+mode)).json();
+      assert.equal(typeof writer.writeRejected,'boolean');assert.equal(writer.readRejected,true);
+      assert.deepEqual(writer.received,mode==='writer-short'?[0,1,2,3,4,5,6]:[0,1,2,3,4,5,6,7]);
+    }
+    assert.deepEqual(await(await mf.dispatchFetch('https://fixture.example/slow')).json(),{received:[0,1,2,3,4,5,6,7]});
+    assert.deepEqual(await(await mf.dispatchFetch('https://fixture.example/abort')).json(),{cancelled:1,rejected:true});
+    assert.deepEqual(await(await mf.dispatchFetch('https://fixture.example/cancel')).json(),{cancelled:1});
+    context.diagnostic(JSON.stringify({scope:'tiny actual workerd native length guard only',checks:11,fixtureBytes:8,accountAccessed:false,bulkSourcesRead:false}));
+  }finally{await mf.dispose();fs.rmSync(fixtureRoot,{recursive:true,force:true});}
 });
