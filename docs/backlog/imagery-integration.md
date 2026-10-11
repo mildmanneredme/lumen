@@ -89,7 +89,7 @@ approval.
 
 Local verification covers the importer, source-bound clock recovery, release
 export, immutable R2 uploads, actual local workerd/R2 behavior and Chrome reader
-regressions. The focused Chrome imagery suite passes 54 checks, including both
+regressions. The focused Chrome imagery suite passes 61 checks, including both
 voices, null prose timing, phone variants, invalid/equal/reversed clocks, image
 retries, rewind, sign-out and private-cache exclusion. These checks use local
 fixtures and do not claim hosted artwork acceptance.

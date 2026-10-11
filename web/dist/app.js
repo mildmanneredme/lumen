@@ -138,6 +138,19 @@
     activeScene = null; activeSceneSource = ''; warmedScenes.clear();
     resetSceneDisplay();
   }
+  function sceneStageVisible() {
+    if (!artworkVisible) return false;
+    const bounds = $('scene-stage').getBoundingClientRect();
+    return bounds.width > 0 && bounds.height > 0;
+  }
+  function cancelSceneLoading() {
+    ++sceneToken; clearTimeout(sceneRetryTimer); clearTimeout(sceneTimer);
+    $('scene-incoming').classList.remove('visible');
+    if (sceneLoadState === 'loading' || sceneLoadState === 'retrying' || displayedSceneId !== activeScene?.id ||
+        $('scene-image').getAttribute('src') !== activeSceneSource) {
+      sceneLoadState = 'idle';
+    }
+  }
   function sceneSource(scene) {
     if (!scene.phoneSrc) return scene.src;
     const width = $('scene-stage').getBoundingClientRect().width;
@@ -152,7 +165,7 @@
     }
     // Hidden panels have no usable dimensions. Select a variant when artwork
     // is shown, rather than downloading a full image based on zero width.
-    if (!artworkVisible) return;
+    if (!sceneStageVisible()) { cancelSceneLoading(); return; }
     const source = sceneSource(scene);
     if (activeScene?.id === scene.id && activeSceneSource === source && sceneLoadState !== 'idle') return;
     // Rewinding must clear a later reveal while its earlier painting loads.
@@ -167,28 +180,34 @@
     $('scene-number').textContent = String(scenes.indexOf(scene) + 1).padStart(2,'0') + ' / ' + String(scenes.length).padStart(2,'0');
     clearTimeout(sceneTimer);
     incoming.classList.remove('visible');
+    function canContinuePainting() {
+      if (token !== sceneToken) return false;
+      if (sceneStageVisible()) return true;
+      cancelSceneLoading();
+      return false;
+    }
     function loadPainting(attempt) {
-      if (token !== sceneToken) return;
+      if (!canContinuePainting()) return;
       sceneLoadState = 'loading';
       const preload = new Image();
       preload.onload = () => {
-        if (token !== sceneToken) return;
+        if (!canContinuePainting()) return;
         sceneLoadState = 'loaded';
         stage.classList.remove('placeholder-art');
         incoming.src = source;
         image.alt = scene.alt || scene.description || descriptions[scene.id] || scene.title || 'Illustration';
         const next = scenes[scenes.indexOf(scene) + 1];
         const nextSource = next && sceneSource(next);
-        if (next && artworkVisible && !warmedScenes.has(nextSource) && !navigator.connection?.saveData) {
+        if (next && !warmedScenes.has(nextSource) && !navigator.connection?.saveData) {
           warmedScenes.add(nextSource);
           const ahead = new Image(); ahead.decoding = 'async'; ahead.fetchPriority = 'low'; ahead.src = nextSource;
         }
         if (reduced.matches || audio.paused) { image.src = source; displayedSceneId = scene.id; return; }
         requestAnimationFrame(() => {
-          if (token !== sceneToken) return;
+          if (!canContinuePainting()) return;
           incoming.classList.add('visible');
           sceneTimer = setTimeout(() => {
-            if (token !== sceneToken) return;
+            if (!canContinuePainting()) return;
             image.src = source;
             displayedSceneId = scene.id;
             incoming.classList.remove('visible');
@@ -196,7 +215,7 @@
         });
       };
       preload.onerror = () => {
-        if (token !== sceneToken) return;
+        if (!canContinuePainting()) return;
         if (attempt === 0) {
           sceneLoadState = 'retrying';
           sceneRetryTimer = setTimeout(() => loadPainting(1),1000);
@@ -298,14 +317,7 @@
     $('art-toggle').setAttribute('aria-pressed', String(value));
     $('art-toggle').setAttribute('aria-label', value ? 'Hide artwork' : 'Show artwork');
     if (value) render(currentPosition());
-    else {
-      ++sceneToken; clearTimeout(sceneRetryTimer); clearTimeout(sceneTimer);
-      $('scene-incoming').classList.remove('visible');
-      if (sceneLoadState === 'loading' || sceneLoadState === 'retrying' || displayedSceneId !== activeScene?.id ||
-          $('scene-image').getAttribute('src') !== activeSceneSource) {
-        sceneLoadState = 'idle';
-      }
-    }
+    else cancelSceneLoading();
   }
   function updateMediaSession(force = false) {
     if (!('mediaSession' in navigator) || committing || !book?.getActive()) return;

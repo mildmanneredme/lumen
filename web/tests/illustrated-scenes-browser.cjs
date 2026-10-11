@@ -80,9 +80,9 @@ let browser;
     return canvas.toDataURL('image/webp');
   })).split(',')[1], 'base64');
   await imagePage.close();
-  const fixture = async ({width=390,dpr=3,saveData=false,reducedMotion='reduce',legacy=false,sceneOnly=false,invalidSceneTrigger,
+  const fixture = async ({width=390,height=900,dpr=3,saveData=false,reducedMotion='reduce',legacy=false,sceneOnly=false,invalidSceneTrigger,
     invalidPhone,failures=new Map()}={}) => {
-    const context = await browser.newContext({viewport:{width,height:900},deviceScaleFactor:dpr,
+    const context = await browser.newContext({viewport:{width,height},deviceScaleFactor:dpr,
       reducedMotion,serviceWorkers:'block'});
     await context.addInitScript(value => {
       Object.defineProperty(navigator,'connection',{configurable:true,value:{saveData:value}});
@@ -327,6 +327,55 @@ let browser;
       !new URL(url).pathname.endsWith(artPath('two','full'))) && await hiddenArt.page.evaluate(() =>
       !document.body.classList.contains('art-hidden') && Math.abs(document.querySelector('#narration').currentTime - 6) < .1));
   await hiddenArt.context.close();
+  const cssHidden = await fixture({width:390,height:500,dpr:2});
+  await cssHidden.page.goto(origin,{waitUntil:'domcontentloaded'}); await ready(cssHidden.page);
+  await seek(cssHidden.page,3); await cssHidden.page.waitForTimeout(100);
+  check('a CSS-hidden short portrait stage loads no current or next painting while artwork is enabled',
+    cssHidden.requests.length === 0 && await cleared(cssHidden.page) && await cssHidden.page.evaluate(() =>
+      getComputedStyle(document.querySelector('#scene-stage')).display === 'none' &&
+      document.querySelector('#art-toggle').getAttribute('aria-pressed') === 'true'));
+  await cssHidden.page.setViewportSize({width:390,height:480});
+  await seek(cssHidden.page,6); await cssHidden.page.waitForTimeout(100);
+  check('resizing and seeking within a CSS-hidden stage start no painting requests',
+    cssHidden.requests.length === 0 && await cleared(cssHidden.page));
+  await cssHidden.page.setViewportSize({width:844,height:390}); await shown(cssHidden.page,'two','phone');
+  await cssHidden.page.waitForTimeout(100);
+  check('visible landscape resumes the current phone painting and next without changing narration',
+    cssHidden.requests.length > 0 && cssHidden.requests.every(url =>
+      [artPath('two','phone'),artPath('three','phone')].includes(new URL(url).pathname)) &&
+      await cssHidden.page.evaluate(() => getComputedStyle(document.querySelector('#scene-stage')).display !== 'none' &&
+        Math.abs(document.querySelector('#narration').currentTime - 6) < .1));
+  await cssHidden.context.close();
+  const cssPending = await fixture({width:390,dpr:2});
+  const releaseCSSPainting = cssPending.hold(artPath('one','phone'));
+  await cssPending.page.goto(origin,{waitUntil:'domcontentloaded'}); await ready(cssPending.page);
+  const cssPaintingRequest = cssPending.page.waitForRequest(request =>
+    new URL(request.url()).pathname === artPath('one','phone'));
+  await seek(cssPending.page,3); await cssPaintingRequest;
+  await cssPending.page.setViewportSize({width:390,height:500});
+  const cssPaintingResponse = cssPending.page.waitForResponse(response =>
+    new URL(response.url()).pathname === artPath('one','phone'));
+  releaseCSSPainting(); await cssPaintingResponse; await cssPending.page.waitForTimeout(100);
+  check('a pending image response cannot display art or preload the next painting after CSS hides the stage',
+    cssPending.requests.length === 1 && await cssPending.page.evaluate(() =>
+      !document.querySelector('#scene-image').getAttribute('src') &&
+      !document.querySelector('#scene-incoming').getAttribute('src')));
+  await cssPending.page.setViewportSize({width:844,height:390}); await shown(cssPending.page,'one','phone');
+  check('a painting cancelled by CSS hiding resumes at the same current narration beat',
+    await cssPending.page.evaluate(() => Math.abs(document.querySelector('#narration').currentTime - 3) < .1));
+  await cssPending.context.close();
+  const cssRetry = await fixture({width:390,dpr:2,saveData:true,failures:new Map([[artPath('one','phone'),1]])});
+  await cssRetry.page.goto(origin,{waitUntil:'domcontentloaded'}); await ready(cssRetry.page);
+  const cssFirstFailure = cssRetry.page.waitForResponse(response =>
+    new URL(response.url()).pathname === artPath('one','phone') && response.status() === 503);
+  await seek(cssRetry.page,3); await cssFirstFailure;
+  await cssRetry.page.setViewportSize({width:390,height:500}); await cssRetry.page.waitForTimeout(1200);
+  check('CSS hiding cancels an image retry before it starts',cssRetry.attempts.get(artPath('one','phone')) === 1);
+  await cssRetry.page.setViewportSize({width:844,height:390}); await shown(cssRetry.page,'one','phone');
+  check('making the stage visible retries its cancelled current painting without moving narration',
+    cssRetry.attempts.get(artPath('one','phone')) === 2 && await cssRetry.page.evaluate(() =>
+      Math.abs(document.querySelector('#narration').currentTime - 3) < .1));
+  await cssRetry.context.close();
   const crossfadeVariant = await fixture({width:390,dpr:3,reducedMotion:'no-preference'});
   await crossfadeVariant.page.goto(origin,{waitUntil:'domcontentloaded'}); await ready(crossfadeVariant.page);
   await seek(crossfadeVariant.page,3); await shown(crossfadeVariant.page,'one','phone');
