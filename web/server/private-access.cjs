@@ -191,8 +191,11 @@ function exactStream(stream, expected, {signal} = {}) {
     flush() { if (count !== expected) throw new Error('Private asset length mismatch'); }
   }), {signal});
 }
-function createPrivateReader({env = process.env, now = Date.now, loadIndex, getBlob, assetResponse, protectStream = exactStream}) {
+function createPrivateReader({env = process.env, now = Date.now, loadIndex, getBlob, assetLookup, assetResponse, protectStream = exactStream}) {
   requireValue(typeof loadIndex === 'function' && typeof getBlob === 'function');
+  // Only a trusted server adapter may supply a lookup for its verified index.
+  // Other callers still validate their potentially mutable index every time.
+  requireValue(assetLookup === undefined || typeof assetLookup === 'function');
   requireValue(assetResponse === undefined || typeof assetResponse === 'function');
   requireValue(typeof protectStream === 'function');
   return async function privateReader(request) {
@@ -231,10 +234,10 @@ function createPrivateReader({env = process.env, now = Date.now, loadIndex, getB
     if (!claims) return failure(401);
     try {
       const index = await loadIndex(request.signal);
-      const assets = validateIndex(index,config.origin);
+      const assets = assetLookup ? null : validateIndex(index,config.origin);
       const path = url.pathname === '/api/book' ? index.manifestPath : url.pathname.slice('/api/assets/'.length);
       if (!validPath(path)) return failure(400);
-      const asset = assets.get(path);
+      const asset = assetLookup ? await assetLookup(index,config.origin,path,request.signal) : assets.get(path);
       if (!asset) return failure(404);
       if (assetResponse) {
         const delivered=await assetResponse({request,index,asset,claims,config});

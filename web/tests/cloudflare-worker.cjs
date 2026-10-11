@@ -3,7 +3,15 @@ const {test,before}=require('node:test');
 const assert=require('node:assert/strict');
 const crypto=require('node:crypto');
 let createWorker,createNativeStreamProtector;
-before(async()=>({createWorker,createNativeStreamProtector}=await import('../cloudflare/worker.mjs')));
+const access=require('../server/private-access.cjs'),readerAdapters=[];
+before(async()=>{
+  // Inspect the trusted server adapter boundary without exposing snapshots as
+  // a production Worker API. Other reader callers keep their original module.
+  const original=access.createPrivateReader;
+  access.createPrivateReader=options=>{readerAdapters.push(options);return original(options);};
+  try{({createWorker,createNativeStreamProtector}=await import('../cloudflare/worker.mjs'));}
+  finally{access.createPrivateReader=original;}
+});
 const digest=bytes=>crypto.createHash('sha256').update(bytes).digest('hex');
 const origin='https://lumen.example',workerOrigin='https://media.example';
 const code='acorn-blend-choir-drift-eager-flock';
@@ -327,4 +335,60 @@ test('downstream native response cancellation reaches R2 even without an incomin
   const protect=createNativeStreamProtector(FixtureFixedLengthStream);let cancelled=0;
   const source=new ReadableStream({start(controller){controller.enqueue(audio.subarray(0,2));},cancel(){cancelled++;}});
   const reader=protect(source,audio.length,{}).getReader();await reader.read();await reader.cancel();reader.releaseLock();await new Promise(resolve=>setImmediate(resolve));assert.equal(cancelled,1);
+});
+
+test('verified snapshot is frozen and trusted lookup requires its exact identity and canonical origin',async()=>{
+  const f=fixture(),cookie=await login(f);readerAdapters.length=0;
+  assert.equal((await f.bridge('/api/book','HEAD',{cookie})).status,200);
+  const adapter=readerAdapters[0],index=await adapter.loadIndex();
+  assert.ok(Object.isFrozen(index));assert.ok(Object.isFrozen(index.assets));assert.ok(index.assets.every(Object.isFrozen));
+  assert.throws(()=>index.manifestPath=artPath);assert.throws(()=>index.assets.push(index.assets[0]));assert.throws(()=>index.assets[0].blobPath='other');
+  const asset=await adapter.assetLookup(index,origin,manifestPath);assert.equal(asset.sha256,digest(manuscript));
+  await assert.rejects(()=>adapter.assetLookup(structuredClone(index),origin,manifestPath));
+  await assert.rejects(()=>adapter.assetLookup(index,'https://other.example',manifestPath));
+  assert.equal(await adapter.assetLookup(index,origin,'missing'),undefined);
+  const {url}=await grant(f,artPath,cookie);assert.equal((await f.media(url,'HEAD')).status,200);
+  assert.equal(f.calls.filter(call=>call.key===f.indexPath).length,1);
+});
+
+test('simultaneous cold requests retain one verified snapshot identity without sharing request cancellation',async()=>{
+  const f=fixture(),cookie=await login(f),get=f.env.LUMEN_R2.get;let arrivals=0,release;const barrier=new Promise(resolve=>release=resolve);
+  f.env.LUMEN_R2.get=async(...args)=>{const result=await get(...args);if(args[0]===f.indexPath){arrivals++;if(arrivals===2)release();await barrier;}return result;};
+  readerAdapters.length=0;
+  const replies=await Promise.all([f.bridge('/api/book','HEAD',{cookie}),f.bridge('/api/book','HEAD',{cookie})]);
+  assert.deepEqual(replies.map(reply=>reply.status),[200,200]);assert.equal(arrivals,2);
+  const snapshots=await Promise.all(readerAdapters.map(adapter=>adapter.loadIndex()));assert.equal(snapshots.length,2);assert.equal(snapshots[0],snapshots[1]);
+  assert.equal((await f.bridge('/api/book','HEAD',{cookie})).status,200);assert.equal(arrivals,2);
+
+  const g=fixture(),otherCookie=await login(g),controller=new AbortController(),original=g.env.LUMEN_R2.get;let cancelled=0;
+  g.env.LUMEN_R2.get=async(...args)=>{const result=await original(...args);if(args[0]===g.indexPath){result.body=new ReadableStream({cancel(){cancelled++;}});controller.abort();}return result;};
+  const envelope=JSON.stringify({url:origin+'/api/book',method:'GET',headers:{cookie:otherCookie}});
+  const aborted=await g.worker.fetch(new Request(workerOrigin+'/bridge',{method:'POST',signal:controller.signal,headers:{'X-Lumen-Bridge-Key':g.env.LUMEN_BRIDGE_KEY,'content-type':'application/json'},body:envelope}),g.env);
+  assert.equal(aborted.status,503);assert.equal(cancelled,1);g.env.LUMEN_R2.get=original;
+  assert.equal((await g.bridge('/api/book','HEAD',{cookie:otherCookie})).status,200);assert.equal(g.calls.filter(call=>call.key===g.indexPath).length,2);
+});
+
+test('snapshot binding changes reverify index hashes and canonical origin rather than borrowing warm maps',async()=>{
+  const f=fixture(),cookie=await login(f);assert.equal((await f.bridge('/api/book','HEAD',{cookie})).status,200);
+  const priorPath=f.env.LUMEN_RELEASE_INDEX_PATH,priorHash=f.env.LUMEN_RELEASE_INDEX_SHA256;
+  const install=index=>{const bytes=Buffer.from(JSON.stringify(index)),hash=digest(bytes),path=`lumen/releases/${index.releaseId}/server-index.${hash}.json`;
+    f.objects.set(path,{bytes,size:bytes.length,httpMetadata:{contentType:'application/json'},customMetadata:{sha256:hash}});
+    f.env.LUMEN_RELEASE_INDEX_PATH=path;f.env.LUMEN_RELEASE_INDEX_SHA256=hash;return path;};
+  const revised=structuredClone(f.index);revised.assets=revised.assets.filter(asset=>asset.path!==artPath);const next=install(revised);
+  assert.equal((await f.bridge('/api/book','HEAD',{cookie})).status,200);assert.equal((await f.bridge('/api/assets/'+artPath,'GET',{cookie})).status,404);
+  assert.equal(f.calls.filter(call=>call.key===next).length,1);
+  f.env.LUMEN_RELEASE_INDEX_PATH=priorPath;f.env.LUMEN_RELEASE_INDEX_SHA256=priorHash;
+  assert.equal((await f.bridge('/api/assets/'+artPath,'GET',{cookie})).status,307);assert.equal(f.calls.filter(call=>call.key===priorPath).length,1);
+  f.env.LUMEN_APP_ORIGIN='https://other.example';
+  const other=()=>f.raw(workerOrigin+'/bridge','HEAD',{'X-Lumen-Bridge-Key':f.env.LUMEN_BRIDGE_KEY,'X-Lumen-Request':Buffer.from(JSON.stringify({url:f.env.LUMEN_APP_ORIGIN+'/api/book',method:'HEAD',headers:{cookie}})).toString('base64url')});
+  assert.equal((await other()).status,503);assert.equal(f.calls.filter(call=>call.key===priorPath).length,2);
+  const differentOrigin=structuredClone(f.index);differentOrigin.appOrigin=f.env.LUMEN_APP_ORIGIN;const otherPath=install(differentOrigin);
+  assert.equal((await other()).status,200);assert.equal((await other()).status,200);assert.equal(f.calls.filter(call=>call.key===otherPath).length,1);
+});
+
+test('cold schema failures with correctly hashed bytes never populate the verified snapshot cache',async()=>{
+  const f=fixture(),cookie=await login(f),invalid=structuredClone(f.index);invalid.assets.push(invalid.assets[0]);
+  const bytes=Buffer.from(JSON.stringify(invalid)),hash=digest(bytes),path=`lumen/releases/release-one/server-index.${hash}.json`;
+  f.objects.set(path,{bytes,size:bytes.length,httpMetadata:{contentType:'application/json'},customMetadata:{sha256:hash}});f.env.LUMEN_RELEASE_INDEX_PATH=path;f.env.LUMEN_RELEASE_INDEX_SHA256=hash;
+  for(let count=1;count<=2;count++){assert.equal((await f.bridge('/api/book','HEAD',{cookie})).status,503);assert.equal(f.calls.filter(call=>call.key===path).length,count);}
 });

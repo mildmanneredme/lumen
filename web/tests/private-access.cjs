@@ -389,3 +389,12 @@ test('invalid or failed trusted stream protectors fail closed and release the or
     const result=await f.reader(f.request('/api/assets/'+audioPath,'GET',{Cookie:await login(f)}));assert.equal(result.status,503);assert.equal(cancelled,1);
   }
 });
+
+test('default reader revalidates mutable caller indexes after earlier successful reads',async()=>{
+  const mutable=structuredClone(index),f=fixture({loadIndex:async()=>mutable}),cookie=await login(f);
+  assert.equal((await f.reader(f.request('/api/book','HEAD',{Cookie:cookie}))).status,200);
+  mutable.assets[1].blobPath=mutable.assets[0].blobPath;
+  assert.equal((await f.reader(f.request('/api/book','HEAD',{Cookie:cookie}))).status,503);
+  assert.equal(f.calls.length,0);
+  assert.throws(()=>createPrivateReader({loadIndex:async()=>index,getBlob:async()=>null,assetLookup:new Map()}));
+});
