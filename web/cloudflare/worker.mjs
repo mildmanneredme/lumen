@@ -90,18 +90,34 @@ function mediaHeaders(response,origin,supplied) {
   headers.set('Access-Control-Allow-Origin',supplied==='null'?'null':origin);headers.set('Vary','Origin');
   headers.set('Access-Control-Expose-Headers','Accept-Ranges, Content-Length, Content-Range, ETag');
   headers.delete('Set-Cookie');
-  let body=response.body;
-  if(body&&typeof globalThis.FixedLengthStream==='function'&&headers.has('Content-Length')) {
-    const length=Number(headers.get('Content-Length'));requireValue(Number.isSafeInteger(length)&&length>=0);
-    const output=new globalThis.FixedLengthStream(length);
-    // Native workerd ignores manually assigned lengths on generic streams.
-    // FixedLengthStream keeps the length without buffering and fails truncation.
-    body.pipeTo(output.writable).catch(()=>{});body=output.readable;
-  }
-  return new Response(body,{status:response.status,headers});
+  // The Reader already produced a native length-aware body. Keep that stream
+  // intact while adding media CORS; another transform would add CPU per chunk.
+  return new Response(response.body,{status:response.status,headers});
 }
 
-export function createWorker({now=Date.now}={}) {
+export function createNativeStreamProtector(FixedLengthStream=globalThis.FixedLengthStream) {
+  requireValue(typeof FixedLengthStream==='function');
+  return (stream,count,{signal}={})=>{
+    requireValue(stream&&typeof stream.pipeTo==='function'&&Number.isSafeInteger(count)&&count>=0);
+    if(signal?.aborted) {
+      // The source has not been locked yet, so an early abort can release R2.
+      try { stream.cancel().catch(()=>{}); } catch (_) {}
+      checkSignal(signal);
+    }
+    const output=new FixedLengthStream(count);
+    // Native R2 -> native FixedLengthStream keeps bytes out of JS callbacks.
+    // The pipe's rejection also errors the returned readable; it is never
+    // converted into a successful shorter body. Downstream cancellation flows
+    // upstream, independently of incoming Request.signal compatibility flags.
+    stream.pipeTo(output.writable,{signal}).catch(()=>{});
+    return output.readable;
+  };
+}
+
+export function createWorker({now=Date.now,FixedLengthStream=globalThis.FixedLengthStream}={}) {
+  // Node fixtures retain the Reader's exactStream fallback. Workerd supplies
+  // FixedLengthStream and gets the native guard, with the same length contract.
+  const protectStream=FixedLengthStream===undefined?undefined:createNativeStreamProtector(FixedLengthStream);
   // Only physically verified immutable indexes are retained, never access policy.
   const indexes=new WeakMap();
   function storage(env,config) {
@@ -138,7 +154,7 @@ export function createWorker({now=Date.now}={}) {
       const count=range?range.end-range.start+1:asset.bytes;
       const headers=new Headers({'Content-Type':asset.contentType,'Content-Length':String(count)});
       if(range)headers.set('Content-Range',`bytes ${range.start}-${range.end}/${asset.bytes}`);
-      return {statusCode:200,headers,stream:cancellableBody(value.body,options.abortSignal)};
+      return {statusCode:200,headers,stream:value.body};
     };
     return {loadIndex,getBlob};
   }
@@ -178,7 +194,7 @@ export function createWorker({now=Date.now}={}) {
     const source=new Request(url,{method:envelope.method,headers,signal:request.signal,
       ...(bodyExpected?{body:envelope.body}:{})});
     const dependencies=storage(env,config);
-    const reader=createPrivateReader({env:readerEnvironment(env,url.origin,config.origin),now,...dependencies,
+    const reader=createPrivateReader({env:readerEnvironment(env,url.origin,config.origin),now,...dependencies,protectStream,
       assetResponse:({request:original,index,asset,claims})=>{
         if(!['audio/mpeg','image/webp'].includes(asset.contentType))return null;
         const grant={schemaVersion:1,aud:config.audience,origin:url.origin,releaseId:index.releaseId,path:asset.path,
@@ -214,7 +230,7 @@ export function createWorker({now=Date.now}={}) {
     const payload=Buffer.from(JSON.stringify(sessionClaims)).toString('base64url');
     headers.set('cookie','__Host-lumen_session='+payload+'.'+hmac(payload,config.config.secret));
     const source=new Request(claims.origin+'/api/assets/'+claims.path,{method:request.method,headers,signal:request.signal});
-    const reader=createPrivateReader({env:readerEnvironment(env,claims.origin,config.origin),now,...dependencies});
+    const reader=createPrivateReader({env:readerEnvironment(env,claims.origin,config.origin),now,...dependencies,protectStream});
     return mediaHeaders(await reader(source),claims.origin,supplied);
   }
   return {async fetch(request,env) {

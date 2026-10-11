@@ -7,7 +7,7 @@ const fs=require('node:fs');
 const path=require('node:path');
 const os=require('node:os');
 const crypto=require('node:crypto');
-const {observeNativeNetwork,mediaNetworkVerdict}=require('./native-network-observer.cjs');
+const {observeNativeNetwork,mediaNetworkVerdict,safeFailureDetails}=require('./native-network-observer.cjs');
 const sha256=bytes=>crypto.createHash('sha256').update(bytes).digest('hex');
 const JSON_LIMIT=2*1024*1024;
 const PHONE_INSETS={top:47,bottom:34,left:24,right:32};
@@ -110,6 +110,29 @@ function observeRequestScope(context,accept,onViolation) {
   });
   return async()=>{if(closing)await closing;};
 }
+function safeConsoleError(value) {
+  const text=typeof value==='string'?value.slice(0,8192):'';
+  return {consoleKind:/cors policy/i.test(text)?'cors':/failed to load resource/i.test(text)?'resource':'other',netErrorCode:safeFailureDetails({errorText:text}).netErrorCode};
+}
+function captureNativeEvidence(evidence,networkObservers) {
+  const snapshots=networkObservers.map(observer=>observer.snapshot());
+  const wire={requests:snapshots.flatMap(s=>s.requests),responses:snapshots.flatMap(s=>s.responses),
+    unresponded:snapshots.flatMap(s=>s.unresponded),failures:snapshots.flatMap(s=>s.failures),
+    issues:snapshots.flatMap(s=>s.issues),bodyBytes:snapshots.reduce((sum,s)=>sum+s.bodyBytes,0)};
+  evidence.responses=wire.responses;evidence.nativeNetwork=wire;return wire;
+}
+async function finalizeHostedEvidence(evidence,{contexts,scopeGuards,networkObservers,pending,browser,appOrigin,workerOrigin}) {
+  const close=async(resource,kind)=>{try{await resource.close();}catch(_){evidence.errors.push({kind,phase:'finalization'});}};
+  for(const context of contexts)await close(context,'context-cleanup');
+  await Promise.all(scopeGuards.map(settle=>settle()));if(browser)await close(browser,'browser-cleanup');
+  await Promise.allSettled([...pending]);
+  try {
+    const wire=captureNativeEvidence(evidence,networkObservers),verdict=mediaNetworkVerdict(wire,{appOrigin,workerOrigin});
+    if(evidence.status==='verified'&&(!verdict.apiRedirectsOnly||!verdict.workerAudioValid))evidence.errors.push({kind:'native-network-finalization',phase:'finalization'});
+  }catch(_){evidence.errors.push({kind:'native-snapshot',phase:'finalization'});}
+  for(const observer of networkObservers)await close(observer,'observer-cleanup');
+  if(evidence.errors.length)evidence.status='failed';return evidence;
+}
 function prepareOutput(output) {
   let current='/private/tmp';
   for(const part of path.relative(current,output).split(path.sep)) {
@@ -163,10 +186,11 @@ async function run(config) {
     });
     context.on('page',page=>{
       page.on('pageerror',()=>evidence.errors.push({kind:'javascript',phase}));
-      page.on('console',message=>{if(message.type()==='error')evidence.errors.push({kind:'console-error',phase});});
+      page.on('console',message=>{if(message.type()==='error')evidence.errors.push({kind:'console-error',phase,...safeConsoleError(message.text())});});
     });
     context.on('requestfailed',request=>{
-      if(!(request.failure()?.errorText||'').includes('ERR_ABORTED'))evidence.errors.push({kind:'network-failure',...safeURL(request.url()),phase});
+      const netErrorCode=safeFailureDetails({errorText:request.failure()?.errorText}).netErrorCode;
+      if(netErrorCode!=='ERR_ABORTED')evidence.errors.push({kind:'network-failure',...safeURL(request.url()),phase,netErrorCode});
     });
   }
   async function device(viewport,mobile) {
@@ -345,11 +369,7 @@ async function run(config) {
     // redirects can pair a Request URL with the next hop's response status.
     for(const context of contexts)await context.close();
     await Promise.all(scopeGuards.map(settle=>settle()));await Promise.allSettled([...pending]);
-    const snapshots=networkObservers.map(observer=>observer.snapshot());
-    const wire={requests:snapshots.flatMap(s=>s.requests),responses:snapshots.flatMap(s=>s.responses),
-      unresponded:snapshots.flatMap(s=>s.unresponded),failures:snapshots.flatMap(s=>s.failures),
-      issues:snapshots.flatMap(s=>s.issues),bodyBytes:snapshots.reduce((sum,s)=>sum+s.bodyBytes,0)};
-    evidence.responses=wire.responses;evidence.nativeNetwork=wire;
+    const wire=captureNativeEvidence(evidence,networkObservers);
     const verdict=mediaNetworkVerdict(wire,{appOrigin:config.origin,workerOrigin:config.workerOrigin});
     check('native media receives direct Cloudflare 206 responses with working CORS',verdict.workerAudioValid,{workerResponses:verdict.workerResponses});
     check('Vercel media requests only redirect and never return audio bodies',verdict.apiRedirectsOnly,
@@ -358,8 +378,8 @@ async function run(config) {
     evidence.status='verified';return evidence;
   }catch(_){evidence.status='failed';evidence.errors.push({kind:'check-failure',phase});process.exitCode=1;return evidence;}
   finally{
-    for(const context of contexts)await context.close().catch(()=>{});await Promise.all(scopeGuards.map(settle=>settle()));for(const observer of networkObservers)await observer.close();if(browser)await browser.close().catch(()=>{});await Promise.all([...pending]);
-    if(evidence.errors.length){evidence.status='failed';process.exitCode=1;}
+    await finalizeHostedEvidence(evidence,{contexts,scopeGuards,networkObservers,pending,browser,appOrigin:config.origin,workerOrigin:config.workerOrigin});
+    if(evidence.status==='failed')process.exitCode=1;
   }
 }
 async function selfTest() {
@@ -459,5 +479,5 @@ async function main() {
   fs.writeFileSync(filename,bytes,{mode:0o600,flag:'wx'});
   console.log(result.status==='verified'?'Hosted Chrome proof verified.':'Hosted Chrome proof failed; inspect the private summary.');
 }
-module.exports={readConfig,safeURL,observeRequestScope,previewCookie,verifyManifestBytes,verifyReaderManifest,chromeLaunchOptions,chromeIdentity,validLayout,readLayout,PHONE_INSETS};
+module.exports={readConfig,safeURL,observeRequestScope,safeConsoleError,finalizeHostedEvidence,previewCookie,verifyManifestBytes,verifyReaderManifest,chromeLaunchOptions,chromeIdentity,validLayout,readLayout,PHONE_INSETS};
 if(require.main===module)main().catch(()=>{console.error('Hosted Chrome proof could not run. Check private inputs and evidence permissions.');process.exitCode=1;});

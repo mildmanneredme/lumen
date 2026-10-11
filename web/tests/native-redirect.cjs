@@ -1,7 +1,7 @@
 'use strict';
 const test=require('node:test'),assert=require('node:assert/strict'),http=require('node:http'),fs=require('node:fs'),os=require('node:os'),path=require('node:path'),crypto=require('node:crypto');
-const {createNetworkLedger,observeNativeNetwork,mediaNetworkVerdict}=require('./native-network-observer.cjs');
-const {observeRequestScope}=require('./cloudflare-browser.cjs');
+const {createNetworkLedger,observeNativeNetwork,mediaNetworkVerdict,safeFailureDetails}=require('./native-network-observer.cjs');
+const {observeRequestScope,finalizeHostedEvidence,safeConsoleError}=require('./cloudflare-browser.cjs');
 const APP='https://candidate.vercel.app',WORKER='https://media.workers.dev',URL_A=APP+'/api/assets/release/audio/voice/chapter.hash.mp3',URL_M=WORKER+'/media/release/audio/voice/chapter.hash.mp3?grant=PRIVATE_GRANT';
 const headers={'Content-Type':'audio/mpeg','Content-Length':'100','Content-Range':'bytes 0-99/100','Cache-Control':'private, no-store','Access-Control-Allow-Origin':APP};
 function goodLedger(options={}) {
@@ -169,6 +169,59 @@ test('observed request scope leaves allowed native requests unmodified and close
  handlers.request({url:()=>WORKER+'/bridge?grant=PRIVATE_GRANT'});await settle();
  assert.equal(closed,1);assert.deepEqual(violations,[{origin:WORKER,path:'/bridge'}]);
  assert.equal(JSON.stringify(violations).includes('PRIVATE_GRANT'),false);
+});
+test('failure diagnostics retain only known protocol enums and never raw messages or failed parameters',()=>{
+ assert.deepEqual(safeFailureDetails({errorText:'net::ERR_CONTENT_LENGTH_MISMATCH PRIVATE_FAILURE',corsErrorStatus:{corsError:'AllowOriginMismatch',failedParameter:'PRIVATE_ORIGIN'},blockedReason:'corp-not-same-origin'}),
+  {netErrorCode:'ERR_CONTENT_LENGTH_MISMATCH',corsError:'AllowOriginMismatch',blockedReason:'corp-not-same-origin'});
+ const bad=safeFailureDetails({errorText:'PRIVATE_FAILURE',corsErrorStatus:{corsError:'PRIVATE_CORS',failedParameter:'PRIVATE_PARAMETER'},blockedReason:'PRIVATE_BLOCK'});
+ assert.deepEqual(bad,{netErrorCode:'unknown',corsError:'unknown',blockedReason:'unknown'});
+ assert.deepEqual(safeConsoleError('Access to https://host/audio?grant=PRIVATE_GRANT blocked by CORS policy; net::ERR_FAILED'),{consoleKind:'cors',netErrorCode:'ERR_FAILED'});
+ assert.equal(JSON.stringify([bad,safeConsoleError('PRIVATE_CONSOLE')]).includes('PRIVATE'),false);
+});
+test('official QUIC and HTTP2 error families remain identifiable without echoing unknown secrets',()=>{
+ const codes=['ERR_QUIC_PROTOCOL_ERROR','ERR_QUIC_HANDSHAKE_FAILED','ERR_QUIC_CERT_ROOT_NOT_KNOWN','ERR_QUIC_GOAWAY_REQUEST_CAN_BE_RETRIED',
+  'ERR_INCOMPLETE_HTTP2_HEADERS','ERR_HTTP2_SERVER_REFUSED_STREAM','ERR_HTTP2_PING_FAILED','ERR_HTTP2_INADEQUATE_TRANSPORT_SECURITY','ERR_HTTP2_FLOW_CONTROL_ERROR',
+  'ERR_HTTP2_FRAME_SIZE_ERROR','ERR_HTTP2_COMPRESSION_ERROR','ERR_HTTP2_RST_STREAM_NO_ERROR_RECEIVED','ERR_HTTP2_STREAM_CLOSED','ERR_CONTENT_DECODING_FAILED'];
+ const rejected=codes.filter(code=>safeFailureDetails({errorText:'net::'+code+' PRIVATE_DIAGNOSTIC'}).netErrorCode!==code);
+ assert.deepEqual(rejected,[],'Legitimate transport error names must not be lost as unknown');
+ for(const value of ['net::ERR_PRIVATE_SECRET','net::ERR_QUIC_PROTOCOL_ERROR_PRIVATE_SECRET','PRIVATE_DIAGNOSTIC']) {
+  const result=safeFailureDetails({errorText:value});assert.equal(result.netErrorCode,'unknown');assert.equal(JSON.stringify(result).includes('PRIVATE'),false);
+ }
+ assert.equal(safeConsoleError('net::ERR_QUIC_PROTOCOL_ERROR https://media/audio?grant=PRIVATE_DIAGNOSTIC').netErrorCode,'ERR_QUIC_PROTOCOL_ERROR');
+ const l=goodLedger();l.handlers.loadingFailed({requestId:'media',canceled:false,errorText:'net::ERR_QUIC_PROTOCOL_ERROR'});assert.equal(verdict(l).workerAudioValid,false);
+});
+test('response protocol diagnostics expose a fixed transport enum without changing acceptance',()=>{
+ for(const protocol of ['http/1.0','http/1.1','h2','h3','quic','PRIVATE_PROTOCOL',undefined]) {
+  const l=goodLedger({responseFlags:{protocol}}),row=l.snapshot().responses[1];
+  assert.equal(row.protocol,protocol==='PRIVATE_PROTOCOL'?'other':protocol===undefined?'unknown':protocol);assert.equal(verdict(l).workerAudioValid,true);
+  assert.equal(JSON.stringify(row).includes('PRIVATE'),false);
+ }
+});
+test('failed pre-response media retains unpaired numeric statuses and safe CORS diagnostics in either order',()=>{
+ for(const late of [false,true]) {
+  const l=createNetworkLedger({appOrigin:APP,workerOrigin:WORKER}),h=l.handlers;
+  h.requestWillBeSent({requestId:'cors',request:{url:URL_M,method:'GET'},type:'Media'});
+  if(!late)h.responseReceivedExtraInfo({requestId:'cors',statusCode:403,headers:{'Set-Cookie':'PRIVATE_COOKIE'}});
+  h.loadingFailed({requestId:'cors',canceled:false,errorText:'net::ERR_FAILED PRIVATE_RAW',corsErrorStatus:{corsError:'MissingAllowOriginHeader',failedParameter:'PRIVATE_HEADER'},blockedReason:'other'});
+  if(late)h.responseReceivedExtraInfo({requestId:'cors',statusCode:403});
+  const snapshot=l.snapshot();assert.deepEqual(snapshot.unresponded[0].unpairedWireStatuses,[403]);
+  assert.equal(snapshot.failures[0].netErrorCode,'ERR_FAILED');assert.equal(snapshot.failures[0].corsError,'MissingAllowOriginHeader');assert.equal(snapshot.failures[0].blockedReason,'other');
+  assert.equal(snapshot.unresponded[0].corsError,'MissingAllowOriginHeader');assert.equal(JSON.stringify(snapshot).includes('PRIVATE'),false);
+  assert.equal(verdict(l).workerAudioValid,false);
+ }
+});
+test('failed hosted runs always retain final sanitized protocol snapshots before detaching',async()=>{
+ const l=goodLedger(),evidence={status:'failed',errors:[{kind:'check-failure',phase:'seeking'}]};let detached=false;
+ const observer={snapshot:()=>{assert.equal(detached,false);return l.snapshot();},close:async()=>{detached=true;}};
+ const context={close:async()=>l.handlers.loadingFailed({requestId:'media',canceled:false,errorText:'net::ERR_CONNECTION_RESET PRIVATE_RAW'})};
+ await finalizeHostedEvidence(evidence,{contexts:[context],scopeGuards:[],networkObservers:[observer],pending:new Set(),browser:null,appOrigin:APP,workerOrigin:WORKER});
+ assert.equal(evidence.status,'failed');assert.deepEqual(evidence.errors[0],{kind:'check-failure',phase:'seeking'});assert.equal(detached,true);
+ assert.equal(evidence.nativeNetwork.responses[1].failed,true);assert.equal(evidence.nativeNetwork.failures[0].netErrorCode,'ERR_CONNECTION_RESET');assert.equal(JSON.stringify(evidence).includes('PRIVATE'),false);
+});
+test('late uncancelled transport failure makes final hosted status fail even without a Playwright error',async()=>{
+ const l=goodLedger(),evidence={status:'verified',errors:[]};
+ await finalizeHostedEvidence(evidence,{contexts:[{close:async()=>l.handlers.loadingFailed({requestId:'media',canceled:false,errorText:'net::ERR_FAILED'})}],scopeGuards:[],networkObservers:[{snapshot:l.snapshot,close:async()=>{}}],pending:new Set(),browser:null,appOrigin:APP,workerOrigin:WORKER});
+ assert.equal(evidence.status,'failed');assert.ok(evidence.errors.some(e=>e.kind==='native-network-finalization'));assert.equal(evidence.nativeNetwork.responses[1].cancelled,false);
 });
 test('total hop bound includes redirects and invalid counts cannot authorize a proof',()=>{
  const l=createNetworkLedger({appOrigin:APP,workerOrigin:WORKER,maxRequests:1});l.handlers.requestWillBeSent({requestId:'one',request:{url:URL_A,method:'GET'},type:'Media'});l.handlers.requestWillBeSent({requestId:'one',request:{url:URL_M,method:'GET'},type:'Media',redirectHasExtraInfo:false,redirectResponse:{url:URL_A,status:307,headers:{'Content-Length':'0','Cache-Control':'private, no-store'}}});assert.deepEqual(l.snapshot().issues,['request-limit']);assert.equal(verdict(l).apiRedirectsOnly,false);
