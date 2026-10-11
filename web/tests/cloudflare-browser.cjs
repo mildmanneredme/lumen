@@ -7,6 +7,7 @@ const fs=require('node:fs');
 const path=require('node:path');
 const os=require('node:os');
 const crypto=require('node:crypto');
+const {observeNativeNetwork,mediaNetworkVerdict}=require('./native-network-observer.cjs');
 const sha256=bytes=>crypto.createHash('sha256').update(bytes).digest('hex');
 const JSON_LIMIT=2*1024*1024;
 const PHONE_INSETS={top:47,bottom:34,left:24,right:32};
@@ -124,13 +125,14 @@ async function run(config) {
   const playwright=playwrightModule();
   const evidence={schemaVersion:1,verificationScope:'hosted-native-chrome-representative-playback',origin:config.origin,
     workerOrigin:config.workerOrigin,expectedReleaseId:config.expectedReleaseId,expectedManifestSha256:config.expectedManifestSha256,
-    indexAPIExposed:false,indexVerifiedThroughAPI:false,physicalDeviceTested:false,humanFullBookListeningApproval:'not-claimed',checks:[],errors:[],requests:[],responses:[],playback:[],manifestObservations:[]};
+    scriptSha256:sha256(fs.readFileSync(__filename)),networkObserverSha256:sha256(fs.readFileSync(require.resolve('./native-network-observer.cjs'))),
+    indexAPIExposed:false,indexVerifiedThroughAPI:false,physicalDeviceTested:false,humanFullBookListeningApproval:'not-claimed',checks:[],errors:[],requests:[],responses:[],playwrightResponses:[],networkEvidenceSource:'raw-CDP-response-and-redirect-hop-URLs',playback:[],manifestObservations:[]};
   const check=(name,condition,detail)=>{
     evidence.checks.push({name,pass:!!condition,...(detail===undefined?{}:{detail})});
     assert.ok(condition,name);console.log('PASS '+name);
   };
   let phase='launch',browser;const pending=new Set();
-  const contexts=[];
+  const contexts=[],networkObservers=[];
   const childEnv=browserEnvironment();
   function observe(context) {
     context.on('request',request=>evidence.requests.push({...safeURL(request.url()),method:request.method(),kind:request.resourceType()}));
@@ -142,7 +144,7 @@ async function run(config) {
           entry.corsOrigin=await response.headerValue('access-control-allow-origin');
           entry.contentRange=await response.headerValue('content-range');
         }
-        evidence.responses.push(entry);
+        evidence.playwrightResponses.push(entry);
       })().catch(()=>evidence.errors.push({kind:'response-observer',phase}));
       pending.add(task);task.finally(()=>pending.delete(task));
     });
@@ -161,7 +163,9 @@ async function run(config) {
       if(url.origin===config.origin||url.origin===config.workerOrigin&&url.pathname.startsWith('/media/'))return route.continue();
       evidence.errors.push({kind:'unexpected-origin',...safeURL(url.href),phase});return route.abort();
     });
-    await previewCookie(context,config);return {context,page:await context.newPage()};
+    await previewCookie(context,config);const page=await context.newPage();
+    networkObservers.push(await observeNativeNetwork(page,{appOrigin:config.origin,workerOrigin:config.workerOrigin,phase:()=>phase}));
+    return {context,page};
   }
   async function waitTrack(page,id,voice,at) {
     await page.waitForFunction(({id,voice,at})=>{
@@ -327,16 +331,26 @@ async function run(config) {
     const locked=await phone.context.request.get(config.origin+'/api/book',{maxRedirects:0});check('sign out restores anonymous API protection',locked.status()===401);await locked.dispose();
     await cacheProof(page,'signed-out browser');
     await login(page);await waitTrack(page,beforeLogout.track,beforeLogout.voice,beforeLogout.time);check('returning with the code resumes the retained place paused',(await state(page)).paused);
-    phase='network-evidence';await Promise.all([...pending]);
-    const media=evidence.responses.filter(r=>r.origin===config.workerOrigin&&r.path.startsWith('/media/')&&r.contentType==='audio/mpeg');
-    const proxied=evidence.responses.filter(r=>r.origin===config.origin&&r.path.startsWith('/api/assets/')&&r.path.endsWith('.mp3'));
-    check('native media receives direct Cloudflare 206 responses with working CORS',media.some(r=>r.status===206)&&media.every(r=>[200,206,304].includes(r.status)&&[config.origin,'null'].includes(r.corsOrigin)));
-    check('Vercel media requests only redirect and never return audio bodies',proxied.length>0&&proxied.every(r=>r.status===307));
+    phase='network-evidence';
+    // Finish native loaders and drain protocol events before evaluating the
+    // ledger. Playwright rows remain diagnostic observations only: native
+    // redirects can pair a Request URL with the next hop's response status.
+    for(const context of contexts)await context.close();
+    await Promise.allSettled([...pending]);
+    const snapshots=networkObservers.map(observer=>observer.snapshot());
+    const wire={requests:snapshots.flatMap(s=>s.requests),responses:snapshots.flatMap(s=>s.responses),
+      unresponded:snapshots.flatMap(s=>s.unresponded),failures:snapshots.flatMap(s=>s.failures),
+      issues:snapshots.flatMap(s=>s.issues),bodyBytes:snapshots.reduce((sum,s)=>sum+s.bodyBytes,0)};
+    evidence.responses=wire.responses;evidence.nativeNetwork=wire;
+    const verdict=mediaNetworkVerdict(wire,{appOrigin:config.origin,workerOrigin:config.workerOrigin});
+    check('native media receives direct Cloudflare 206 responses with working CORS',verdict.workerAudioValid,{workerResponses:verdict.workerResponses});
+    check('Vercel media requests only redirect and never return audio bodies',verdict.apiRedirectsOnly,
+      {apiResponses:verdict.apiResponses,apiBodyBytes:verdict.apiBodyBytes});
     check('Chrome reports no JavaScript, CORS or unexpected-origin errors',evidence.errors.length===0);
     evidence.status='verified';return evidence;
   }catch(_){evidence.status='failed';evidence.errors.push({kind:'check-failure',phase});process.exitCode=1;return evidence;}
   finally{
-    for(const context of contexts)await context.close().catch(()=>{});if(browser)await browser.close().catch(()=>{});await Promise.all([...pending]);
+    for(const context of contexts)await context.close().catch(()=>{});for(const observer of networkObservers)await observer.close();if(browser)await browser.close().catch(()=>{});await Promise.all([...pending]);
     if(evidence.errors.length){evidence.status='failed';process.exitCode=1;}
   }
 }
