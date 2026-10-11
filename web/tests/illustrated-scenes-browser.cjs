@@ -80,10 +80,10 @@ let browser;
     return canvas.toDataURL('image/webp');
   })).split(',')[1], 'base64');
   await imagePage.close();
-  const fixture = async ({width=390,dpr=3,saveData=false,legacy=false,sceneOnly=false,invalidSceneTrigger,
+  const fixture = async ({width=390,dpr=3,saveData=false,reducedMotion='reduce',legacy=false,sceneOnly=false,invalidSceneTrigger,
     invalidPhone,failures=new Map()}={}) => {
     const context = await browser.newContext({viewport:{width,height:900},deviceScaleFactor:dpr,
-      reducedMotion:'reduce',serviceWorkers:'block'});
+      reducedMotion,serviceWorkers:'block'});
     await context.addInitScript(value => {
       Object.defineProperty(navigator,'connection',{configurable:true,value:{saveData:value}});
     }, saveData);
@@ -285,6 +285,65 @@ let browser;
     variantRetry.attempts.get(artPath('one','phone')) === 2 && await variantRetry.page.evaluate(() =>
       Math.abs(document.querySelector('#narration').currentTime - 3) < .1));
   await variantRetry.context.close();
+  const failedVariant = await fixture({width:1800,dpr:2,failures:new Map([[artPath('one','phone'),100]])});
+  await failedVariant.page.goto(origin,{waitUntil:'domcontentloaded'}); await ready(failedVariant.page);
+  await seek(failedVariant.page,3); await shown(failedVariant.page,'one','full');
+  const firstVariantFailure = failedVariant.page.waitForResponse(response =>
+    new URL(response.url()).pathname === artPath('one','phone') && response.status() === 503);
+  await failedVariant.page.setViewportSize({width:390,height:900}); await firstVariantFailure;
+  await failedVariant.page.waitForResponse(response =>
+    new URL(response.url()).pathname === artPath('one','phone') && response.status() === 503);
+  await failedVariant.page.waitForTimeout(100);
+  check('a terminal responsive replacement failure retains the decoded current painting and caption',
+    failedVariant.attempts.get(artPath('one','phone')) === 2 && await failedVariant.page.evaluate(source =>
+      document.querySelector('#scene-image').getAttribute('src')?.endsWith(source) &&
+      document.querySelector('#scene-title').textContent === 'Painting 1' &&
+      !document.querySelector('#scene-stage').classList.contains('placeholder-art') &&
+      document.querySelector('#narration').paused && Math.abs(document.querySelector('#narration').currentTime - 3) < .1,
+    artPath('one','full')));
+  failedVariant.failures.set(artPath('one','phone'),2);
+  await failedVariant.page.evaluate(() => window.dispatchEvent(new Event('online')));
+  await shown(failedVariant.page,'one','phone');
+  check('reconnection upgrades retained fallback art without changing the narration clock',
+    failedVariant.attempts.get(artPath('one','phone')) === 3 && await failedVariant.page.evaluate(() =>
+      Math.abs(document.querySelector('#narration').currentTime - 3) < .1));
+  await seek(failedVariant.page,0);
+  check('rewind clears retained variant fallback artwork',await cleared(failedVariant.page));
+  await failedVariant.context.close();
+  const hiddenArt = await fixture({width:390,dpr:2});
+  await hiddenArt.page.goto(origin,{waitUntil:'domcontentloaded'}); await ready(hiddenArt.page);
+  await seek(hiddenArt.page,3); await shown(hiddenArt.page,'one','phone');
+  await hiddenArt.page.waitForTimeout(100);
+  const hiddenRequestCount = hiddenArt.requests.length;
+  await hiddenArt.page.locator('#art-toggle').click();
+  await hiddenArt.page.setViewportSize({width:844,height:390});
+  await seek(hiddenArt.page,6); await hiddenArt.page.waitForTimeout(100);
+  check('hidden artwork neither switches variants on rotation nor loads a later painting',
+    hiddenArt.requests.length === hiddenRequestCount && await hiddenArt.page.evaluate(() =>
+      document.body.classList.contains('art-hidden')));
+  await hiddenArt.page.locator('#art-toggle').click(); await shown(hiddenArt.page,'two','phone');
+  check('showing artwork uses the current landscape render size and current narration beat',
+    hiddenArt.requests.every(url => !new URL(url).pathname.endsWith(artPath('one','full')) &&
+      !new URL(url).pathname.endsWith(artPath('two','full'))) && await hiddenArt.page.evaluate(() =>
+      !document.body.classList.contains('art-hidden') && Math.abs(document.querySelector('#narration').currentTime - 6) < .1));
+  await hiddenArt.context.close();
+  const crossfadeVariant = await fixture({width:390,dpr:3,reducedMotion:'no-preference'});
+  await crossfadeVariant.page.goto(origin,{waitUntil:'domcontentloaded'}); await ready(crossfadeVariant.page);
+  await seek(crossfadeVariant.page,3); await shown(crossfadeVariant.page,'one','phone');
+  await crossfadeVariant.page.locator('#play').click();
+  await crossfadeVariant.page.waitForFunction(() => !document.querySelector('#narration').paused);
+  await crossfadeVariant.page.setViewportSize({width:896,height:390});
+  await crossfadeVariant.page.waitForFunction(source =>
+    document.querySelector('#scene-incoming').classList.contains('visible') &&
+    new URL(document.querySelector('#scene-incoming').src).pathname === source, artPath('one','full'));
+  await crossfadeVariant.page.locator('#art-toggle').click();
+  await crossfadeVariant.page.evaluate(() => document.querySelector('#narration').pause());
+  await crossfadeVariant.page.locator('#art-toggle').click(); await shown(crossfadeVariant.page,'one','full');
+  check('showing artwork completes a responsive crossfade interrupted by hiding the same scene',
+    await crossfadeVariant.page.evaluate(() => document.querySelector('#scene-title').textContent === 'Painting 1' &&
+      !document.querySelector('#scene-incoming').classList.contains('visible') &&
+      document.querySelector('#narration').currentTime >= 3 && document.querySelector('#narration').currentTime < 6));
+  await crossfadeVariant.context.close();
   const unavailable = await fixture({saveData:true,failures:new Map([[artPath('two','phone'),100]])});
   await unavailable.page.goto(origin,{waitUntil:'domcontentloaded'}); await ready(unavailable.page);
   await seek(unavailable.page,3); await shown(unavailable.page,'one','phone');

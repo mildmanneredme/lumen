@@ -338,6 +338,29 @@ test('reuse rechecks remote identity and current local source before index publi
     }finally{await f.clean();}
   }
 });
+test('reused source mutation during index HEAD prevents publication or resume certification',async()=>{
+  for(const mode of ['create','resume','resume-final-head']){
+    const f=await reuseFixture();try{
+      const plan=makePlan(f.inventory,f.manifestURL,{reuseAudio:f.reuseAudio});
+      if(mode!=='create')await uploadR2Release({...f,...budgets});
+      f.calls.length=0;
+      const original=f.r2.head;let indexHeads=0,mutated=false;
+      f.r2.head=async key=>{
+        const result=await original(key);
+        if(key===plan.indexPath&&++indexHeads===(mode==='resume-final-head'?2:1)){
+          mutated=true;await fs.writeFile(f.inventory.assets[1].sourcePath,Buffer.alloc(f.bodies[1].length));
+        }
+        return result;
+      };
+      await assert.rejects(uploadR2Release({...f,...budgets}),/identity changed/);
+      assert.equal(mutated,true);
+      assert.ok(!f.calls.some(c=>c.method==='put'&&c.key===plan.indexPath));
+      assert.equal(f.objects.has(plan.indexPath),mode!=='create');
+      assert.deepEqual(f.objects.get(f.oldKey).bytes,f.bodies[1]);
+      assert.equal(f.objects.get(f.oldKey).version,'original-v1');
+    }finally{await f.clean();}
+  }
+});
 test('caller mutation cannot redirect already planned reused audio',async()=>{
   const f=await reuseFixture();try{
     const original=f.r2.head;let changed=false;

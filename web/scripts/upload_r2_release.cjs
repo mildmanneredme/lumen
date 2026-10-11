@@ -194,12 +194,12 @@ async function uploadR2Release({root,inventory,manifestURL,r2,reuseAudio=[],maxU
     completed.push({...receipt,...pinned,fullSha256Verified:true,sampleSha256Verified:true,headVerified:true});
     await onProgress({schemaVersion:1,storageProvider:'cloudflare-r2',releaseId:plan.index.releaseId,status:'uploading',assets:completed.map(row=>({...row}))});
   }
-  // Reused bytes do not pass through an upload stream. Keep every prepared
-  // source clock current before publishing any manifest/index pointer.
-  for(let i=0;i<plan.assets.length;i++)await sourceUnchanged(root,plan.assets[i],proofs[i]);
   for(const receipt of completed)remoteIdentity(await r2.head(receipt.objectKey),receipt.objectKey,receipt,receipt);
   const expectedIndex={bytes:plan.indexBytes.length,sha256:plan.indexSha256,contentType:'application/json'};
   let metadata=await r2.head(plan.indexPath);
+  // Remote HEADs may take time. Keep every prepared source clock current
+  // after those reads and immediately before publishing the index.
+  for(let i=0;i<plan.assets.length;i++)await sourceUnchanged(root,plan.assets[i],proofs[i]);
   if(metadata===null) {
     metadata=await r2.put(plan.indexPath,plan.indexBytes,putOptions(expectedIndex));
     ensure(metadata!==null,'R2 conditional index create failed');uploadedBytes+=plan.indexBytes.length;
@@ -207,6 +207,9 @@ async function uploadR2Release({root,inventory,manifestURL,r2,reuseAudio=[],maxU
   const pinned=remoteIdentity(metadata,plan.indexPath,expectedIndex);
   await remoteRead(r2,plan.indexPath,expectedIndex,pinned,undefined,ledger);
   remoteIdentity(await r2.head(plan.indexPath),plan.indexPath,expectedIndex,pinned);
+  // Resume and index verification also await storage; do not certify a source
+  // that changed during those final reads.
+  for(let i=0;i<plan.assets.length;i++)await sourceUnchanged(root,plan.assets[i],proofs[i]);
   ensure(ledger.read===plan.verificationBytes,'R2 verification byte count differs');
   return {schemaVersion:1,storageProvider:'cloudflare-r2',releaseId:plan.index.releaseId,status:'uploaded-private-r2',assets:completed,
     index:plan.index,indexPath:plan.indexPath,indexSha256:plan.indexSha256,uploadBytes:plan.uploadBytes,uploadedBytes,

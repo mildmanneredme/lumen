@@ -31,6 +31,7 @@
     'people-as-clay': 'A visual metaphor for behavioural manipulation: hands shape a soft clay bust with an unfinished, anonymous face.'
   };
   let follow = true, activeSentence = null, activeParagraph = null, activeScene = null, activeSceneSource = '';
+  let displayedSceneId = null;
   let sceneToken = 0, sceneTimer = 0, sceneRetryTimer = 0, sceneLoadState = 'idle', animationFrame = 0, lastSaved = -1;
   let pendingSeek = null, issuedSeek = null, resumeAfterSeek = false, seekTimer = 0;
   let progress, bookmarkDirty = false, completed = false;
@@ -126,6 +127,7 @@
   }
   function resetSceneDisplay() {
     clearTimeout(sceneTimer);
+    displayedSceneId = null;
     $('scene-stage').classList.add('placeholder-art'); $('scene-stage').removeAttribute('data-scene');
     $('scene-incoming').classList.remove('visible');
     $('scene-image').removeAttribute('src'); $('scene-incoming').removeAttribute('src'); $('scene-image').alt = '';
@@ -148,6 +150,9 @@
       if (activeScene || !$('scene-stage').classList.contains('placeholder-art')) clearScene();
       return;
     }
+    // Hidden panels have no usable dimensions. Select a variant when artwork
+    // is shown, rather than downloading a full image based on zero width.
+    if (!artworkVisible) return;
     const source = sceneSource(scene);
     if (activeScene?.id === scene.id && activeSceneSource === source && sceneLoadState !== 'idle') return;
     // Rewinding must clear a later reveal while its earlier painting loads.
@@ -174,17 +179,18 @@
         image.alt = scene.alt || scene.description || descriptions[scene.id] || scene.title || 'Illustration';
         const next = scenes[scenes.indexOf(scene) + 1];
         const nextSource = next && sceneSource(next);
-        if (next && !warmedScenes.has(nextSource) && !navigator.connection?.saveData) {
+        if (next && artworkVisible && !warmedScenes.has(nextSource) && !navigator.connection?.saveData) {
           warmedScenes.add(nextSource);
           const ahead = new Image(); ahead.decoding = 'async'; ahead.fetchPriority = 'low'; ahead.src = nextSource;
         }
-        if (reduced.matches || audio.paused) { image.src = source; return; }
+        if (reduced.matches || audio.paused) { image.src = source; displayedSceneId = scene.id; return; }
         requestAnimationFrame(() => {
           if (token !== sceneToken) return;
           incoming.classList.add('visible');
           sceneTimer = setTimeout(() => {
             if (token !== sceneToken) return;
             image.src = source;
+            displayedSceneId = scene.id;
             incoming.classList.remove('visible');
           },1300);
         });
@@ -196,7 +202,7 @@
           sceneRetryTimer = setTimeout(() => loadPainting(1),1000);
         } else {
           sceneLoadState = 'failed';
-          resetSceneDisplay();
+          if (displayedSceneId !== scene.id || !image.getAttribute('src')) resetSceneDisplay();
         }
       };
       preload.src = source;
@@ -291,6 +297,15 @@
     document.body.classList.toggle('art-hidden', !value);
     $('art-toggle').setAttribute('aria-pressed', String(value));
     $('art-toggle').setAttribute('aria-label', value ? 'Hide artwork' : 'Show artwork');
+    if (value) render(currentPosition());
+    else {
+      ++sceneToken; clearTimeout(sceneRetryTimer); clearTimeout(sceneTimer);
+      $('scene-incoming').classList.remove('visible');
+      if (sceneLoadState === 'loading' || sceneLoadState === 'retrying' || displayedSceneId !== activeScene?.id ||
+          $('scene-image').getAttribute('src') !== activeSceneSource) {
+        sceneLoadState = 'idle';
+      }
+    }
   }
   function updateMediaSession(force = false) {
     if (!('mediaSession' in navigator) || committing || !book?.getActive()) return;

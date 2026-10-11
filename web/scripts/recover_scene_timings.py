@@ -92,16 +92,19 @@ def checked_phrase_request(root, track, recording, baseline, reference):
                     "Reviewed scene phrase painting is absent or duplicated in selected manifest")
     source = selected[0]
     phone = source.get("phone")
-    content.require(isinstance(phone, dict), "Reviewed scene phrase selected phone binding is invalid")
+    content.require(phone is None or isinstance(phone, dict),
+                    "Reviewed scene phrase selected phone binding is invalid")
     content.require(source.get("trackId") == track["id"] and source.get("sentenceId") == request["sentenceId"]
                     and source.get("sentenceTextSha256") == request["sentenceTextSha256"]
                     and source.get("sha256") == request["sourceSha256"]
-                    and phone.get("sha256") == request["phoneSha256"],
+                    and (phone.get("sha256") if phone is not None else None) == request["phoneSha256"],
                     "Reviewed scene phrase selected painting binding differs")
-    for image_path, digest in [(source.get("sourcePath"), request["sourceSha256"]),
-                               (phone.get("path"), request["phoneSha256"])]:
+    images = [(source.get("sourcePath"), request["sourceSha256"])]
+    if phone is not None:
+        images.append((phone.get("path"), request["phoneSha256"]))
+    for image_path, digest in images:
         content.require(isinstance(image_path, str) and content.valid_hash(digest),
-                        "Reviewed scene phrase requires both selected image hashes")
+                        "Reviewed scene phrase requires each selected image path and hash")
         image = content.project_file(root, image_path)
         content.require(image.suffix.lower() == ".webp" and content.file_hash(image) == digest,
                         "Reviewed scene phrase selected image bytes changed")
@@ -127,8 +130,8 @@ def measured_phrase_cue(track, baseline, words, request, reference):
     observed = [position for position in range(len(heard) - length + 1)
                 if heard[position:position + length] == phrase
                 and all(window["start"] <= start < end <= window["end"]
-                        and end <= times[position + length - 1][1]
-                        for start, end in times[position:position + length])]
+                        and coverage_end <= window["end"] and coverage_end <= times[position + length - 1][1]
+                        for start, end, coverage_end in times[position:position + length])]
     if len(observed) != 1:
         return None, {"sentenceId": request["sentenceId"],
                       "reason": "missing-exact-reviewed-phrase" if not observed else "ambiguous-observed-reviewed-phrase"}
@@ -178,7 +181,10 @@ def token_clock(words, duration):
         left = max(0, bisect_right(starts, first) - 1)
         right = max(left, bisect_left(starts, last) - 1)
         tokens.append(token)
-        times.append((spans[left][2], spans[right][3]))
+        # Numeric normalization can merge several spoken words into one token.
+        # Keep its actual final-word endpoint separate from all contributing
+        # measured coverage, so an earlier word's overrun cannot disappear.
+        times.append((spans[left][2], spans[right][3], max(span[3] for span in spans[left:right + 1])))
     return tokens, times
 
 
@@ -226,7 +232,11 @@ def measured_prefix_cues(track, baseline, words, target_ids):
             options = [position for position in range(len(heard) - length + 1)
                        if heard[position:position + length] == prefix
                        and window["start"] - 1e-6 <= times[position][0] < window["end"]
-                       and times[position + length - 1][1] <= support_end + 1e-6]
+                       and all(window["start"] - 1e-6 <= start < end
+                               and coverage_end <= (window["end"] if offset < last - first else support_end) + 1e-6
+                               and coverage_end <= times[position + length - 1][1] + 1e-6
+                               for offset, (start, end, coverage_end)
+                               in enumerate(times[position:position + length]))]
             if len(options) != 1:
                 reason = "missing-exact-prefix" if not options else "ambiguous-observed-prefix"
                 continue

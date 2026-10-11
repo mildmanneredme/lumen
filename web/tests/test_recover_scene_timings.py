@@ -70,6 +70,34 @@ class SceneClockTests(unittest.TestCase):
         self.assertEqual(cues, [])
         self.assertEqual(blocked[0]["reason"], "ambiguous-observed-prefix")
 
+    def test_every_prefix_word_stays_in_gap_and_before_its_endpoint(self):
+        for end in [13.0, 21.0]:
+            words = list(self.words)
+            word, start, _ = words[1]
+            words[1] = (word, start, end)
+            with self.subTest(end=end):
+                cues, blocked = self.recover(words)
+                self.assertEqual(cues, [])
+                self.assertEqual(blocked[0]["reason"], "missing-exact-prefix")
+
+    def test_short_prefix_target_words_cannot_borrow_following_sentence_bounds(self):
+        self.sentences[1]["text"] = "Yes indeed."
+        words = [(word, start, end) for word, start, end in [
+            ("Yes", 18.0, 18.2), ("indeed", 18.5, 20.1), ("The", 20.0, 20.2),
+            ("following", 20.5, 20.7), ("measured", 21.0, 21.2), ("passage", 21.5, 21.7)]]
+        cues, blocked = self.recover(words)
+        self.assertEqual(cues, [])
+        self.assertEqual(blocked[0]["reason"], "missing-exact-prefix")
+
+    def test_numeric_prefix_keeps_every_contributing_word_interval(self):
+        self.sentences[1]["text"] = "42 people crossed the empty street."
+        words = [(word, 7.12 + index * .5, 7.32 + index * .5)
+                 for index, word in enumerate("Forty two people crossed the empty street".split())]
+        words[0] = ("Forty", words[0][1], 21.0)
+        cues, blocked = self.recover(words)
+        self.assertEqual(cues, [])
+        self.assertEqual(blocked[0]["reason"], "missing-exact-prefix")
+
     def test_reversed_unique_targets_in_one_gap_remain_unavailable(self):
         lamp = {"id": "v6:chapter-001:p001-s02", "text": "The lamp beside the window glowed softly."}
         door = {"id": "v6:chapter-001:p001-s03", "text": "The door across the hallway opened slowly."}
@@ -210,6 +238,70 @@ class SceneClockTests(unittest.TestCase):
         self.assertEqual(cue["phoneSha256"], self.source["phone"]["sha256"])
         self.assertEqual(self.baseline, original)
         self.assertIsNone(self.baseline["sentences"][1]["end"])
+
+    def test_numeric_phrase_keeps_support_without_inventing_a_later_endpoint(self):
+        request, _ = self.phrase_fixture(span=(2, 8))
+        self.sentences[1]["text"] = "She waited with 42 people beside the station."
+        digest = hashlib.sha256(self.sentences[1]["text"].encode()).hexdigest()
+        self.source["sentenceTextSha256"] = digest
+        manifest = recovery.content.export_asset(self.root, self.track["id"], "selected",
+                                                 {"chapterId": self.track["id"], "scenes": [self.source]})
+        request.update(sentenceTextSha256=digest, sourceManifestPath=manifest["path"],
+                       sourceManifestSha256=manifest["sha256"])
+        request["review"]["requestSha256"] = recovery.reviewed_phrase_hash(request)
+        words = [(word, 7.12 + index * .5, 7.32 + index * .5)
+                 for index, word in enumerate("They waited with Forty two people beside the station".split())]
+        for span, end in [((2, 8), 21.0), ((2, 8), 12.0), ((1, 4), 11.0)]:
+            changed = copy.deepcopy(request)
+            changed.update(tokenStart=span[0], tokenEnd=span[1])
+            changed["review"]["requestSha256"] = recovery.reviewed_phrase_hash(changed)
+            bad = list(words)
+            bad[3] = (bad[3][0], bad[3][1], end)
+            with self.subTest(span=span, end=end):
+                result = self.phrase_map(self.write_phrase_request(changed), bad)
+                self.assertEqual(result["cues"], [])
+                self.assertEqual(result["unavailable"][0]["reason"], "missing-exact-reviewed-phrase")
+
+    def test_full_only_reviewed_phrase_binds_full_image_and_null_phone(self):
+        request, _ = self.phrase_fixture()
+        source = copy.deepcopy(self.source)
+        del source["phone"]
+        for selected in [source, dict(source, phone=None)]:
+            manifest = recovery.content.export_asset(self.root, self.track["id"], "selected",
+                                                     {"chapterId": self.track["id"], "scenes": [selected]})
+            request.update(sourceManifestPath=manifest["path"], sourceManifestSha256=manifest["sha256"],
+                           phoneSha256=None)
+            request["review"]["requestSha256"] = recovery.reviewed_phrase_hash(request)
+            reference = self.write_phrase_request(request)
+            result = self.phrase_map(reference)
+            cue = result["cues"][0]
+            self.assertEqual(result["unavailable"], [])
+            self.assertIsNone(cue["phoneSha256"])
+            self.assertEqual(cue["start"], self.phrase_words[-1][2])
+            recovery.content.validate_scene_onset_binding(source, cue, source)
+        (self.root / "selected-full.webp").write_bytes(b"changed full-only painting")
+        with self.assertRaisesRegex(recovery.content.ContentError, "image bytes changed"):
+            self.phrase_map(reference)
+
+    def test_reviewed_phrase_rejects_stale_missing_phone_and_malformed_present_phone(self):
+        request, _ = self.phrase_fixture()
+        original_phone = self.source["phone"]
+        cases = [(None, original_phone["sha256"], "painting binding differs"),
+                 ("invalid", None, "phone binding is invalid"),
+                 ({}, None, "each selected image path and hash"),
+                 ({"sha256": original_phone["sha256"]}, original_phone["sha256"],
+                  "each selected image path and hash"),
+                 ({"path": original_phone["path"], "sha256": "invalid"}, "invalid",
+                  "each selected image path and hash")]
+        for phone, digest, error in cases:
+            source = dict(self.source, phone=phone)
+            manifest = recovery.content.export_asset(self.root, self.track["id"], "selected",
+                                                     {"chapterId": self.track["id"], "scenes": [source]})
+            request.update(sourceManifestPath=manifest["path"], sourceManifestSha256=manifest["sha256"],
+                           phoneSha256=digest)
+            request["review"]["requestSha256"] = recovery.reviewed_phrase_hash(request)
+            with self.subTest(phone=phone), self.assertRaisesRegex(recovery.content.ContentError, error):
+                self.phrase_map(self.write_phrase_request(request))
 
     def test_reviewed_phrase_request_hash_review_and_selected_bytes_are_freshly_bound(self):
         request, reference = self.phrase_fixture()
