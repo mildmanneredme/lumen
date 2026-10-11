@@ -4,10 +4,21 @@ Only the empty reader shell is static. The selected full-book release uses **pri
 
 The previous private Blob implementation remains a supported fallback. Its configuration and uploader are documented separately below; no Blob store was provisioned for this release.
 
-`api/session.js`, `api/book.js`, and `api/assets/[...path].js` use the shared
+`api/session.js`, `api/book.js`, and `api/assets.js` use the shared
 Node adapter. `LUMEN_WORKER_ORIGIN` selects the Cloudflare bridge; without it, the adapter uses the server-only, pinned `@vercel/blob` fallback SDK. The existing Vercel
 project uses Node 24. Run `npm ci` inside `web/` and
 `node --test web/tests/private-access*.cjs` from the repository root.
+
+The explicit `web/vercel.json` rewrite `/api/assets/(.*)` → `/api/assets`
+selects the plain asset function for deeply nested immutable filenames. The
+Node adapter keeps the original request path and its query checks; it derives
+authority from the configured app origin. Hosted preview acceptance verifies
+Vercel's delivery of that original URL. An unnamed `(.*)` capture prevents
+Vercel's routing compiler from appending the `?path=...` parameter produced by
+`:path*`; the private bridge rejects query parameters. Standalone Node routing
+supports single dynamic segments in filenames, so this project uses the
+[explicit rewrite](https://vercel.com/docs/routing/rewrites) for nested assets
+([Vercel routing clarification](https://github.com/vercel/community/discussions/947)).
 
 ## Reader API
 
