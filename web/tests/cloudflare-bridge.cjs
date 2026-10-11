@@ -4,6 +4,89 @@ const {createCloudflareBridge}=require('../server/cloudflare-bridge.cjs');
 const {createPrivateReader,sha256}=require('../server/private-access.cjs');
 const origin='https://lumen.example',worker='https://lumen-media.example.workers.dev';
 const env={LUMEN_APP_ORIGIN:origin,LUMEN_WORKER_ORIGIN:worker,LUMEN_BRIDGE_KEY:Buffer.alloc(32,8).toString('base64url')};
+const previousWorker='https://lumen-retained.example.workers.dev',previousRelease='lumen-private-192-v4';
+const retainedEnv={...env,LUMEN_PREVIOUS_RELEASE_ID:previousRelease,LUMEN_PREVIOUS_WORKER_ORIGIN:previousWorker};
+test('retained release GET and HEAD preserve current bridge authentication and request conditions',async()=>{
+  for(const method of ['GET','HEAD']) {
+    let call;
+    const bridge=createCloudflareBridge({env:retainedEnv,fetch:async(url,options)=>{
+      call={url,options};return new Response(method==='HEAD'?null:'{"retained":true}',{headers:{'Content-Type':'application/json'}});
+    }});
+    const requestPath='/api/assets/'+previousRelease+'/tracks/chapter-001/reader-autonoe.'+'a'.repeat(64)+'.json';
+    const result=await bridge(new Request(origin+requestPath,{method,headers:{Cookie:'__Host-lumen_session=fixture',
+      Range:'bytes=2-4','If-Range':'"fixture"','If-None-Match':'"reader"','X-Worker-Origin':'https://untrusted.example'}}));
+    assert.equal(result.status,200);assert.equal(call.url,previousWorker+'/bridge');
+    assert.equal(call.options.headers['X-Lumen-Bridge-Key'],env.LUMEN_BRIDGE_KEY);
+    assert.equal(call.options.redirect,'manual');
+    const envelope=JSON.parse(method==='HEAD'?Buffer.from(call.options.headers['X-Lumen-Request'],'base64url').toString():call.options.body);
+    assert.equal(envelope.url,origin+requestPath);assert.equal(envelope.method,method);
+    assert.equal(envelope.headers.cookie,'__Host-lumen_session=fixture');assert.equal(envelope.headers.range,'bytes=2-4');
+    assert.equal(envelope.headers['if-range'],'"fixture"');assert.equal(envelope.headers['if-none-match'],'"reader"');
+    assert.equal(envelope.headers['x-worker-origin'],undefined);
+    if(method==='HEAD')assert.equal(result.body,null);
+  }
+});
+test('current control and asset requests and near previous prefixes keep the current Worker',async()=>{
+  const paths=['/api/book','/api/session','/api/assets/lumen-illustrated-192-v1/images/painting.webp',
+    '/api/assets/'+previousRelease,'/api/assets/'+previousRelease+'0/reader.json',
+    '/api/assets/'+previousRelease+'-extra/reader.json','/api/assets/lumen-private-192-v%34/reader.json',
+    '/api/assets/'+previousRelease+'%2Freader.json'];
+  for(const requestPath of paths) {
+    const bridge=createCloudflareBridge({env:retainedEnv,fetch:async(url)=>{
+      assert.equal(url,worker+'/bridge');return new Response('{}',{headers:{'Content-Type':'application/json'}});
+    }});
+    assert.equal((await bridge(new Request(origin+requestPath))).status,200,requestPath);
+  }
+});
+test('retained audio GET and HEAD accept only their selected Worker media redirects',async()=>{
+  for(const method of ['GET','HEAD']) {
+    const bridge=createCloudflareBridge({env:retainedEnv,fetch:async(url,options)=>{
+      assert.equal(url,previousWorker+'/bridge');assert.equal(options.redirect,'manual');
+      return new Response(null,{status:307,headers:{Location:previousWorker+'/media/audio.mp3?grant=fixture'}});
+    }});
+    const result=await bridge(new Request(origin+'/api/assets/'+previousRelease+'/audio/charon/chapter-001.mp3',{method}));
+    assert.equal(result.status,307);assert.equal(result.body,null);
+    assert.equal(new URL(result.headers.get('location')).origin,previousWorker);
+  }
+  for(const [requestPath,target] of [['/api/assets/'+previousRelease+'/audio.mp3',worker],
+    ['/api/assets/lumen-illustrated-192-v1/audio.mp3',previousWorker]]) {
+    const bridge=createCloudflareBridge({env:retainedEnv,fetch:async()=>new Response(null,{status:307,headers:{Location:target+'/media/audio.mp3?grant=fixture'}})});
+    assert.equal((await bridge(new Request(origin+requestPath))).status,503);
+  }
+});
+test('invalid or incomplete retained-release configuration never contacts a Worker',async()=>{
+  let calls=0;
+  const configurations=[{...env,LUMEN_PREVIOUS_RELEASE_ID:previousRelease},{...env,LUMEN_PREVIOUS_WORKER_ORIGIN:previousWorker},
+    ...['',null,'../other','old/release','UPPER','x'.repeat(129)].map(id=>({...retainedEnv,LUMEN_PREVIOUS_RELEASE_ID:id})),
+    ...['http://unsafe.example',previousWorker+'/',previousWorker+'/path','https://user:pass@unsafe.example',
+      previousWorker+'?origin=other',previousWorker+'#other'].map(value=>({...retainedEnv,LUMEN_PREVIOUS_WORKER_ORIGIN:value}))];
+  for(const config of configurations) {
+    const bridge=createCloudflareBridge({env:config,fetch:async()=>{calls++;throw Error('must not fetch');}});
+    assert.equal((await bridge(new Request(origin+'/api/book'))).status,503);
+  }
+  assert.equal(calls,0);
+});
+test('retained routes enforce the existing origin query and method checks before forwarding',async()=>{
+  let calls=0;const bridge=createCloudflareBridge({env:retainedEnv,fetch:async()=>{calls++;throw Error('must not fetch');}});
+  const retained='/api/assets/'+previousRelease+'/reader.json';
+  for(const request of [new Request('https://foreign.example'+retained),
+    new Request(origin+retained,{headers:{Origin:'https://foreign.example'}}),
+    new Request(origin+retained,{headers:{Host:'foreign.example'}}),
+    new Request(origin+retained,{headers:{'Sec-Fetch-Site':'cross-site'}}),
+    new Request(origin+retained+'?worker=https://foreign.example'),new Request(origin+retained,{method:'POST'})]) {
+    assert.ok((await bridge(request)).status>=400);
+  }
+  assert.equal(calls,0);
+});
+test('selected retained Worker configuration is captured before the upstream await',async()=>{
+  const mutable={...retainedEnv};
+  const bridge=createCloudflareBridge({env:mutable,fetch:async(url,options)=>{
+    assert.equal(url,previousWorker+'/bridge');assert.equal(options.headers['X-Lumen-Bridge-Key'],env.LUMEN_BRIDGE_KEY);
+    mutable.LUMEN_PREVIOUS_WORKER_ORIGIN='https://changed.example';mutable.LUMEN_BRIDGE_KEY='changed';
+    return new Response(null,{status:307,headers:{Location:previousWorker+'/media/audio.mp3?grant=fixture'}});
+  }});
+  assert.equal((await bridge(new Request(origin+'/api/assets/'+previousRelease+'/audio.mp3'))).status,307);
+});
 test('bridge preserves login cookies and forwards only trusted request context',async()=>{
   let call;
   const bridge=createCloudflareBridge({env,fetch:async(url,options)=>{call={url,options};return new Response('{"authenticated":true}',{headers:{'Content-Type':'application/json','Cache-Control':'private, no-store','Set-Cookie':'__Host-lumen_session=fixture; Secure; HttpOnly; Path=/'}});}});

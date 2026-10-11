@@ -8,14 +8,24 @@ function failure(status) {
     {status,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'private, no-store',
       'Vary':'Cookie','Referrer-Policy':'no-referrer','X-Content-Type-Options':'nosniff'}});
 }
+function workerOrigin(value) {
+  const worker=new URL(value);
+  if(worker.protocol!=='https:'||worker.origin!==value||worker.username||worker.password) throw Error('Invalid media origin');
+  return worker.origin;
+}
 function bridgeConfig(env) {
-  const requestOrigin=trustedRequestOrigin(env),worker=new URL(env.LUMEN_WORKER_ORIGIN);
-  if(worker.protocol!=='https:'||worker.origin!==env.LUMEN_WORKER_ORIGIN||worker.username||worker.password) throw Error('Invalid media origin');
+  const requestOrigin=trustedRequestOrigin(env),worker=workerOrigin(env.LUMEN_WORKER_ORIGIN);
+  let previous;
+  if(env.LUMEN_PREVIOUS_RELEASE_ID!==undefined||env.LUMEN_PREVIOUS_WORKER_ORIGIN!==undefined) {
+    const id=env.LUMEN_PREVIOUS_RELEASE_ID;
+    if(typeof id!=='string'||id.length>128||!/^[a-z][a-z0-9-]*$/.test(id)) throw Error('Invalid previous release');
+    previous={prefix:'/api/assets/'+id+'/',worker:workerOrigin(env.LUMEN_PREVIOUS_WORKER_ORIGIN)};
+  }
   const key=env.LUMEN_BRIDGE_KEY;
   if(typeof key!=='string'||!/^[a-zA-Z0-9_-]{43,86}$/.test(key)) throw Error('Invalid bridge key');
   const bytes=Buffer.from(key,'base64url');
   if(bytes.length<32||bytes.length>64||bytes.toString('base64url')!==key) throw Error('Invalid bridge key');
-  return {requestOrigin,worker:worker.origin,key};
+  return {requestOrigin,worker,key,previous};
 }
 function createCloudflareBridge({env=process.env,fetch=globalThis.fetch}={}) {
   return async request=>{
@@ -29,6 +39,7 @@ function createCloudflareBridge({env=process.env,fetch=globalThis.fetch}={}) {
     if(url.origin!==config.requestOrigin||(host&&host.toLowerCase()!==new URL(config.requestOrigin).host)||
       (supplied&&supplied!==config.requestOrigin)||(site&&!['same-origin','none'].includes(site))||
       (session&&request.method!=='GET'&&supplied!==config.requestOrigin))return failure(403);
+    const worker=config.previous&&url.pathname.startsWith(config.previous.prefix)?config.previous.worker:config.worker;
     const headers={};
     for(const name of forwarded)if(request.headers.has(name))headers[name]=request.headers.get(name);
     let body;
@@ -46,12 +57,12 @@ function createCloudflareBridge({env=process.env,fetch=globalThis.fetch}={}) {
       const upstreamHeaders={'Content-Type':'application/json','X-Lumen-Bridge-Key':config.key,'Accept-Encoding':'identity'};
       const head=request.method==='HEAD';
       if(head)upstreamHeaders['X-Lumen-Request']=Buffer.from(envelope).toString('base64url');
-      const result=await fetch(config.worker+'/bridge',{method:head?'HEAD':'POST',redirect:'manual',signal:request.signal,
+      const result=await fetch(worker+'/bridge',{method:head?'HEAD':'POST',redirect:'manual',signal:request.signal,
         headers:upstreamHeaders,...(head?{}:{body:envelope})});
       // Never propagate arbitrary redirects or accidental media streaming.
       if(result.status===307) {
         const target=new URL(result.headers.get('location'));
-        if(target.origin!==config.worker||!target.pathname.startsWith('/media/')||target.username||target.password||target.hash)throw Error('Invalid media redirect');
+        if(target.origin!==worker||!target.pathname.startsWith('/media/')||target.username||target.password||target.hash)throw Error('Invalid media redirect');
         if(result.body)await result.body.cancel();
         return new Response(null,{status:307,headers:result.headers});
       }
