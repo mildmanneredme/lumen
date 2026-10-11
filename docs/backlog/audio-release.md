@@ -4,7 +4,7 @@ The author approved the current audio unchanged on 10 October 2026: “Audio can
 
 ## Release choices
 
-- Invite-only access, served through authenticated private Vercel Blob delivery.
+- Invite-only access, served through authenticated private Cloudflare R2/Worker delivery. [Current hosting and evidence](cloudflare-delivery.md).
 - All 91 tracks: opening credits and epigraph, 89 story chapters, closing credits.
 - Both editions: Autonoe is labeled **Female narrator** and is the default; Charon is labeled **Male narrator**.
 - Public interface credit: **Inspired by Rob Xie**. Preserve the existing narrated credits and faithful manuscript display; changing them would require a separate audio/text decision.
@@ -63,4 +63,4 @@ Current v4 maps contain 23,673 measured positions and 2,171 explicit synchroniza
 
 The unchanged preparation report SHA-256 is `26daa5d0ed4dd5964ec01660f8f1a9ed2480f2ad2cfefb211cbc135445331b21`. The v4 engineering finalizer freshly verified all 182 source MP3s, 496 selected raw clips and their exact caches, rebuilt the measured maps, validated every cue or explicit unavailable position, and bound its technical verification to the exported map hashes. Current finalized-timings SHA-256 is `52d62832b64fe133b3fa507639c93f4e5bee6870496e8dea3613f3c5044d1c08`; timing-finalization-report SHA-256 is `b555f10e238f81d598c5f63c89908b4c73485280a13c34fa9e088aba5352eae0`. Earlier v2/v3 pointer/report snapshots remain under their private `web-release/revisions/` directories and hash-addressed artifacts remain intact; their weaker boundary/duplicate-occurrence policies are superseded. These engineering proofs do not claim human listening approval.
 
-Before publication, the private delivery integration must verify authorization on every manuscript/manifest/audio request, support MP3 Range seeking, and verify uploaded Blob bytes. This preparation script deliberately cannot perform those deployment actions.
+Before publication, the private delivery integration must verify authorization on every manuscript/manifest/audio request, support MP3 Range seeking, and verify uploaded private media bytes. This preparation script deliberately cannot perform those deployment actions.
