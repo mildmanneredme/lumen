@@ -196,6 +196,82 @@ let browser;
     JSON.parse(localStorage.getItem('lumen-reader-preferences-v1')).narratorId==='charon' && window.LUMEN_CHAPTER.audio.narratorId==='charon' &&
     document.querySelector('#narrator').value==='charon' && JSON.parse(localStorage.getItem('lumen-book-v2')).lastPosition.narratorId==='charon'));
   await cancelledVoiceReader.context.close();
+  // Voice and chapter are independent user choices. Hold only reader JSON so
+  // native playback stays unchanged while the earlier selection is superseded.
+  const deferredVoiceReader=async({initial='autonoe',requested='charon',failures=[]}={})=>{
+    const reader=await fixtureContext({failures});let requestedJSON=false,releaseJSON;
+    await reader.context.addInitScript(value=>{
+      if(!sessionStorage.getItem('fixture-preference-seeded')) {
+        localStorage.setItem('lumen-reader-preferences-v1',JSON.stringify(value));
+        sessionStorage.setItem('fixture-preference-seeded','yes');
+      }
+    },{...preferenceSeed,narratorId:initial});
+    await reader.page.route('**/fixture/chapter-001-'+requested+'.json',async route=>{
+      requestedJSON=true;await new Promise(resolve=>releaseJSON=resolve);
+      await route.fulfill({json:payloads.get('/fixture/chapter-001-'+requested+'.json')});
+    });
+    await reader.page.goto(origin,{waitUntil:'domcontentloaded'});await ready(reader.page);
+    return {...reader,async requestVoice(){
+      requestedJSON=false;
+      await reader.page.locator('#settings-open').click();await reader.page.locator('#narrator').selectOption(requested);
+      await reader.page.locator('#settings-close').click();
+      for(let n=0;n<100&&!requestedJSON;n++)await reader.page.waitForTimeout(10);
+      assert.ok(requestedJSON,'deferred narrator JSON request started');
+    },async release(){releaseJSON();await reader.page.waitForTimeout(100);}};
+  };
+  for(const [navigation,initial,requested]of [['chapter-list','autonoe','charon'],['next-button','charon','autonoe']]) {
+    const reader=await deferredVoiceReader({initial,requested});await reader.requestVoice();
+    regression(navigation+' keeps the prior narrator preference until a new recording commits',await reader.page.evaluate(initial=>
+      JSON.parse(localStorage.getItem('lumen-reader-preferences-v1')).narratorId===initial,initial));
+    if(navigation==='chapter-list')await choose(reader.page,'chapter-002');else await reader.page.locator('#track-next').click();
+    await reached(reader.page,'chapter-002');
+    regression(navigation+' retains the newest requested narrator while its previous chapter is loading',await reader.page.evaluate(requested=>
+      window.LUMEN_CHAPTER.audio.narratorId===requested&&document.querySelector('#narrator').value===requested&&
+      JSON.parse(localStorage.getItem('lumen-book-v2')).lastPosition.narratorId===requested,requested));
+    regression(navigation+' persists the narrator only after the superseding chapter commits',await reader.page.evaluate(requested=>
+      JSON.parse(localStorage.getItem('lumen-reader-preferences-v1')).narratorId===requested,requested));
+    await reader.release();
+    regression(navigation+' ignores the cancelled older narrator response',await reader.page.evaluate(requested=>
+      window.LUMEN_CHAPTER.chapterId==='chapter-002'&&window.LUMEN_CHAPTER.audio.narratorId===requested&&
+      JSON.parse(localStorage.getItem('lumen-reader-preferences-v1')).narratorId===requested,requested));
+    await reader.page.goto(origin+'/?chapter=chapter-003',{waitUntil:'domcontentloaded'});await reached(reader.page,'chapter-003');
+    regression(navigation+' narrator choice remains the preference on a later chapter-only deep link',await reader.page.evaluate(requested=>
+      window.LUMEN_CHAPTER.audio.narratorId===requested,requested));
+    await reader.context.close();
+  }
+  const failedPendingFailures=['/fixture/chapter-002-charon.json'];
+  const failedPendingVoice=await deferredVoiceReader({failures:failedPendingFailures});
+  await choose(failedPendingVoice.page,'chapter-003');await reached(failedPendingVoice.page,'chapter-003');
+  await failedPendingVoice.page.locator('#seek').evaluate(el=>{el.value='2.4';el.dispatchEvent(new Event('input',{bubbles:true}));});
+  await failedPendingVoice.page.waitForFunction(()=>!document.querySelector('#narration').seeking&&Math.abs(document.querySelector('#narration').currentTime-2.4)<.04);
+  await choose(failedPendingVoice.page,'chapter-001');await reached(failedPendingVoice.page,'chapter-001');
+  await failedPendingVoice.page.locator('#seek').evaluate(el=>{el.value='3';el.dispatchEvent(new Event('input',{bubbles:true}));});
+  await failedPendingVoice.page.waitForFunction(()=>!document.querySelector('#narration').seeking&&Math.abs(document.querySelector('#narration').currentTime-3)<.04);
+  const failedPendingBefore=await failedPendingVoice.page.evaluate(()=>({src:document.querySelector('#narration').getAttribute('src'),
+    other:JSON.parse(localStorage.getItem('lumen-book-v2')).history['chapter-003']}));
+  await failedPendingVoice.requestVoice();await choose(failedPendingVoice.page,'chapter-002');
+  await failedPendingVoice.page.waitForFunction(()=>!document.querySelector('#transition-retry').hidden||window.LUMEN_CHAPTER.chapterId==='chapter-002');
+  regression('a failed superseding narrator chapter keeps the actual source, exact bookmark and prior preference',await failedPendingVoice.page.evaluate(before=>{
+    const saved=JSON.parse(localStorage.getItem('lumen-book-v2')),audio=document.querySelector('#narration');
+    return !document.querySelector('#transition-retry').hidden&&window.LUMEN_CHAPTER.chapterId==='chapter-001'&&window.LUMEN_CHAPTER.audio.narratorId==='autonoe'&&
+      audio.getAttribute('src')===before.src&&Math.abs(audio.currentTime-3)<.04&&saved.lastPosition.chapterId==='chapter-001'&&saved.lastPosition.narratorId==='autonoe'&&
+      Math.abs(saved.lastPosition.audioTime-3)<.04&&JSON.parse(localStorage.getItem('lumen-reader-preferences-v1')).narratorId==='autonoe';
+  },failedPendingBefore));
+  regression('a failed superseding narrator chapter preserves unrelated chapter history',await failedPendingVoice.page.evaluate(before=>
+    JSON.stringify(JSON.parse(localStorage.getItem('lumen-book-v2')).history['chapter-003'])===JSON.stringify(before.other),failedPendingBefore));
+  await failedPendingVoice.release();await choose(failedPendingVoice.page,'chapter-003');await reached(failedPendingVoice.page,'chapter-003');
+  regression('a failed narrator request does not carry its voice to a later unrelated chapter',await failedPendingVoice.page.evaluate(()=>
+    window.LUMEN_CHAPTER.audio.narratorId==='autonoe'&&JSON.parse(localStorage.getItem('lumen-reader-preferences-v1')).narratorId==='autonoe'));
+  await choose(failedPendingVoice.page,'chapter-001');await reached(failedPendingVoice.page,'chapter-001');
+  await failedPendingVoice.requestVoice();await choose(failedPendingVoice.page,'chapter-002');
+  await failedPendingVoice.page.locator('#transition-retry').waitFor({state:'visible'});
+  await failedPendingVoice.release();failedPendingFailures.length=0;await failedPendingVoice.page.locator('#transition-retry').click();
+  await reached(failedPendingVoice.page,'chapter-002');
+  regression('retry of a failed superseding chapter retains its explicit requested narrator',await failedPendingVoice.page.evaluate(()=>
+    window.LUMEN_CHAPTER.audio.narratorId==='charon'&&document.querySelector('#narrator').value==='charon'));
+  regression('a successful superseding chapter retry persists its narrator preference',await failedPendingVoice.page.evaluate(()=>
+    JSON.parse(localStorage.getItem('lumen-reader-preferences-v1')).narratorId==='charon'));
+  await failedPendingVoice.context.close();
   const sharedPreferencesReader=await fixtureContext(),staleSettingsPage=sharedPreferencesReader.page;
   await staleSettingsPage.goto(origin,{waitUntil:'domcontentloaded'});await ready(staleSettingsPage);
   const preferencePeer=await sharedPreferencesReader.context.newPage();preferencePeer.on('pageerror',e=>errors.push(String(e)));
