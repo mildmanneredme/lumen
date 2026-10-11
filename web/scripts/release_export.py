@@ -283,7 +283,7 @@ def validate_aliases(registry):
                         and end["trackCompleted"] is False, "Invalid legacy alias excerpt completion")
 
 
-def reader_payload(registry, track, recording, timing, track_plan, plan, audio_url, scenes, part_title, scene_clock=None):
+def reader_payload(registry, track, recording, timing, track_plan, plan, audio_url, scenes, part_title, scene_clock=None, scene_bindings=None):
     cues = {cue["sentenceId"]: cue for cue in timing["sentences"]}
     paragraphs = []
     for paragraph in track["paragraphs"]:
@@ -300,7 +300,7 @@ def reader_payload(registry, track, recording, timing, track_plan, plan, audio_u
         measured = [row for row in public["sentences"] if content.finite_number(row["start"]) and content.finite_number(row["end"])]
         public.update(start=measured[0]["start"] if measured else None, end=measured[-1]["end"] if measured else None)
         paragraphs.append(public)
-    resolved = content.resolve_scenes(track, recording, timing, scenes, scene_clock)
+    resolved = content.resolve_scenes(track, recording, timing, scenes, scene_clock, scene_bindings)
     for index, scene in enumerate(resolved):
         scene["end"] = resolved[index + 1]["start"] if index + 1 < len(resolved) else recording["decodedDuration"]
     extent = track_plan.get("extentId", track["id"] + "-full")
@@ -394,7 +394,8 @@ def build_release(root, registry, inventory, timing_maps, scenes_by_track, plan,
                 from recover_scene_timings import verify_scene_clock
                 verified, _ = verify_scene_clock(root, track, verified, timing, scene_clock)
             audio_url = media_base + "audio/" + narrator_id + "/" + track["id"] + "." + verified["sha256"] + ".mp3"
-            payload = reader_payload(registry, track, verified, timing, selected, plan, audio_url, scene_data, row["partTitle"], scene_clock)
+            scene_bindings = {scene["id"]: scene for scene in scenes_by_track.get(track["id"], [])}
+            payload = reader_payload(registry, track, verified, timing, selected, plan, audio_url, scene_data, row["partTitle"], scene_clock, scene_bindings)
             digest = content.object_hash(payload)
             relative = "tracks/" + track["id"] + "/reader-" + narrator_id + "." + digest + ".json"
             row["recordings"][narrator_id] = {"status": "ready", "url": app_base + relative, "audioSha256": verified["sha256"]}

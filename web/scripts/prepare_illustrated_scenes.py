@@ -153,7 +153,7 @@ def scene_clock_cues(track, narrator_id, timing, scene_map):
     cue_ids = [cue.get("sentenceId") for cue in rows]
     content.require(all(isinstance(value, str) and value in ids for value in cue_ids)
                     and cue_ids == [value for value in ids if value in cue_ids]
-                    and all(cue.get("method") == "unique-measured-ASR-prefix"
+                    and all(isinstance(cue.get("method"), str) and cue["method"] in content.SCENE_ONSET_METHODS
                             and content.finite_number(cue.get("start"))
                             and 0 <= cue["start"] < timing["duration"] for cue in rows),
                     "Measured scene clock requires ordered distinct canonical onsets")
@@ -299,6 +299,7 @@ def prepare_scenes(root, registry, selections_dir, timing_maps, *, track_ids=Non
                     clock.update(status="measured", startSeconds=cue["start"], source="measured-sentence")
                 scene_cue = scene_cues_by_narrator[narrator_id].get(sentence_id)
                 if clock["status"] == "blocked" and scene_cue is not None:
+                    content.validate_scene_onset_binding(scene, scene_cue, scene)
                     clock.pop("reason", None)
                     clock.update(status="measured", startSeconds=scene_cue["start"], source="measured-scene-cue")
                     totals["measuredSceneOnlyAnchors"] += 1

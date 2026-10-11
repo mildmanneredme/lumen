@@ -159,6 +159,136 @@ class SceneClockTests(unittest.TestCase):
         return recovery.scene_clock_map(self.track, self.recording, self.baseline, self.words,
                     [self.target], [], asset["path"], asset["sha256"])
 
+    def phrase_fixture(self, *, span=(4, 10)):
+        self.sentences[1]["text"] = "Adrian drove toward Zurich, and the doubt drove with him."
+        sentence_hash = hashlib.sha256(self.sentences[1]["text"].encode()).hexdigest()
+        full = self.root / "selected-full.webp"
+        phone = self.root / "selected-phone.webp"
+        full.write_bytes(b"selected full image")
+        phone.write_bytes(b"selected phone image")
+        self.source = {"id": "scene-driving", "trackId": self.track["id"], "sentenceId": self.target,
+                       "sentenceTextSha256": sentence_hash, "sourcePath": full.name,
+                       "sha256": recovery.content.file_hash(full), "phone": {"path": phone.name,
+                       "sha256": recovery.content.file_hash(phone)}}
+        manifest = recovery.content.export_asset(self.root, self.track["id"], "selected",
+                                                 {"chapterId": self.track["id"], "scenes": [self.source]})
+        request = {"schemaVersion": 1, "kind": "reviewed-scene-phrase-end", "trackId": self.track["id"],
+                   "narratorId": self.recording["narratorId"], "sceneId": self.source["id"],
+                   "sourceManifestPath": manifest["path"], "sourceManifestSha256": manifest["sha256"],
+                   "sourceSha256": self.source["sha256"], "phoneSha256": self.source["phone"]["sha256"],
+                   "sentenceId": self.target, "sentenceTextSha256": sentence_hash,
+                   "tokenStart": span[0], "tokenEnd": span[1], "boundary": "end"}
+        request["review"] = {"status": "accepted-with-note", "reviewer": "narrative reviewer",
+                             "reviewedAt": "2026-10-11T03:00:00Z", "note": "Driving disclosed by this phrase end.",
+                             "requestSha256": recovery.reviewed_phrase_hash(request)}
+        self.phrase_words = [(word, 7.12 + index * 0.5, 7.32 + index * 0.5)
+                             for index, word in enumerate("Mauro drove towards Zurich and the doubt drove with him".split())]
+        return request, self.write_phrase_request(request)
+
+    def write_phrase_request(self, request):
+        asset = recovery.content.export_asset(self.root, self.track["id"], "phrase-request", request)
+        return {"path": asset["path"], "sha256": asset["sha256"]}
+
+    def phrase_map(self, reference, words=None):
+        asset = recovery.content.export_asset(self.root, self.track["id"], "baseline", self.baseline)
+        return recovery.scene_clock_map(self.track, self.recording, self.baseline,
+                    self.phrase_words if words is None else words, [self.target], [], asset["path"], asset["sha256"],
+                    reviewed_phrase_requests=[reference], root=self.root)
+
+    def test_explicit_reviewed_phrase_end_uses_final_word_clock_and_keeps_prose_unavailable(self):
+        request, reference = self.phrase_fixture()
+        original = copy.deepcopy(self.baseline)
+        self.assertEqual(self.recover(self.phrase_words)[0], [])
+        result = self.phrase_map(reference)
+        cue = result["cues"][0]
+        self.assertEqual(result["unavailable"], [])
+        self.assertEqual(cue["method"], recovery.PHRASE_METHOD)
+        self.assertEqual(cue["start"], self.phrase_words[-1][2])
+        self.assertEqual(cue["phraseTokens"], "and the doubt drove with him".split())
+        self.assertEqual(cue["sceneId"], self.source["id"])
+        self.assertEqual(cue["sourceSha256"], self.source["sha256"])
+        self.assertEqual(cue["phoneSha256"], self.source["phone"]["sha256"])
+        self.assertEqual(self.baseline, original)
+        self.assertIsNone(self.baseline["sentences"][1]["end"])
+
+    def test_reviewed_phrase_request_hash_review_and_selected_bytes_are_freshly_bound(self):
+        request, reference = self.phrase_fixture()
+        for field, value in [("sceneId", "other-painting"), ("sourceSha256", "f" * 64),
+                             ("phoneSha256", "f" * 64), ("sentenceTextSha256", "f" * 64),
+                             ("tokenStart", 5)]:
+            changed = copy.deepcopy(request)
+            changed[field] = value
+            with self.subTest(field=field), self.assertRaises(recovery.content.ContentError):
+                self.phrase_map(self.write_phrase_request(changed))
+        changed = copy.deepcopy(request)
+        changed["review"]["reviewedAt"] = "2026-10-11T03:00:00"
+        with self.assertRaisesRegex(recovery.content.ContentError, "timezone"):
+            self.phrase_map(self.write_phrase_request(changed))
+        for name in ["selected-full.webp", "selected-phone.webp"]:
+            path = self.root / name
+            prior = path.read_bytes()
+            path.write_bytes(b"changed selected image")
+            with self.subTest(image=name), self.assertRaisesRegex(recovery.content.ContentError, "image bytes changed"):
+                self.phrase_map(reference)
+            path.write_bytes(prior)
+        path = self.root / reference["path"]
+        path.write_bytes(path.read_bytes() + b" ")
+        with self.assertRaisesRegex(recovery.content.ContentError, "request bytes changed"):
+            self.phrase_map(reference)
+
+    def test_reviewed_phrase_span_must_be_strict_canonical_single_sentence_and_unique(self):
+        for span in [(True, 6), (4, False), (4, 11), (4, 6), (-1, 4)]:
+            with self.subTest(span=span):
+                request, reference = self.phrase_fixture(span=span)
+                with self.assertRaisesRegex(recovery.content.ContentError, "token span"):
+                    self.phrase_map(reference)
+        request, reference = self.phrase_fixture()
+        self.sentences[0]["text"] = "The other thought ended and the doubt drove with him."
+        with self.assertRaisesRegex(recovery.content.ContentError, "not unique"):
+            self.phrase_map(reference)
+
+    def test_missing_repeated_or_outside_gap_reviewed_phrases_remain_unavailable(self):
+        request, reference = self.phrase_fixture()
+        cases = [self.phrase_words[:-1],
+                 self.phrase_words + [(word, start + 6, end + 6) for word, start, end in self.phrase_words],
+                 [(word, start - 5, end - 5) for word, start, end in self.phrase_words],
+                 [(word, start + 10, end + 10) for word, start, end in self.phrase_words]]
+        for words in cases:
+            with self.subTest(words=words):
+                result = self.phrase_map(reference, words)
+                self.assertEqual(result["cues"], [])
+                self.assertNotIn("start", result["unavailable"][0])
+
+    def test_every_matched_phrase_word_must_end_within_gap_and_before_selected_endpoint(self):
+        request, reference = self.phrase_fixture()
+        for changed_end in [21.0, 13.0]:
+            with self.subTest(changed_end=changed_end):
+                words = list(self.phrase_words)
+                word, start, _ = words[4]
+                words[4] = word, start, changed_end
+                result = self.phrase_map(reference, words)
+                self.assertEqual(result["cues"], [])
+                self.assertEqual(result["unavailable"][0]["reason"], "missing-exact-reviewed-phrase")
+                self.assertNotIn("start", result["unavailable"][0])
+
+    def test_phrase_map_verifier_reproduces_endpoint_span_and_request(self):
+        request, reference = self.phrase_fixture()
+        result = self.phrase_map(reference)
+        with patch.object(recovery.finalize, "verify_technical_alignment", return_value=(self.recording, {})), \
+                patch.object(recovery, "checked_scene_words", return_value=self.phrase_words), \
+                patch.object(recovery.finalize, "checked_cache_words", return_value=self.phrase_words):
+            _, proof = recovery.verify_scene_clock(self.root, self.track, self.recording, self.baseline, result)
+            self.assertEqual(proof["measuredCues"], 1)
+            for field in ["start", "phraseEnd", "observedTokenIndex", "tokenStart", "sceneId", "phoneSha256"]:
+                changed = copy.deepcopy(result)
+                changed["cues"][0][field] = "wrong" if isinstance(changed["cues"][0][field], str) else 1.0
+                with self.subTest(field=field), self.assertRaisesRegex(recovery.content.ContentError, "reproducible"):
+                    recovery.verify_scene_clock(self.root, self.track, self.recording, self.baseline, changed)
+            changed = copy.deepcopy(result)
+            changed["reviewedPhraseRequests"][0]["sha256"] = "f" * 64
+            with self.assertRaisesRegex(recovery.content.ContentError, "request bytes changed"):
+                recovery.verify_scene_clock(self.root, self.track, self.recording, self.baseline, changed)
+
     def test_verified_map_rebuild_rejects_forged_seconds_or_recording_identity(self):
         scene_map = self.scene_map()
         with patch.object(recovery.finalize, "verify_technical_alignment", return_value=(self.recording, {})), \

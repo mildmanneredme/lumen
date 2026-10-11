@@ -18,6 +18,15 @@ Reviewed `--corrections` records resolve competing triggers and unsafe timing ga
 
 `recover_scene_timings.py` supplies separate image-onset clocks where a baseline sentence start is unavailable. It checks exact three-to-six-token prefixes unique across the chapter, inside the original measured-neighbor window. Bounded recognition uses the installed offline medium model without a manuscript prompt. Retained raw recognition outputs, model files, raw/mastered audio and baseline caches are hash-bound and freshly checked. Export reproduces these cues and rejects equal or reversed starts. No sentence ending is estimated: uncertain prose stays unhighlighted and has no seek control.
 
+The final painting in Chapter 60 needs an explicitly reviewed phrase endpoint
+because its first-word sequence is unavailable in one voice and there is no later
+safe sentence. A distinct phrase-end proof uses six exact canonical words after
+the depicted action is disclosed, with no name aliases or estimated seconds.
+Its private request binds the selected manifest, full/phone paintings,
+canonical text and token span; both preparation and export check those painting
+bindings before applying the cue. The other voice retains its original measured
+sentence trigger.
+
 The release exporter optionally includes `phoneSourcePath` and `phoneSha256`. Review binds the phone image hash as well as the full painting, sentence, title and alt text. Both images enter the immutable private inventory; reader payloads expose only `src` and `phoneSrc`. The reader selects a suitable variant for its display and loads the active painting and the next one. Existing single-image scene payloads remain supported.
 
 A failed current image gets one automatic retry. A terminal failure clears stale artwork and can recover when the browser reconnects. Image errors leave narration status and playback intact.
@@ -54,6 +63,27 @@ Add the source-bound `--metadata`, reviewed `--corrections` and measured
 directory for the corrected draft. The final private audit records their exact
 paths and hashes. Preparation does not upload files or change the live site.
 Painting review remains required before exporting a publishable scene map.
+
+The corrected private draft validates all 1,379 paintings across 89 chapters and
+178 narrator/chapter combinations. All 2,758 reveal clocks are measured and
+strictly increasing; no selected painting has a missing clock or competing
+trigger. There are 48 source-bound canonical corrections and 199 independent
+image-only cues (198 exact prefixes and one reviewed phrase endpoint). The
+original manuscript, audio, sentence maps and selected painting files remain
+unchanged. Original unresolved targets stay in the recovery evidence when a
+reviewed correction moves their painting to a different measured sentence.
+
+The final private packet is under
+`Audiobook/author-audit/imagery-fixes-v1/`. It includes `reader-metadata-v4.json`,
+`anchor-corrections-extended-v1.json`, source/recognition review records, the
+`scene-clocks-phrase-final-v1/` combined clock index and `prepared-final-v1/`
+draft/audit. The final audit SHA-256 is
+`ae4b6cafe341812d75791ed2f527e25efaf2e9a590fc4af0499031f4ba0deb4a`;
+the strict 178-recording clock validation SHA-256 is
+`f32531f7d8c22c110ba0ecea47aa9ec809973d186275844a90b85b324ea58e5d`.
+These files remain ignored and private. All 1,379 painting release approvals
+remain pending; technical narrative corrections do not supply author aesthetic
+approval.
 
 Local verification covers the importer, source-bound clock recovery, release
 export, immutable R2 uploads, actual local workerd/R2 behavior and Chrome reader

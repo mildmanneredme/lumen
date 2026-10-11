@@ -520,6 +520,23 @@ uploadPrivateRelease({root:values.root,inventory,manifestURL:values.manifestURL,
                        scene_timing_maps={self.track["id"]: {"charon": clock}})
         self.assertFalse(self.staging.exists())
 
+    def test_reviewed_phrase_payload_binds_private_images_and_omits_narrative_request(self):
+        scene, _, _ = self.phone_scene_fixture()
+        timing, clock = self.scene_gap_fixture()
+        clock["cues"][0].update(method="unique-measured-ASR-phrase-end", sceneId=scene["id"],
+                               sourceSha256=scene["sha256"], phoneSha256=scene["phoneSha256"],
+                               phraseTokens=["PRIVATE", "REVIEWED", "WORDS"], requestSha256="e" * 64)
+        public, _ = release.prepare_scenes(self.root, [scene], self.plan["mediaURLbase"])
+        args = [self.registry, self.track, self.recording, timing, self.plan["tracks"][0], self.plan,
+                "https://reader.example/api/assets/audio.mp3", public, None, clock]
+        with self.assertRaisesRegex(release.content.ContentError, "different painting"):
+            release.reader_payload(*args)
+        payload = release.reader_payload(*args, scene_bindings={scene["id"]: scene})
+        self.assertEqual(payload["scenes"][0]["start"], 1.2)
+        self.assertIsNone(payload["paragraphs"][0]["sentences"][0]["start"])
+        for private in ["PRIVATE", "sourceSha256", "phoneSha256", "phraseTokens", "requestSha256"]:
+            self.assertNotIn(private, json.dumps(payload))
+
     def test_schema2_public_payload_keeps_unavailable_sentence_text_without_private_windows(self):
         timing = copy.deepcopy(self.timing); timing["schemaVersion"] = 2
         for cue in timing["sentences"]:

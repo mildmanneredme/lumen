@@ -337,6 +337,25 @@ class IllustratedScenePreparationTests(unittest.TestCase):
             with self.assertRaises(images.content.ContentError):
                 self.prepare()
 
+    def test_reviewed_phrase_end_audit_requires_this_selected_painting(self):
+        timing = self.timings[self.track["id"]]["autonoe"]
+        gap = timing["sentences"][0]
+        gap.update(syncStatus="unavailable", start=None, end=None, reason="low-confidence-ASR-anchor")
+        original = copy.deepcopy(timing)
+        source = self.selection["scenes"][0]
+        cue = {"sentenceId": gap["sentenceId"], "sceneId": source["id"], "start": 1.25,
+               "method": "unique-measured-ASR-phrase-end", "sourceSha256": source["sha256"],
+               "phoneSha256": source["phone"]["sha256"]}
+        clock = {"schemaVersion": 1, "kind": "measured-scene-cues", "trackId": self.track["id"],
+                 "narratorId": "autonoe", "manuscriptVersion": "v6", "textSha256": self.track["textSha256"],
+                 "audioSha256": timing["audioSha256"], "duration": timing["duration"], "cues": [cue]}
+        result = self.prepare(scene_timing_maps={self.track["id"]: {"autonoe": clock}})
+        self.assertEqual(result["audit"]["tracks"][0]["scenes"][0]["narrators"]["autonoe"]["startSeconds"], 1.25)
+        self.assertEqual(timing, original)
+        for change in [{"sceneId": "different"}, {"sourceSha256": "f" * 64}, {"phoneSha256": "f" * 64}]:
+            with self.subTest(change=change), self.assertRaisesRegex(images.content.ContentError, "different painting"):
+                self.prepare(scene_timing_maps={self.track["id"]: {"autonoe": dict(clock, cues=[dict(cue, **change)])}})
+
     def test_shared_source_timestamps_and_unsafe_metadata_are_rejected(self):
         self.selection["scenes"][0]["start"] = 1.0
         self.save_selection()

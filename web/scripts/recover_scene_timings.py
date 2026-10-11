@@ -3,8 +3,10 @@
 
 The manuscript, narration, baseline timings and ASR caches are preserved.
 Optional recognition uses only the installed offline medium model, without a
-manuscript prompt. Each cue needs an exact three-to-six-token prefix unique
-across its chapter and inside its baseline measured-neighbor window.
+manuscript prompt. Automatic cues need an exact three-to-six-token prefix
+unique across the chapter and inside the baseline measured-neighbor window.
+An explicit, source-bound narrative review may instead select the measured end
+of a unique canonical phrase within the unavailable sentence.
 """
 from __future__ import annotations
 
@@ -12,6 +14,7 @@ import argparse
 from bisect import bisect_left, bisect_right
 import copy
 from datetime import datetime, timezone
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -23,8 +26,121 @@ import prepare_book_audio as audio
 
 
 METHOD = "unique-measured-ASR-prefix"
+PHRASE_METHOD = "unique-measured-ASR-phrase-end"
 PREFIX_LENGTH = 6
 MIN_PREFIX_LENGTH = 3
+PHRASE_REQUEST_FIELDS = {"schemaVersion", "kind", "trackId", "narratorId", "sceneId",
+                        "sourceManifestPath", "sourceManifestSha256", "sourceSha256", "phoneSha256",
+                        "sentenceId", "sentenceTextSha256", "tokenStart", "tokenEnd", "boundary", "review"}
+
+
+def reviewed_phrase_hash(request):
+    return content.object_hash({key: value for key, value in request.items() if key != "review"})
+
+
+def checked_phrase_request(root, track, recording, baseline, reference):
+    """Read an explicit narrative choice, bound to canonical prose and selected bytes."""
+    content.require(isinstance(reference, dict) and set(reference) == {"path", "sha256"}
+                    and isinstance(reference["path"], str) and not Path(reference["path"]).is_absolute()
+                    and ".." not in Path(reference["path"]).parts and content.valid_hash(reference["sha256"]),
+                    "Reviewed scene phrase requires a contained hash-bound request")
+    path = content.project_file(root, reference["path"])
+    public = Path(root).resolve() / "web/dist"
+    content.require(path != public and public not in path.parents
+                    and content.file_hash(path) == reference["sha256"], "Reviewed scene phrase request bytes changed")
+    request = content.read_project_json(root, path)
+    content.require(isinstance(request, dict) and set(request) == PHRASE_REQUEST_FIELDS
+                    and type(request["schemaVersion"]) is int and request["schemaVersion"] == 1
+                    and request["kind"] == "reviewed-scene-phrase-end" and request["boundary"] == "end"
+                    and request["trackId"] == track["id"] and request["narratorId"] == recording["narratorId"]
+                    and isinstance(request["sceneId"], str) and bool(request["sceneId"].strip()),
+                    "Reviewed scene phrase identity differs")
+    canonical = content.sentences(track)
+    sentence = next((row for row in canonical if row["id"] == request["sentenceId"]), None)
+    content.require(sentence is not None and hashlib.sha256(sentence["text"].encode("utf-8")).hexdigest()
+                    == request["sentenceTextSha256"], "Reviewed scene phrase canonical text differs")
+    cue = next((row for row in baseline["sentences"] if row["sentenceId"] == request["sentenceId"]), None)
+    content.require(cue is not None and cue.get("syncStatus") == "unavailable",
+                    "Reviewed scene phrase can only target an unavailable sentence")
+    first, last = request["tokenStart"], request["tokenEnd"]
+    local = [token for token, _, _ in audio.token_spans(content.spoken_comparison(sentence["text"]))]
+    content.require(type(first) is int and type(last) is int and 0 <= first < last <= len(local)
+                    and MIN_PREFIX_LENGTH <= last - first <= PREFIX_LENGTH,
+                    "Reviewed scene phrase requires an exact three-to-six-token span within its sentence")
+    review = request["review"]
+    content.require(isinstance(review, dict) and review.get("status") == "accepted-with-note"
+                    and isinstance(review.get("reviewer"), str) and review["reviewer"].strip()
+                    and isinstance(review.get("note"), str) and review["note"].strip()
+                    and review.get("requestSha256") == reviewed_phrase_hash(request),
+                    "Reviewed scene phrase requires a current hash-bound narrative note")
+    try:
+        reviewed = datetime.fromisoformat(review.get("reviewedAt", "").replace("Z", "+00:00"))
+    except (ValueError, TypeError, AttributeError) as exc:
+        raise content.ContentError("Reviewed scene phrase requires a review timestamp") from exc
+    content.require(reviewed.tzinfo is not None, "Reviewed scene phrase review requires a timezone")
+    manifest_path = request["sourceManifestPath"]
+    content.require(isinstance(manifest_path, str) and not Path(manifest_path).is_absolute()
+                    and ".." not in Path(manifest_path).parts and content.valid_hash(request["sourceManifestSha256"])
+                    and content.project_file_hash(root, manifest_path) == request["sourceManifestSha256"],
+                    "Reviewed scene phrase selected manifest bytes changed")
+    manifest = content.read_project_json(root, manifest_path)
+    content.require(isinstance(manifest, dict) and isinstance(manifest.get("scenes"), list)
+                    and all(isinstance(row, dict) for row in manifest["scenes"]),
+                    "Reviewed scene phrase selected manifest is invalid")
+    selected = [row for row in manifest.get("scenes", []) if row.get("id") == request["sceneId"]]
+    content.require(manifest.get("chapterId") == track["id"] and len(selected) == 1,
+                    "Reviewed scene phrase painting is absent or duplicated in selected manifest")
+    source = selected[0]
+    phone = source.get("phone")
+    content.require(isinstance(phone, dict), "Reviewed scene phrase selected phone binding is invalid")
+    content.require(source.get("trackId") == track["id"] and source.get("sentenceId") == request["sentenceId"]
+                    and source.get("sentenceTextSha256") == request["sentenceTextSha256"]
+                    and source.get("sha256") == request["sourceSha256"]
+                    and phone.get("sha256") == request["phoneSha256"],
+                    "Reviewed scene phrase selected painting binding differs")
+    for image_path, digest in [(source.get("sourcePath"), request["sourceSha256"]),
+                               (phone.get("path"), request["phoneSha256"])]:
+        content.require(isinstance(image_path, str) and content.valid_hash(digest),
+                        "Reviewed scene phrase requires both selected image hashes")
+        image = content.project_file(root, image_path)
+        content.require(image.suffix.lower() == ".webp" and content.file_hash(image) == digest,
+                        "Reviewed scene phrase selected image bytes changed")
+    return request
+
+
+def measured_phrase_cue(track, baseline, words, request, reference):
+    """Measure only an explicitly reviewed phrase endpoint; never a prose clock."""
+    canonical = content.sentences(track)
+    flattened, sentence_first = [], None
+    for sentence in canonical:
+        if sentence["id"] == request["sentenceId"]:
+            sentence_first = len(flattened)
+        flattened.extend(token for token, _, _ in audio.token_spans(content.spoken_comparison(sentence["text"])))
+    first = sentence_first + request["tokenStart"]
+    length = request["tokenEnd"] - request["tokenStart"]
+    phrase = flattened[first:first + length]
+    options = [position for position in range(len(flattened) - length + 1)
+               if flattened[position:position + length] == phrase]
+    content.require(options == [first], "Reviewed scene phrase is not unique across its canonical chapter")
+    heard, times = token_clock(words, baseline["duration"])
+    window = next(row for row in baseline["sentences"] if row["sentenceId"] == request["sentenceId"])["recheckWindow"]
+    observed = [position for position in range(len(heard) - length + 1)
+                if heard[position:position + length] == phrase
+                and all(window["start"] <= start < end <= window["end"]
+                        and end <= times[position + length - 1][1]
+                        for start, end in times[position:position + length])]
+    if len(observed) != 1:
+        return None, {"sentenceId": request["sentenceId"],
+                      "reason": "missing-exact-reviewed-phrase" if not observed else "ambiguous-observed-reviewed-phrase"}
+    position = observed[0]
+    end = times[position + length - 1][1]
+    content.require(end < baseline["duration"], "Reviewed scene phrase ends after the last usable reveal clock")
+    return {"sentenceId": request["sentenceId"], "sceneId": request["sceneId"],
+            "sourceSha256": request["sourceSha256"], "phoneSha256": request["phoneSha256"],
+            "start": end, "method": PHRASE_METHOD, "phraseTokens": phrase,
+            "tokenStart": request["tokenStart"], "tokenEnd": request["tokenEnd"], "boundary": "end",
+            "observedTokenIndex": position, "phraseStart": times[position][0], "phraseEnd": end,
+            "requestPath": reference["path"], "requestSha256": reference["sha256"]}, None
 
 
 def retain_monotone_cues(cues, unavailable, target_ids):
@@ -127,7 +243,7 @@ def measured_prefix_cues(track, baseline, words, target_ids):
 
 
 def scene_clock_map(track, recording, baseline, words, targets, evidence, baseline_path, baseline_hash,
-                    baseline_words=None):
+                    baseline_words=None, reviewed_phrase_requests=None, root=None):
     cues, unavailable = measured_prefix_cues(track, baseline, words, targets)
     cues = [dict(cue, wordSource="selected-ASR") for cue in cues]
     if baseline_words is not None and unavailable:
@@ -137,14 +253,38 @@ def scene_clock_map(track, recording, baseline, words, targets, evidence, baseli
         cues.extend(dict(cue, wordSource="baseline-ASR") for cue in original)
         recovered_ids = {cue["sentenceId"] for cue in original}
         unavailable = [gap for gap in unavailable if gap["sentenceId"] not in recovered_ids]
+    if reviewed_phrase_requests is not None:
+        content.require(isinstance(reviewed_phrase_requests, list) and bool(reviewed_phrase_requests) and root is not None,
+                        "Reviewed scene phrases require explicit private request references")
+        requested = set()
+        for reference in reviewed_phrase_requests:
+            request = checked_phrase_request(root, track, recording, baseline, reference)
+            sentence_id = request["sentenceId"]
+            content.require(sentence_id in targets and sentence_id not in requested
+                            and all(cue["sentenceId"] != sentence_id for cue in cues),
+                            "Reviewed scene phrase must target a distinct unresolved scene anchor")
+            requested.add(sentence_id)
+            cue, gap = measured_phrase_cue(track, baseline, words, request, reference)
+            word_source = "selected-ASR"
+            if cue is None and baseline_words is not None:
+                cue, gap = measured_phrase_cue(track, baseline, baseline_words, request, reference)
+                word_source = "baseline-ASR"
+            unavailable = [row for row in unavailable if row["sentenceId"] != sentence_id]
+            if cue is not None:
+                cues.append(dict(cue, wordSource=word_source))
+            else:
+                unavailable.append(gap)
     cues, unavailable = retain_monotone_cues(cues, unavailable, targets)
-    return {"schemaVersion": 1, "kind": "measured-scene-cues", "trackId": track["id"],
+    result = {"schemaVersion": 1, "kind": "measured-scene-cues", "trackId": track["id"],
             "narratorId": recording["narratorId"], "manuscriptVersion": track["manuscriptVersion"],
             "textSha256": track["textSha256"], "audioSha256": recording["sha256"],
             "duration": recording["decodedDuration"], "baselineTimingPath": baseline_path,
             "baselineTimingSha256": baseline_hash, "targetSentenceIds": list(targets),
             "evidence": evidence, "sourceBindings": copy.deepcopy(baseline["sourceBindings"]),
             "cues": cues, "unavailable": unavailable}
+    if reviewed_phrase_requests is not None:
+        result["reviewedPhraseRequests"] = copy.deepcopy(reviewed_phrase_requests)
+    return result
 
 
 def checked_scene_words(root, track, recording, baseline, evidence):
@@ -234,7 +374,8 @@ def verify_scene_clock(root, track, recording, baseline_timing, scene_map):
     baseline_words = finalize.checked_cache_words(root, track, verified, baseline_timing["evidence"],
                                                   baseline_timing["sourceBindings"])
     rebuilt = scene_clock_map(track, verified, baseline_timing, words, scene_map.get("targetSentenceIds"),
-                              scene_map["evidence"], path, scene_map["baselineTimingSha256"], baseline_words)
+                              scene_map["evidence"], path, scene_map["baselineTimingSha256"], baseline_words,
+                              scene_map.get("reviewedPhraseRequests"), root)
     content.require(content.object_hash(scene_map) == content.object_hash(rebuilt),
                     "Measured scene clock differs from reproducible word evidence")
     return verified, {"status": "verified", "method": METHOD, "audioSha256": verified["sha256"],

@@ -166,6 +166,13 @@ baseline, ASR caches, local model and retained recognition outputs, then
 reproduces every onset. It rejects changed proof and equal or reversed painting
 clocks. Only the onset and recording-bound trigger marker reach the reader;
 uncertain sentence bounds stay null and cannot enable highlighting or seeking.
+For a final painting with no later safe sentence, an explicit reviewed phrase
+request can select the measured end of three to six exact canonical words within
+the unavailable sentence. The phrase must be unique in the chapter and observed
+once wholly inside the original gap. Review binds the selected manifest,
+painting/phone hashes, canonical text and token span. Export checks the cue
+belongs to that painting; it cannot be borrowed by other artwork. Phrase text,
+review records and recognition evidence remain private.
 Pending painting approvals remain pending. See [generated imagery
 integration](imagery-integration.md) for the R2 decision and preparation commands.
 

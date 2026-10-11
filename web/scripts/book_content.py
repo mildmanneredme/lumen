@@ -653,7 +653,23 @@ def validate_timing_map(track, recording, timing, *, require_approved=False, ali
     return True
 
 
-def resolve_scenes(track, recording, timing, scenes, scene_clock=None):
+SCENE_ONSET_METHODS = {"unique-measured-ASR-prefix", "unique-measured-ASR-phrase-end"}
+
+
+def validate_scene_onset_binding(scene, cue, source):
+    """Keep a reviewed within-sentence phrase specific to its painted subject."""
+    if cue.get("method") != "unique-measured-ASR-phrase-end":
+        return
+    require(isinstance(source, dict) and valid_hash(source.get("sha256"))
+            and (source.get("phoneSha256") is None or valid_hash(source["phoneSha256"]))
+            and source.get("id") == scene.get("id") == cue.get("sceneId")
+            and source.get("sentenceId") == scene.get("sentenceId") == cue.get("sentenceId")
+            and source["sha256"] == cue.get("sourceSha256")
+            and "phoneSha256" in cue and source.get("phoneSha256") == cue["phoneSha256"],
+            "Reviewed phrase onset belongs to a different painting or canonical trigger")
+
+
+def resolve_scenes(track, recording, timing, scenes, scene_clock=None, scene_bindings=None):
     """Resolve shared reveal anchors using this voice's independently bound clock."""
     validate_timing_map(track, recording, timing)
     cues = {cue["sentenceId"]: cue for cue in timing["sentences"]}
@@ -668,10 +684,11 @@ def resolve_scenes(track, recording, timing, scenes, scene_clock=None):
                 "Scene onset proof belongs to a different source or recording")
         rows = scene_clock.get("cues")
         require(isinstance(rows, list) and all(isinstance(row, dict) and row.get("sentenceId") in cues
-                and row.get("method") == "unique-measured-ASR-prefix" and finite_number(row.get("start"))
+                and isinstance(row.get("method"), str) and row["method"] in SCENE_ONSET_METHODS
+                and finite_number(row.get("start"))
                 and 0 <= row["start"] < recording["decodedDuration"] for row in rows),
                 "Invalid measured scene onset proof")
-        onsets = {row["sentenceId"]: row["start"] for row in rows}
+        onsets = {row["sentenceId"]: row for row in rows}
         require(len(onsets) == len(rows), "Duplicate measured scene onset proof")
     result, seen = [], set()
     previous = -1.0
@@ -684,7 +701,11 @@ def resolve_scenes(track, recording, timing, scenes, scene_clock=None):
         start = cues[scene["sentenceId"]]["start"]
         scene_only = False
         if not finite_number(start) or cues[scene["sentenceId"]].get("syncStatus") == "unavailable":
-            start = onsets.get(scene["sentenceId"])
+            onset = onsets.get(scene["sentenceId"])
+            if onset is not None:
+                source = scene_bindings.get(scene_id) if isinstance(scene_bindings, dict) else None
+                validate_scene_onset_binding(scene, onset, source)
+            start = onset["start"] if onset is not None else None
             scene_only = True
         require(finite_number(start), "Scene reveal requires measured evidence; unavailable gaps have no reveal clock")
         require(start > previous, "Scene reveal clocks must be strictly increasing; equal starts would hide a painting")

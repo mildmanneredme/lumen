@@ -774,6 +774,29 @@ class ContentContractTests(unittest.TestCase):
         with self.assertRaisesRegex(content.ContentError, "strictly increasing"):
             content.resolve_scenes(track, recording, timing, scenes, clock)
 
+    def test_reviewed_phrase_end_cannot_be_borrowed_by_another_painting(self):
+        track, recording, timing = self.gap_fixture()
+        original = copy.deepcopy(timing)
+        sentence_id = timing["sentences"][1]["sentenceId"]
+        scene = {"id": "waiting", "sentenceId": sentence_id, "src": "assets/waiting.webp"}
+        source = dict(scene, sha256="a" * 64, phoneSha256="b" * 64)
+        cue = {"sentenceId": sentence_id, "sceneId": scene["id"], "start": 2.15,
+               "method": "unique-measured-ASR-phrase-end", "sourceSha256": source["sha256"],
+               "phoneSha256": source["phoneSha256"]}
+        clock = {"schemaVersion": 1, "kind": "measured-scene-cues", "trackId": track["id"],
+                 "narratorId": recording["narratorId"], "manuscriptVersion": track["manuscriptVersion"],
+                 "textSha256": track["textSha256"], "audioSha256": recording["sha256"],
+                 "duration": recording["decodedDuration"], "cues": [cue]}
+        self.assertEqual(content.resolve_scenes(track, recording, timing, [scene], clock,
+                                                {scene["id"]: source})[0]["start"], 2.15)
+        self.assertEqual(timing, original)
+        for binding in [None, {}, {scene["id"]: dict(source, id="different")},
+                        {scene["id"]: dict(source, sha256="c" * 64)},
+                        {scene["id"]: dict(source, phoneSha256="c" * 64)},
+                        {scene["id"]: dict(source, sentenceId="unknown")}]:
+            with self.subTest(binding=binding), self.assertRaisesRegex(content.ContentError, "different painting"):
+                content.resolve_scenes(track, recording, timing, [scene], clock, binding)
+
     def test_content_addressed_export_is_idempotent_and_never_overwrites_collision(self):
         destination = Path(self.temp.name) / "staging"
         value = self.registry()["tracks"][1]
