@@ -86,6 +86,41 @@ test('malformed codes and wrong words stay locked and never echo submitted crede
   const response=await exchange(f,'acorn-blend-choir-drift-eager-ghost');assert.equal(response.status,401);
   assert.equal(f.calls.length,0);
 });
+test('custom two-word codes normalize independently of the generated six-word format',async()=>{
+  const f=fixture(),customCode='hidden-horizons';shared(f,{tokenHash:digest(customCode)});
+  for(const value of [customCode,'HIDDEN HORIZONS','  Hidden\t horizons  ','hidden—horizons','hidden‑horizons']) {
+    const response=await exchange(f,value);assert.equal(response.status,200);
+    assert.deepEqual(await response.json(),{authenticated:true});
+    const cookie=response.headers.get('set-cookie');assert.ok(!cookie.includes(customCode));
+    assert.equal((await f.reader(f.request('/api/book','GET',{Cookie:cookie.split(';')[0]}))).status,200);
+  }
+});
+test('custom words accept the three and sixteen letter boundaries and reject malformed shapes',async()=>{
+  for(const code of ['sun-abcdefghijklmnop','abcdefghijklmnop-sun']) {
+    const f=fixture();shared(f,{tokenHash:digest(code)});assert.equal((await exchange(f,code)).status,200);
+  }
+  const f=fixture();shared(f,{tokenHash:digest('hidden-horizons')});
+  for(const value of ['hidden','hidden horizons sunrise','hi-horizons','hidden-abcdefghijklmnopq',
+    'hidden-horizöns','hidden-h0rizons','hidden/horizons','hidden_horizons','hidden-horizons\u0000',
+    ' '.repeat(257)+'hidden-horizons']) {
+    const response=await exchange(f,value);assert.equal(response.status,400);assert.equal(response.headers.get('set-cookie'),null);
+    assert.ok(!(await response.text()).includes(value));
+  }
+  assert.equal((await exchange(f,'hidden-orchards')).status,401);assert.equal(f.calls.length,0);
+});
+test('same-grant code and version rotation rejects old cookies and creates a new custom-code session',async()=>{
+  const f=fixture(),entry=shared(f),legacy=await login(f),oldSession=await exchange(f,sharedCode);
+  const oldCookie=oldSession.headers.get('set-cookie').split(';')[0],customCode='hidden-horizons';
+  f.env.LUMEN_INVITES_JSON=JSON.stringify([JSON.parse(f.env.LUMEN_INVITES_JSON)[0],
+    {...entry,tokenHash:digest(customCode),version:entry.version+1}]);
+  assert.equal((await exchange(f,sharedCode)).status,401);
+  assert.deepEqual(await (await f.reader(f.request('/api/session','GET',{Cookie:oldCookie}))).json(),{authenticated:false});
+  assert.equal((await f.reader(f.request('/api/book','GET',{Cookie:oldCookie}))).status,401);
+  const response=await exchange(f,'HIDDEN HORIZONS');assert.equal(response.status,200);
+  const newCookie=response.headers.get('set-cookie').split(';')[0];
+  assert.equal((await f.reader(f.request('/api/book','GET',{Cookie:newCookie}))).status,200);
+  assert.equal((await f.reader(f.request('/api/book','GET',{Cookie:legacy}))).status,200);
+});
 test('a shared code keeps CSRF, preview origin and logout protections',async()=>{
   const f=fixture();shared(f);
   for(const headers of [{Origin:'https://evil.example'},{Origin:origin,'Sec-Fetch-Site':'cross-site'},{Origin:''}])
