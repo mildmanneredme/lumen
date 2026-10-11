@@ -70,6 +70,33 @@ test('memory-cache attribution remains on the correct redirect hop',()=>{
  assert.equal(verdict(l).workerAudioValid,true,'The following uncached response is a distinct hop');
  assert.deepEqual(l.snapshot().responses.map(r=>r.servedFromCache),[true,false]);
 });
+test('partial media followed by an uncancelled failure cannot become successful transport proof',()=>{
+ const outcomes=[];for(const cancelled of [false,true]) {
+  const l=goodLedger({phase:()=> 'native-playback'});l.handlers.loadingFailed({requestId:'media',errorText:cancelled?'net::ERR_ABORTED':'net::ERR_CONNECTION_CLOSED',canceled:cancelled});
+  outcomes.push(verdict(l).workerAudioValid);
+  const row=l.snapshot().responses[1];if(cancelled)assert.equal(row.bodyBytes,100);
+ }assert.deepEqual(outcomes,[false,true],'Only the actual cancellation may retain otherwise valid delivered audio evidence');
+ const l=goodLedger({phase:()=> 'native-playback'});l.handlers.loadingFailed({requestId:'media',errorText:'net::ERR_CONNECTION_CLOSED',canceled:false});
+ assert.deepEqual(Object.fromEntries(['failed','cancelled','failureKind','failurePhase'].map(k=>[k,l.snapshot().responses[1][k]])),
+  {failed:true,cancelled:false,failureKind:'network',failurePhase:'native-playback'});
+ assert.equal(verdict(l).apiRedirectsOnly,true,'A failed Worker hop does not invent an API failure');
+});
+test('uncancelled media failures before any response reject the correct origin even after other success',()=>{
+ const failures=[];for(const [url,key,other]of [[URL_A,'apiRedirectsOnly','workerAudioValid'],[URL_M,'workerAudioValid','apiRedirectsOnly']]) {
+  const l=goodLedger();l.handlers.requestWillBeSent({requestId:'failed',request:{url,method:'GET'},type:'Media'});
+  l.handlers.loadingFailed({requestId:'failed',errorText:'net::ERR_CONNECTION_CLOSED',canceled:false});
+  if(verdict(l)[key])failures.push(key);assert.equal(verdict(l)[other],true,'Failure attribution must stay with its actual hop origin');
+ }assert.deepEqual(failures,[],'An earlier good response cannot conceal a later pre-response failure');
+ const cancelled=goodLedger();cancelled.handlers.requestWillBeSent({requestId:'cancelled-before-response',request:{url:URL_M,method:'GET'},type:'Media'});
+ cancelled.handlers.loadingFailed({requestId:'cancelled-before-response',errorText:'net::ERR_ABORTED',canceled:true});
+ assert.equal(verdict(cancelled).workerAudioValid,true);assert.equal(verdict(cancelled).apiRedirectsOnly,true);
+});
+test('intentional offline phases do not silently waive shared failed-transport requirements',()=>{
+ const l=goodLedger({phase:()=> 'autonoe-offline'});l.handlers.loadingFailed({requestId:'media',errorText:'net::ERR_INTERNET_DISCONNECTED',canceled:false});
+ assert.equal(verdict(l).workerAudioValid,false,'Expected offline simulation needs an explicit caller-side acceptance scope');
+ const row=l.snapshot().responses[1];assert.equal(row.failureKind,'offline');assert.equal(row.failurePhase,'autonoe-offline');
+ assert.equal(l.snapshot().failures[0].cancelled,false);assert.equal(row.cancelled,false);
+});
 test('total hop bound includes redirects and invalid counts cannot authorize a proof',()=>{
  const l=createNetworkLedger({appOrigin:APP,workerOrigin:WORKER,maxRequests:1});l.handlers.requestWillBeSent({requestId:'one',request:{url:URL_A,method:'GET'},type:'Media'});l.handlers.requestWillBeSent({requestId:'one',request:{url:URL_M,method:'GET'},type:'Media',redirectResponse:{url:URL_A,status:307,headers:{'Content-Length':'0','Cache-Control':'private, no-store'}}});assert.deepEqual(l.snapshot().issues,['request-limit']);assert.equal(verdict(l).apiRedirectsOnly,false);
  const bad=goodLedger();bad.handlers.dataReceived({requestId:'media',dataLength:-1});assert.equal(verdict(bad).workerAudioValid,false);

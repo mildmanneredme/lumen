@@ -56,13 +56,15 @@ function createNetworkLedger({appOrigin,workerOrigin,phase=()=>'',onRequest=()=>
       const hop=records.get(event.requestId)?.current;if(!hop)return;
       const row={...safeURL(hop.rawURL),method:hop.method,type:hop.type,phase:stage(),cancelled:!!event.canceled,
         errorKind:event.errorText==='net::ERR_INTERNET_DISCONNECTED'?'offline':event.canceled?'cancelled':'network'};
-      hop.failed=true;hop.cancelled=row.cancelled;failures.push(row);notify(onFailure,row);
+      hop.failed=true;hop.cancelled=row.cancelled;hop.failureKind=row.errorKind;hop.failurePhase=row.phase;failures.push(row);notify(onFailure,row);
     }
   };
   return {handlers,snapshot() {
     const responses=[],unresponded=[];
-    for(const record of records.values())for(const hop of record.hops)if(hop.response)responses.push({...hop.response,method:hop.method,type:hop.type,phase:hop.phase,bodyBytes:hop.bodyBytes,servedFromCache:!!hop.servedFromCache});
-    else unresponded.push({...safeURL(hop.rawURL),method:hop.method,type:hop.type,phase:hop.phase,bodyBytes:hop.bodyBytes,failed:!!hop.failed,cancelled:!!hop.cancelled});
+    for(const record of records.values())for(const hop of record.hops)if(hop.response)responses.push({...hop.response,method:hop.method,type:hop.type,phase:hop.phase,bodyBytes:hop.bodyBytes,servedFromCache:!!hop.servedFromCache,failed:!!hop.failed,cancelled:!!hop.cancelled,
+      ...(hop.failed?{failureKind:hop.failureKind,failurePhase:hop.failurePhase}:{})});
+    else unresponded.push({...safeURL(hop.rawURL),method:hop.method,type:hop.type,phase:hop.phase,bodyBytes:hop.bodyBytes,failed:!!hop.failed,cancelled:!!hop.cancelled,
+      ...(hop.failed?{failureKind:hop.failureKind,failurePhase:hop.failurePhase}:{})});
     return {requests:requests.map(row=>({...row})),responses,unresponded,failures:failures.map(row=>({...row})),issues:[...issues],bodyBytes};
   }};
 }
@@ -71,9 +73,11 @@ function mediaNetworkVerdict(snapshot,{appOrigin,workerOrigin}) {
   const worker=row=>row.origin===workerOrigin&&row.path.startsWith('/media/')&&row.path.endsWith('.mp3');
   const apiRows=snapshot.responses.filter(api),mediaRows=snapshot.responses.filter(worker);
   const apiBodyBytes=apiRows.concat(snapshot.unresponded||[]).filter(api).reduce((sum,row)=>sum+row.bodyBytes,0);
-  const sound=row=>row.protocolURLMatched&&!row.fromServiceWorker&&!row.fromDiskCache&&!row.servedFromCache&&!row.fromPrefetchCache&&!row.fromEarlyHints&&row.privateNoStore;
-  return {apiRedirectsOnly:snapshot.issues.length===0&&apiRows.length>0&&apiBodyBytes===0&&apiRows.every(row=>sound(row)&&!row.contentType.startsWith('audio/')&&row.responseKind==='redirect'&&row.status===307&&row.contentLength==='0'&&row.bodyBytes===0),
-    workerAudioValid:snapshot.issues.length===0&&mediaRows.some(row=>row.status===206&&row.bodyBytes>0)&&mediaRows.every(row=>sound(row)&&row.responseKind==='final'&&
+  const failedBeforeResponse=predicate=>(snapshot.unresponded||[]).some(row=>predicate(row)&&row.failed&&row.cancelled!==true);
+  const failed=predicate=>(snapshot.failures||[]).some(row=>predicate(row)&&row.cancelled!==true)||failedBeforeResponse(predicate);
+  const sound=row=>(!row.failed||row.cancelled===true)&&row.protocolURLMatched&&!row.fromServiceWorker&&!row.fromDiskCache&&!row.servedFromCache&&!row.fromPrefetchCache&&!row.fromEarlyHints&&row.privateNoStore;
+  return {apiRedirectsOnly:snapshot.issues.length===0&&!failed(api)&&apiRows.length>0&&apiBodyBytes===0&&apiRows.every(row=>sound(row)&&!row.contentType.startsWith('audio/')&&row.responseKind==='redirect'&&row.status===307&&row.contentLength==='0'&&row.bodyBytes===0),
+    workerAudioValid:snapshot.issues.length===0&&!failed(worker)&&mediaRows.some(row=>row.status===206&&row.bodyBytes>0)&&mediaRows.every(row=>sound(row)&&row.responseKind==='final'&&
       [200,206,304].includes(row.status)&&(row.status===304||row.contentType==='audio/mpeg')&&[appOrigin,'null'].includes(row.corsOrigin)),
     apiResponses:apiRows.length,workerResponses:mediaRows.length,apiBodyBytes};
 }
