@@ -7,8 +7,8 @@ function goodLedger(options={}) {
  const {responseFlags={},...ledgerOptions}=options;
  const ledger=createNetworkLedger({appOrigin:APP,workerOrigin:WORKER,...ledgerOptions}),h=ledger.handlers;
  h.requestWillBeSent({requestId:'media',request:{url:URL_A,method:'GET'},type:'Media'});
- h.requestWillBeSent({requestId:'media',request:{url:URL_M,method:'GET'},type:'Media',redirectResponse:{url:URL_A,status:307,headers:{'Content-Length':'0','Cache-Control':'private, no-store','Set-Cookie':'PRIVATE_COOKIE'}}});
- h.responseReceived({requestId:'media',response:{url:URL_M,status:206,headers,...responseFlags}});h.dataReceived({requestId:'media',dataLength:100});return ledger;
+ h.requestWillBeSent({requestId:'media',request:{url:URL_M,method:'GET'},type:'Media',redirectHasExtraInfo:false,redirectResponse:{url:URL_A,status:307,headers:{'Content-Length':'0','Cache-Control':'private, no-store','Set-Cookie':'PRIVATE_COOKIE'}}});
+ h.responseReceived({requestId:'media',hasExtraInfo:false,response:{url:URL_M,status:206,headers,...responseFlags}});h.dataReceived({requestId:'media',dataLength:100});return ledger;
 }
 const verdict=ledger=>mediaNetworkVerdict(ledger.snapshot(),{appOrigin:APP,workerOrigin:WORKER});
 test('raw redirect and final response URLs prove distinct delivery hops; snapshots exclude secrets',()=>{
@@ -23,20 +23,20 @@ test('the old Playwright native-redirect attribution fails while raw protocol ev
  assert.equal(verdict(goodLedger()).apiRedirectsOnly,true);
 });
 test('actual app-origin 206 media and app body bytes are rejected',()=>{
- for(const status of [200,206]) {const l=createNetworkLedger({appOrigin:APP,workerOrigin:WORKER});l.handlers.requestWillBeSent({requestId:'bad',request:{url:URL_A,method:'GET'},type:'Media'});l.handlers.responseReceived({requestId:'bad',response:{url:URL_A,status,headers}});l.handlers.dataReceived({requestId:'bad',dataLength:1});assert.equal(verdict(l).apiRedirectsOnly,false);}
+ for(const status of [200,206]) {const l=createNetworkLedger({appOrigin:APP,workerOrigin:WORKER});l.handlers.requestWillBeSent({requestId:'bad',request:{url:URL_A,method:'GET'},type:'Media'});l.handlers.responseReceived({requestId:'bad',hasExtraInfo:false,response:{url:URL_A,status,headers}});l.handlers.dataReceived({requestId:'bad',dataLength:1});assert.equal(verdict(l).apiRedirectsOnly,false);}
  const l=goodLedger();l.handlers.requestWillBeSent({requestId:'unanswered',request:{url:URL_A,method:'GET'},type:'Media'});l.handlers.dataReceived({requestId:'unanswered',dataLength:1});assert.equal(verdict(l).apiRedirectsOnly,false);
 });
 test('redirect nonzero length, audio type, cached response and public caching cannot pass',()=>{
  for(const changed of [{'Content-Length':'1'},{'Content-Type':'audio/mpeg'},{'Cache-Control':'public, no-store'},{'Cache-Control':'no-store'}]) {
-  const l=createNetworkLedger({appOrigin:APP,workerOrigin:WORKER});l.handlers.requestWillBeSent({requestId:'bad',request:{url:URL_A,method:'GET'},type:'Media'});l.handlers.requestWillBeSent({requestId:'bad',request:{url:URL_M,method:'GET'},type:'Media',redirectResponse:{url:URL_A,status:307,headers:{'Content-Length':'0','Cache-Control':'private, no-store',...changed}}});assert.equal(verdict(l).apiRedirectsOnly,false);
+  const l=createNetworkLedger({appOrigin:APP,workerOrigin:WORKER});l.handlers.requestWillBeSent({requestId:'bad',request:{url:URL_A,method:'GET'},type:'Media'});l.handlers.requestWillBeSent({requestId:'bad',request:{url:URL_M,method:'GET'},type:'Media',redirectHasExtraInfo:false,redirectResponse:{url:URL_A,status:307,headers:{'Content-Length':'0','Cache-Control':'private, no-store',...changed}}});assert.equal(verdict(l).apiRedirectsOnly,false);
  }
- for(const cached of [{fromDiskCache:true},{fromServiceWorker:true}]){const l=createNetworkLedger({appOrigin:APP,workerOrigin:WORKER});l.handlers.requestWillBeSent({requestId:'bad',request:{url:URL_A,method:'GET'},type:'Media'});l.handlers.requestWillBeSent({requestId:'bad',request:{url:URL_M,method:'GET'},type:'Media',redirectResponse:{url:URL_A,status:307,headers:{'Content-Length':'0','Cache-Control':'private, no-store'},...cached}});assert.equal(verdict(l).apiRedirectsOnly,false);}
+ for(const cached of [{fromDiskCache:true},{fromServiceWorker:true}]){const l=createNetworkLedger({appOrigin:APP,workerOrigin:WORKER});l.handlers.requestWillBeSent({requestId:'bad',request:{url:URL_A,method:'GET'},type:'Media'});l.handlers.requestWillBeSent({requestId:'bad',request:{url:URL_M,method:'GET'},type:'Media',redirectHasExtraInfo:false,redirectResponse:{url:URL_A,status:307,headers:{'Content-Length':'0','Cache-Control':'private, no-store'},...cached}});assert.equal(verdict(l).apiRedirectsOnly,false);}
 });
 test('wrong response URL, mismatched CORS and absent audio bytes fail closed',()=>{
  for(const changed of [{url:URL_M+'&different=1'},{headers:{...headers,'Access-Control-Allow-Origin':'https://foreign.example'}},{headers:{...headers,'Content-Type':'text/plain'}}]) {
-  const l=createNetworkLedger({appOrigin:APP,workerOrigin:WORKER});l.handlers.requestWillBeSent({requestId:'bad',request:{url:URL_M,method:'GET'},type:'Media'});l.handlers.responseReceived({requestId:'bad',response:{url:URL_M,status:206,headers,...changed}});l.handlers.dataReceived({requestId:'bad',dataLength:100});assert.equal(verdict(l).workerAudioValid,false);
+  const l=createNetworkLedger({appOrigin:APP,workerOrigin:WORKER});l.handlers.requestWillBeSent({requestId:'bad',request:{url:URL_M,method:'GET'},type:'Media'});l.handlers.responseReceived({requestId:'bad',hasExtraInfo:false,response:{url:URL_M,status:206,headers,...changed}});l.handlers.dataReceived({requestId:'bad',dataLength:100});assert.equal(verdict(l).workerAudioValid,false);
  }
- const l=createNetworkLedger({appOrigin:APP,workerOrigin:WORKER});l.handlers.requestWillBeSent({requestId:'bad',request:{url:URL_M,method:'GET'},type:'Media'});l.handlers.responseReceived({requestId:'bad',response:{url:URL_M,status:206,headers}});assert.equal(verdict(l).workerAudioValid,false);
+ const l=createNetworkLedger({appOrigin:APP,workerOrigin:WORKER});l.handlers.requestWillBeSent({requestId:'bad',request:{url:URL_M,method:'GET'},type:'Media'});l.handlers.responseReceived({requestId:'bad',hasExtraInfo:false,response:{url:URL_M,status:206,headers}});assert.equal(verdict(l).workerAudioValid,false);
 });
 test('null CORS, incremental byte callbacks and sanitized cancellation/offline classifications',()=>{
  const events=[],l=goodLedger({phase:()=> 'native-test',onData:r=>events.push(r),onFailure:r=>events.push(r)});l.handlers.dataReceived({requestId:'media',dataLength:2});l.handlers.loadingFailed({requestId:'media',errorText:'net::ERR_INTERNET_DISCONNECTED',canceled:false});
@@ -48,7 +48,7 @@ test('null CORS, incremental byte callbacks and sanitized cancellation/offline c
  l.handlers.loadingFailed({requestId:'cancelled',errorText:'net::ERR_ABORTED',canceled:true});
  assert.deepEqual(l.snapshot().unresponded.map(r=>[r.failed,r.cancelled]),[[true,false],[true,true]]);
 
- const nullLedger=createNetworkLedger({appOrigin:APP,workerOrigin:WORKER});nullLedger.handlers.requestWillBeSent({requestId:'n',request:{url:URL_M,method:'GET'},type:'Media'});nullLedger.handlers.responseReceived({requestId:'n',response:{url:URL_M,status:206,headers:{...headers,'Access-Control-Allow-Origin':'null'}}});nullLedger.handlers.dataReceived({requestId:'n',dataLength:1});assert.equal(verdict(nullLedger).workerAudioValid,true);
+ const nullLedger=createNetworkLedger({appOrigin:APP,workerOrigin:WORKER});nullLedger.handlers.requestWillBeSent({requestId:'n',request:{url:URL_M,method:'GET'},type:'Media'});nullLedger.handlers.responseReceived({requestId:'n',hasExtraInfo:false,response:{url:URL_M,status:206,headers:{...headers,'Access-Control-Allow-Origin':'null'}}});nullLedger.handlers.dataReceived({requestId:'n',dataLength:1});assert.equal(verdict(nullLedger).workerAudioValid,true);
 });
 test('a memory-cache signal rejects an otherwise valid native media response',()=>{
  const l=goodLedger();l.handlers.requestServedFromCache?.({requestId:'media'});
@@ -64,8 +64,8 @@ test('memory-cache attribution remains on the correct redirect hop',()=>{
  const l=createNetworkLedger({appOrigin:APP,workerOrigin:WORKER}),h=l.handlers;
  h.requestWillBeSent({requestId:'r',request:{url:URL_A,method:'GET'},type:'Media'});
  h.requestServedFromCache?.({requestId:'r'});
- h.requestWillBeSent({requestId:'r',request:{url:URL_M,method:'GET'},type:'Media',redirectResponse:{url:URL_A,status:307,headers:{'Content-Length':'0','Cache-Control':'private, no-store'}}});
- h.responseReceived({requestId:'r',response:{url:URL_M,status:206,headers}});h.dataReceived({requestId:'r',dataLength:100});
+ h.requestWillBeSent({requestId:'r',request:{url:URL_M,method:'GET'},type:'Media',redirectHasExtraInfo:false,redirectResponse:{url:URL_A,status:307,headers:{'Content-Length':'0','Cache-Control':'private, no-store'}}});
+ h.responseReceived({requestId:'r',hasExtraInfo:false,response:{url:URL_M,status:206,headers}});h.dataReceived({requestId:'r',dataLength:100});
  assert.equal(verdict(l).apiRedirectsOnly,false,'A cached API redirect is not current network proof');
  assert.equal(verdict(l).workerAudioValid,true,'The following uncached response is a distinct hop');
  assert.deepEqual(l.snapshot().responses.map(r=>r.servedFromCache),[true,false]);
@@ -97,8 +97,70 @@ test('intentional offline phases do not silently waive shared failed-transport r
  const row=l.snapshot().responses[1];assert.equal(row.failureKind,'offline');assert.equal(row.failurePhase,'autonoe-offline');
  assert.equal(l.snapshot().failures[0].cancelled,false);assert.equal(row.cancelled,false);
 });
+test('wire 304 cannot hide behind effective 200 and cached body bytes with false cache flags',()=>{
+ const l=goodLedger(),h=l.handlers;
+ h.requestWillBeSent({requestId:'revalidated',request:{url:URL_M,method:'GET'},type:'Media'});
+ h.responseReceived({requestId:'revalidated',hasExtraInfo:true,response:{url:URL_M,status:200,headers}});
+ h.dataReceived({requestId:'revalidated',dataLength:100});
+ h.responseReceivedExtraInfo?.({requestId:'revalidated',statusCode:304,headers:{'Set-Cookie':'PRIVATE_EXTRA_COOKIE'}});
+ assert.equal(verdict(l).workerAudioValid,false,'Revalidation is not fresh native media delivery');
+ const r=l.snapshot().responses.at(-1);assert.equal(r.status,200);assert.equal(r.wireStatus,304);assert.equal(r.wireStatusMatched,false);
+ assert.equal(JSON.stringify(l.snapshot()).includes('PRIVATE_EXTRA_COOKIE'),false);
+});
+test('numeric ExtraInfo pairs with the correct redirect and final hops in either event ordering',()=>{
+ for(const order of ['early','late','mixed']) {
+  const l=createNetworkLedger({appOrigin:APP,workerOrigin:WORKER}),h=l.handlers;
+  const extra=status=>h.responseReceivedExtraInfo?.({requestId:'order',statusCode:status,headers:{Authorization:'PRIVATE_EXTRA_HEADER'}});
+  if(order==='early'){extra(307);extra(206);}
+  h.requestWillBeSent({requestId:'order',request:{url:URL_A,method:'GET'},type:'Media'});
+  if(order==='mixed')extra(307);
+  h.requestWillBeSent({requestId:'order',request:{url:URL_M,method:'GET'},type:'Media',redirectHasExtraInfo:true,redirectResponse:{url:URL_A,status:307,headers:{'Content-Length':'0','Cache-Control':'private, no-store'}}});
+  h.responseReceived({requestId:'order',hasExtraInfo:true,response:{url:URL_M,status:206,headers}});h.dataReceived({requestId:'order',dataLength:100});
+  if(order==='late'){extra(307);extra(206);}if(order==='mixed')extra(206);
+  assert.deepEqual(l.snapshot().responses.map(r=>[r.wireStatus,r.wireStatusMatched,r.wireStatusSource]),[[307,true,'extra-info'],[206,true,'extra-info']],order);
+  assert.equal(verdict(l).apiRedirectsOnly,true);assert.equal(verdict(l).workerAudioValid,true);
+  assert.equal(JSON.stringify(l.snapshot()).includes('PRIVATE_EXTRA_HEADER'),false);
+ }
+ const l=createNetworkLedger({appOrigin:APP,workerOrigin:WORKER}),h=l.handlers;
+ h.requestWillBeSent({requestId:'mixed-flags',request:{url:URL_A,method:'GET'},type:'Media'});
+ h.responseReceivedExtraInfo?.({requestId:'mixed-flags',statusCode:206});
+ h.requestWillBeSent({requestId:'mixed-flags',request:{url:URL_M,method:'GET'},type:'Media',redirectHasExtraInfo:false,redirectResponse:{url:URL_A,status:307,headers:{'Content-Length':'0','Cache-Control':'private, no-store'}}});
+ h.responseReceived({requestId:'mixed-flags',hasExtraInfo:true,response:{url:URL_M,status:206,headers}});h.dataReceived({requestId:'mixed-flags',dataLength:100});
+ assert.deepEqual(l.snapshot().responses.map(r=>[r.wireStatus,r.wireStatusSource]),[[307,'response-no-extra'],[206,'extra-info']]);
+ assert.equal(verdict(l).workerAudioValid,true);
+});
+test('missing expected, invalid or over-budget ExtraInfo cannot certify fresh transport',()=>{
+ const accepted=[];
+ for(const mode of ['missing','mismatch','invalid','overflow','undeclared']) {
+  const l=goodLedger({maxPendingExtraInfo:1}),h=l.handlers;
+  if(mode==='overflow'){h.responseReceivedExtraInfo?.({requestId:'unused-one',statusCode:200});h.responseReceivedExtraInfo?.({requestId:'unused-two',statusCode:200});}
+  else {
+   h.requestWillBeSent({requestId:'bad-wire',request:{url:URL_M,method:'GET'},type:'Media'});
+   h.responseReceived({requestId:'bad-wire',...(mode==='undeclared'?{}:{hasExtraInfo:true}),response:{url:URL_M,status:206,headers}});h.dataReceived({requestId:'bad-wire',dataLength:100});
+   if(mode==='mismatch')h.responseReceivedExtraInfo?.({requestId:'bad-wire',statusCode:200});
+   if(mode==='invalid')h.responseReceivedExtraInfo?.({requestId:'bad-wire',statusCode:'PRIVATE_INVALID_STATUS'});
+  }
+  if(verdict(l).workerAudioValid)accepted.push(mode);assert.equal(JSON.stringify(l.snapshot()).includes('PRIVATE_INVALID_STATUS'),false);
+ }assert.deepEqual(accepted,[]);
+});
+test('unsupported or mismatched wire status cannot validate an application redirect',()=>{
+ const accepted=[];for(const status of [200,304,308,503]) {
+  const l=createNetworkLedger({appOrigin:APP,workerOrigin:WORKER}),h=l.handlers;
+  h.requestWillBeSent({requestId:'redirect-wire',request:{url:URL_A,method:'GET'},type:'Media'});
+  h.requestWillBeSent({requestId:'redirect-wire',request:{url:URL_M,method:'GET'},type:'Media',redirectHasExtraInfo:true,redirectResponse:{url:URL_A,status:307,headers:{'Content-Length':'0','Cache-Control':'private, no-store'}}});
+  h.responseReceivedExtraInfo?.({requestId:'redirect-wire',statusCode:status});
+  if(verdict(l).apiRedirectsOnly)accepted.push(status);
+ }assert.deepEqual(accepted,[]);
+});
+test('unexpected ExtraInfo cannot be ignored after a completed no-extra response',()=>{
+ for(const status of [206,304]) {
+  const l=goodLedger();l.handlers.responseReceivedExtraInfo({requestId:'media',statusCode:status});
+  assert.equal(verdict(l).workerAudioValid,false,'Unpaired protocol status is not complete wire evidence');
+  assert.ok(l.snapshot().issues.includes('unmatched-extra-info'));
+ }
+});
 test('total hop bound includes redirects and invalid counts cannot authorize a proof',()=>{
- const l=createNetworkLedger({appOrigin:APP,workerOrigin:WORKER,maxRequests:1});l.handlers.requestWillBeSent({requestId:'one',request:{url:URL_A,method:'GET'},type:'Media'});l.handlers.requestWillBeSent({requestId:'one',request:{url:URL_M,method:'GET'},type:'Media',redirectResponse:{url:URL_A,status:307,headers:{'Content-Length':'0','Cache-Control':'private, no-store'}}});assert.deepEqual(l.snapshot().issues,['request-limit']);assert.equal(verdict(l).apiRedirectsOnly,false);
+ const l=createNetworkLedger({appOrigin:APP,workerOrigin:WORKER,maxRequests:1});l.handlers.requestWillBeSent({requestId:'one',request:{url:URL_A,method:'GET'},type:'Media'});l.handlers.requestWillBeSent({requestId:'one',request:{url:URL_M,method:'GET'},type:'Media',redirectHasExtraInfo:false,redirectResponse:{url:URL_A,status:307,headers:{'Content-Length':'0','Cache-Control':'private, no-store'}}});assert.deepEqual(l.snapshot().issues,['request-limit']);assert.equal(verdict(l).apiRedirectsOnly,false);
  const bad=goodLedger();bad.handlers.dataReceived({requestId:'media',dataLength:-1});assert.equal(verdict(bad).workerAudioValid,false);
 });
 // Generated 440Hz fixture MPEG frames: 2 seconds, mono, 22.05kHz, 16kbps,
