@@ -88,6 +88,22 @@ test('actual workerd private bridge and R2 media preserve auth, native lengths a
     const denied=await raw(url,{headers:{Range:'bytes=2-6'}});check('sole Worker policy update rejects previously minted range grant',denied.status===401);
     const deniedHead=await raw(url,{method:'HEAD'});check('revocation also denies a bodyless media HEAD',deniedHead.status===401&&deniedHead.bytes.length===0);
     const session=await bridge(request('/api/session','GET',{Cookie:cookie}));check('same policy update also rejects same-origin device session',(await session.json()).authenticated===false);
+    const customCode='hidden-horizons';invite.revoked=false;invite.tokenHash=digest(customCode);invite.version++;
+    env.LUMEN_INVITES_JSON=JSON.stringify([invite]);options.bindings={...env};await mf.setOptions(convertV4MiniflareOptions(options));await mf.ready;
+    const oldCode=await bridge(request('/api/session','POST',{Origin:origin,'Content-Type':'application/json'},JSON.stringify({invite:code})));
+    check('rotated policy rejects the previous six-word login',oldCode.status===401);
+    const oldSession=await bridge(request('/api/session','GET',{Cookie:cookie}));
+    check('same-grant version rotation rejects the previous cookie',(await oldSession.json()).authenticated===false);
+    check('same-grant version rotation rejects the previous signed media grant',(await raw(url,{headers:{Range:'bytes=2-6'}})).status===401);
+    const customSession=await bridge(request('/api/session','POST',{Origin:origin,'Content-Type':'application/json'},JSON.stringify({invite:'  HIDDEN — HORIZONS  '})));
+    check('actual workerd normalizes and opens a custom two-word code',customSession.status===200&&(await customSession.json()).authenticated===true);
+    const customCookie=customSession.headers.get('set-cookie').split(';')[0];
+    const customBook=await bridge(request('/api/book','GET',{Cookie:customCookie}));
+    check('fresh custom-code cookie reads unchanged private JSON',customBook.status===200&&Buffer.from(await customBook.arrayBuffer()).equals(text));
+    const customRedirect=await bridge(request('/api/assets/'+audioPath,'GET',{Cookie:customCookie}));
+    check('fresh custom-code cookie mints a new signed media grant',customRedirect.status===307);
+    const customRange=await raw(customRedirect.headers.get('location'),{headers:{Range:'bytes=2-6',Origin:origin}});
+    check('fresh custom-code media grant preserves native ranged bytes',customRange.status===206&&customRange.bytes.equals(audio.subarray(2,7)));
     const report={schemaVersion:1,scope:'tiny local workerd/R2/HTTPS fixtures only',checks,passed:checks.length,bulkSourcesRead:false,accountAccessed:false,deploymentPerformed:false,
       workerSha256:digest(fs.readFileSync(path.join(webRoot,'cloudflare','worker.mjs'))),unitTestSha256:digest(fs.readFileSync(path.join(__dirname,'cloudflare-worker.cjs'))),runtimeTestSha256:digest(fs.readFileSync(__filename)),bundleSha256:digest(Buffer.from(script)),bundleSource:'current source compiled in memory',fixtureAudioBytes:audio.length,fixtureTextBytes:text.length};
     const reportPath=path.join(fs.mkdtempSync(path.join(os.tmpdir(),'lumen-cloudflare-runtime-')),'report.json');

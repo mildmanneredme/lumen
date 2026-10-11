@@ -31,7 +31,7 @@ supports single dynamic segments in filenames, so this project uses the
 - `GET|HEAD /api/assets/<exact inventory path>`: an indexed immutable JSON,
   MP3, or WebP object, after authorization.
 
-The shared access code contains six short words. Uppercase letters, spaces and dashes normalize to a lowercase, hyphen-separated code before hashing. The server tries an exact legacy 256-bit base64url token first, preserving its case and bytes. Legacy invitation links use URL fragments, which the shell removes before exchanging them. Query credentials are rejected. The cookie is `__Host-lumen_session`, `Secure`,
+Shared access codes accept either six ASCII words of 3–5 letters or a custom two-word code with 3–16 ASCII letters per word. Uppercase letters, spaces and common dashes normalize to a lowercase, hyphen-separated code before hashing; input is limited to 256 characters. The server tries an exact legacy 256-bit base64url token first, preserving its case and bytes. Legacy invitation links use URL fragments, which the shell removes before exchanging them. Query credentials are rejected. The cookie is `__Host-lumen_session`, `Secure`,
 `HttpOnly`, `SameSite=Lax`, and scoped to `/`; it expires after 30 days or the
 invite expiry, whichever comes first. Every request rechecks invite revocation,
 expiry, and version. Revoking/removing a grant or incrementing its version invalidates its sessions after the updated server configuration is deployed. Logout removes the current browser cookie.
@@ -65,7 +65,7 @@ Required names:
 - `LUMEN_APP_ORIGIN`: `https://lumen-phi-five.vercel.app`, with no trailing slash.
 - `LUMEN_SESSION_SECRET`: 32–64 random bytes encoded as canonical base64url.
 - `LUMEN_INVITES_JSON`: at most 50 grants. Each is `{id,tokenHash,version,
-  expiresAt,revoked}`. `tokenHash` is SHA-256 of the canonical lowercase six-word code joined with hyphens, or the exact legacy base64url token string. `expiresAt` is Unix seconds; `version` starts at 1; `revoked` is boolean. The shared audience uses one grant; this is not a per-person or per-device count limit. Original codes/tokens remain in encrypted private operator records only.
+  expiresAt,revoked}`. `tokenHash` is SHA-256 of the canonical lowercase access code joined with hyphens, or the exact legacy base64url token string. `expiresAt` is Unix seconds; `version` starts at 1; `revoked` is boolean. The shared audience uses one grant; this is not a per-person or per-device count limit. Original codes/tokens remain in encrypted private operator records only.
 - `LUMEN_RELEASE_INDEX_PATH`: immutable
   `lumen/releases/<releaseId>/server-index.<sha256>.json`.
 - `LUMEN_RELEASE_INDEX_SHA256`: that file's exact byte hash.
@@ -77,7 +77,7 @@ Required names:
 
 The inert operator library [shared_access_code.cjs](../scripts/shared_access_code.cjs) returns `{code,invite}` only when explicitly called with a future expiry. It selects six independent words using `crypto.randomInt` from 1,295 original entries of the pinned EFF short wordlist; the original file and attribution are preserved. Capture the code in private operator memory, encrypt the owner record, and deploy only the grant hash. Importing or directly running the library generates no credentials or output.
 
-To rotate the shared code, generate a fresh code/hash and increment the same grant's version; to close access, mark the grant revoked. Update the encrypted server configuration and redeploy. Existing cookies then fail the grant checks. Signing out expires only that device's cookie and preserves its local reading position.
+To rotate the shared code, generate a fresh six-word code or choose a custom two-word code within the bounds above, replace its hash and increment the same grant's version; to close access, mark the grant revoked. Update the encrypted server configuration and redeploy. Existing cookies then fail the grant checks. Signing out expires only that device's cookie and preserves its local reading position.
 
 No ignored environment file is required inside a deployed function. The
 provider injects its secure server environment at runtime.

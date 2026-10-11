@@ -11,7 +11,9 @@ const object = value => value && typeof value === 'object' && !Array.isArray(val
 function canonicalAccessCode(value) {
   if (typeof value !== 'string' || value.length > 256) return null;
   const words = value.trim().toLowerCase().split(/[\s\u2010-\u2015-]+/);
-  return words.length === 6 && words.every(word => /^[a-z]{3,5}$/.test(word)) ? words.join('-') : null;
+  const valid = (words.length === 6 && words.every(word => /^[a-z]{3,5}$/.test(word))) ||
+    (words.length === 2 && words.every(word => /^[a-z]{3,16}$/.test(word)));
+  return valid ? words.join('-') : null;
 }
 function credentialCandidates(value) {
   const candidates = [];
