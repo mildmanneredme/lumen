@@ -4,21 +4,11 @@
   "projectName": "lumen",
   "scope": "robert-xies-projects",
   "projectId": "prj_g2eoQPikqSKEEEouyT3FBTuEfACs",
-  "deploymentId": "dpl_FyFkovg79KUP2pvZ4sQSTysydpag",
   "target": "production",
-  "status": "Ready",
   "productionUrl": "https://lumen-phi-five.vercel.app/",
-  "deploymentUrl": "https://lumen-qui0aetzu-robert-xies-projects.vercel.app/",
   "projectDashboard": "https://vercel.com/robert-xies-projects/lumen",
-  "sourceCommit": "48f4b56865b1f6e472aa69bf171a4b346e9d0516",
-  "mergedSourceCommit": "363c67e5b02454c7b28bfc4013a7f10bc0e51fff",
-  "stagedAt": "2026-10-11T05:28:51.085Z",
-  "promotionVerificationCompletedAt": "2026-10-11T05:41:14.811Z",
-  "verifiedAt": "2026-10-11T05:42:03.335Z",
   "runtimeDirectory": "web/dist",
   "apiDirectory": "web/api",
-  "deploymentCommand": "vercel deploy --prod --skip-domain --yes --scope robert-xies-projects",
-  "promotionCommand": "vercel promote dpl_FyFkovg79KUP2pvZ4sQSTysydpag --scope robert-xies-projects",
   "commandDirectory": "web",
   "release": {
     "id": "lumen-private-192-v4",
@@ -30,248 +20,377 @@
     "audioKbps": 192,
     "defaultVoice": "autonoe"
   },
+  "deploymentId": "dpl_CqJMWxpYAo9yvVmaqvLfnNzFxefj",
+  "status": "Ready",
+  "deploymentUrl": "https://lumen-htpnisu3n-robert-xies-projects.vercel.app/",
+  "sourceCommit": "e6b3702be263a7a31a2646e60138f5001c364df0",
+  "reviewedPullRequest": "https://github.com/mildmanneredme/lumen/pull/17",
+  "stagedAt": "2026-10-11T06:57:03.897Z",
+  "promotedAt": "2026-10-11T06:59:54.955Z",
+  "verifiedAt": "2026-10-11T07:12:44.257Z",
+  "deploymentCommand": "vercel deploy --prod --skip-domain --yes --scope robert-xies-projects",
+  "promotionCommand": "vercel promote dpl_CqJMWxpYAo9yvVmaqvLfnNzFxefj --scope robert-xies-projects",
+  "access": {
+    "inviteId": "shared-readers",
+    "inviteVersion": 2,
+    "previousInviteVersion": 1,
+    "ownerCodeAndHashExcluded": true,
+    "oldCodeDenied": true,
+    "oldSessionsDenied": true,
+    "oldSignedMediaGrantsDenied": true,
+    "expiryAndSigningKeysPreserved": true
+  },
   "verification": {
     "publicShellWithoutAuthentication": true,
     "fullBookAnonymousAccess": false,
     "privateApiAuthRequired": true,
     "anonymousBookStatus": 401,
-    "anonymousAudioStatus": 401,
     "privateReadingOffline": false,
     "audioRequiresConnection": true,
     "physicalPhoneInstallVerified": false,
+    "sourceBoundStageVerified": true,
     "runtimeFileCount": 54,
-    "runtimeEquivalenceToReviewedPreviewVerified": true,
-    "runtimeTuplesSha256": "f3ed16bc6c0bac11de71e9ff64ada2db1a4593964bdf20a36cdb0d17b4b39e7f",
-    "livePublicShellFingerprintFilesVerified": 6,
-    "hostedHTTPAssetsVerified": 365,
-    "hostedHTTPSampleRangesVerified": 1095,
-    "completeLargestMP3BytesVerified": 35239853,
+    "livePublicShellFingerprintFilesVerified": 3,
     "browserChecksPassed": 36,
     "browserChecksFailed": 0,
-    "browserErrors": [],
-    "nativeNetworkIssues": [],
     "previewBypassUsed": false,
-    "verificationScope": "Source-bound54-file stage equivalence, six live shell fingerprints, full-release sampled HTTP plus one complete MP3, representative native Chrome playback and two-voice same-release bookmark continuity. No physical device or full-book human listening claim."
-  },
-  "rollback": {
-    "scope": "same-release operational rollback with unchanged manifest/index and access policy",
-    "compatibleVerifiedDeploymentId": "dpl_9GjWhaJ2D7FjZATQtS2nqpBpjWAW",
-    "terminalDeploymentId": "dpl_FyFkovg79KUP2pvZ4sQSTysydpag",
-    "sequence": [
-      "promote-A",
-      "promote-B",
-      "rollback-A",
-      "recover-B"
-    ],
-    "bothNarratorBookmarksRetained": true,
-    "pilotFallbackTested": false,
-    "backwardReleaseCompatibilityTested": false
+    "rotationChecks": {
+      "newNormalizedLogin": true,
+      "newSecureSession": true,
+      "privateBookUnchanged": true,
+      "newMediaHead": true,
+      "newMediaRangeBytes": 16,
+      "oldCodeDenied": true,
+      "oldSessionDenied": true,
+      "oldBookDenied": true,
+      "oldSignedGrantDenied": true
+    },
+    "verificationScope": "Reviewed compatible sign-in update and grant rotation; three live shell fingerprints, new/old access checks, and representative normal Chrome playback, seeking, resume and layouts. Earlier full-asset and A/B rollback acceptance is preserved as historical initial-launch evidence, not rerun or claimed compatible with policy v2."
   },
   "worker": {
-    "versionId": "d0345c85-bc10-42a9-b94e-f1e1e277076a",
-    "deploymentId": "d1c68fe4-365c-4600-b820-2180fdf2816d",
-    "bundleSha256": "981261a788744bc6ae665ccefdc4656e7aaa3844478f55944590b3943d757a2b",
+    "versionId": "3b3e2aad-c8e4-4460-b7c9-93f877b6330c",
+    "deploymentId": "fe70fd45-c0cf-4588-acf5-1f917b23b271",
+    "bundleSha256": "5845eca435e927f855f95d6a675178e21d04a0523f44423e2c83073e66602c1e",
+    "sourceCommit": "e6b3702be263a7a31a2646e60138f5001c364df0",
+    "percentage": 100,
+    "observabilityEnabled": false,
+    "logpush": false,
     "paidUpgradePerformed": false
   },
+  "rollback": {
+    "currentPolicyCompatibleRollbackVerified": false,
+    "previousV17FrontendAcceptsTwoWordCode": false,
+    "previousWorkerPolicyReenablesOldAccess": true,
+    "instruction": "Redeploy the reviewed compatible sign-in runtime with the current invite registry. Do not restore the previous Worker policy; its v1 registry re-enables old access."
+  },
   "evidence": {
-    "directory": "Audiobook/author-audit/web-release/launch-evidence-20261011-v4-48f4b568",
-    "stageB": {
-      "path": "launch-evidence-20261011-v4-48f4b568/production-stage-b.json",
-      "sha256": "d6f387428bdfcbf35e1b92e425fe720e64c91c6f1534cf6daffa3e3c3a65b981",
-      "bytes": 9155
+    "directory": "Audiobook/author-audit/web-release/access-code-evidence-20261011-v2-e6b3702",
+    "stage": {
+      "path": "access-code-evidence-20261011-v2-e6b3702/production-stage.json",
+      "sha256": "859c76222e4208eaa643ef6a3b4943da02c3a7e5dc81601bb55aa1fc1fb0feaf",
+      "bytes": 9167
     },
-    "rehearsal": {
-      "path": "launch-evidence-20261011-v4-48f4b568/production-rehearsal-report.json",
-      "sha256": "fb0c5b7713d70f3c86211839a83af809432ebd6b3aefb281be5180317fdfadb0",
-      "bytes": 176084
+    "promotion": {
+      "path": "access-code-evidence-20261011-v2-e6b3702/screen-promotion.json",
+      "sha256": "161e09bd697392d90caee448b1650ce108d07171220a016d7c5104293f7f14ca",
+      "bytes": 928
+    },
+    "rotation": {
+      "path": "access-code-evidence-20261011-v2-e6b3702/access-rotation.json",
+      "sha256": "4ed59c85be950e4c83b581782fdee1be6c77df9e5fd0b9d9b3885326e03339c1",
+      "bytes": 2227
     },
     "stableChrome": {
-      "path": "launch-evidence-20261011-v4-48f4b568/stable-chrome-report.json",
-      "sha256": "0e10badbddc906bd441ace464880c066378337d77d26db1d20cb962d0e2dcb87",
-      "bytes": 383917
+      "path": "access-code-evidence-20261011-v2-e6b3702/stable-browser-report.json",
+      "sha256": "7ddb9a3360e57571499ea545792076e45d20d0a5dd4fa4a51d1227dbd7e3ef7f",
+      "bytes": 384353
     },
-    "temporaryTestingCredentials": {
-      "path": "launch-evidence-20261011-v4-48f4b568/temporary-qa-token-lifecycle.json",
-      "sha256": "6e877e55255b5a15905c5cba1e565de0fc7eae5de44b544a15a3fbd00716d732",
-      "bytes": 493
+    "stableChromeReceipt": {
+      "path": "access-code-evidence-20261011-v2-e6b3702/stable-browser-receipt.json",
+      "sha256": "36fb3d7cdd8fa994c2b220448d12b613f796012466349662e16aae3fd200fd1f",
+      "bytes": 510
     }
   },
-  "historicalPilot": {
+  "initialPrivateLaunch": {
     "current": false,
-    "fallbackCompatibilityTested": false,
-    "purpose": "Historical public-pilot evidence only; not a verified full-book rollback target.",
+    "inviteVersion": 1,
+    "rollbackCompatibilityWithCurrentPolicyVerified": false,
     "record": {
+      "schemaVersion": 2,
       "provider": "vercel",
       "projectName": "lumen",
       "scope": "robert-xies-projects",
       "projectId": "prj_g2eoQPikqSKEEEouyT3FBTuEfACs",
-      "deploymentId": "dpl_EeReRPLBLBjyRgXwNoLhVULuhKjG",
+      "deploymentId": "dpl_FyFkovg79KUP2pvZ4sQSTysydpag",
       "target": "production",
       "status": "Ready",
       "productionUrl": "https://lumen-phi-five.vercel.app/",
-      "deploymentUrl": "https://lumen-hrsbst414-robert-xies-projects.vercel.app/",
+      "deploymentUrl": "https://lumen-qui0aetzu-robert-xies-projects.vercel.app/",
       "projectDashboard": "https://vercel.com/robert-xies-projects/lumen",
-      "sourceCommit": "af0ca044e86a0b8e6f343dc20fcd2af046b2b308",
-      "deployedAt": "2026-10-09T17:41:38Z",
-      "verifiedAt": "2026-10-09T17:43:47.435254+00:00",
+      "sourceCommit": "48f4b56865b1f6e472aa69bf171a4b346e9d0516",
+      "mergedSourceCommit": "363c67e5b02454c7b28bfc4013a7f10bc0e51fff",
+      "stagedAt": "2026-10-11T05:28:51.085Z",
+      "promotionVerificationCompletedAt": "2026-10-11T05:41:14.811Z",
+      "verifiedAt": "2026-10-11T05:42:03.335Z",
       "runtimeDirectory": "web/dist",
-      "deploymentCommand": "vercel deploy --prod --yes --scope robert-xies-projects",
+      "apiDirectory": "web/api",
+      "deploymentCommand": "vercel deploy --prod --skip-domain --yes --scope robert-xies-projects",
+      "promotionCommand": "vercel promote dpl_FyFkovg79KUP2pvZ4sQSTysydpag --scope robert-xies-projects",
       "commandDirectory": "web",
-      "verification": {
-        "publicWithoutAuthentication": true,
-        "runtimeFileCount": 34,
-        "runtimeVerificationScope": "All five runtime files changed or added in this release; remaining reader assets unchanged from the previous verified release.",
-        "runtimeFilesVerified": 5,
-        "runtimeSha256HashesMatch": true,
-        "releaseChecksPassed": 15,
-        "releaseChecksFailed": 0,
-        "browserChecksPassed": 9,
-        "browserChecksFailed": 0,
-        "browserErrors": [],
-        "realPngTransparencyVerified": true,
-        "faviconSizes": [
-          512,
-          32,
-          16
-        ],
-        "offlineReadingVerified": true,
-        "offlineFaviconsVerified": true,
-        "runtimeHashes": [
-          {
-            "file": "index.html",
-            "status": 200,
-            "bytes": 6874,
-            "localBytes": 6874,
-            "liveSha256": "d456afaeb14fc20e06b798353f51bfb864cfde556b71d32b7d7b16ae27305a1f",
-            "localSha256": "d456afaeb14fc20e06b798353f51bfb864cfde556b71d32b7d7b16ae27305a1f",
-            "contentType": "text/html; charset=utf-8",
-            "cacheControl": "public, max-age=0, must-revalidate"
-          },
-          {
-            "file": "sw.js",
-            "status": 200,
-            "bytes": 4955,
-            "localBytes": 4955,
-            "liveSha256": "dbb4670ff968c15693a5ee3d5ae17c537eef861f70f7613bc63dfb997a3363d6",
-            "localSha256": "dbb4670ff968c15693a5ee3d5ae17c537eef861f70f7613bc63dfb997a3363d6",
-            "contentType": "application/javascript; charset=utf-8",
-            "cacheControl": "public, max-age=0, must-revalidate"
-          },
-          {
-            "file": "icons/favicon-lumen-v2.png",
-            "status": 200,
-            "bytes": 125335,
-            "localBytes": 125335,
-            "liveSha256": "e37d0fb0c958054b2a8d83766d38fb4d86e431adae5e8e9833cb0d0be46065f1",
-            "localSha256": "e37d0fb0c958054b2a8d83766d38fb4d86e431adae5e8e9833cb0d0be46065f1",
-            "contentType": "image/png",
-            "cacheControl": "public, max-age=0, must-revalidate"
-          },
-          {
-            "file": "icons/favicon-lumen-32-v2.png",
-            "status": 200,
-            "bytes": 2590,
-            "localBytes": 2590,
-            "liveSha256": "b779aaf0a10e319caff7bb49cc753b712c92cc699bcb73ee1f4a77525cd4fcf8",
-            "localSha256": "b779aaf0a10e319caff7bb49cc753b712c92cc699bcb73ee1f4a77525cd4fcf8",
-            "contentType": "image/png",
-            "cacheControl": "public, max-age=0, must-revalidate"
-          },
-          {
-            "file": "icons/favicon-lumen-16-v2.png",
-            "status": 200,
-            "bytes": 913,
-            "localBytes": 913,
-            "liveSha256": "620d8198c53655f690818e3fa1e4c5bd46e4e8958bf6515a6310070c32ddd864",
-            "localSha256": "620d8198c53655f690818e3fa1e4c5bd46e4e8958bf6515a6310070c32ddd864",
-            "contentType": "image/png",
-            "cacheControl": "public, max-age=0, must-revalidate"
-          }
-        ]
+      "release": {
+        "id": "lumen-private-192-v4",
+        "description": "Private full audiobook with generic artwork placeholders",
+        "manifestSha256": "7415b9530cfc803fbca434c4f8538ecba6727d4160e3ee471c841b50d95d3ac9",
+        "indexSha256": "c1fcab6251ef94b01f71e6e8425fb456d27ac6583e9b3e54d9011f4fae23dc3f",
+        "tracks": 91,
+        "recordings": 182,
+        "audioKbps": 192,
+        "defaultVoice": "autonoe"
       },
-      "release": "Transparent PNG favicon inspired by the portfolio Lumen cover",
-      "previousReaderVerification": {
-        "sourceCommit": "cebe1cc15d022327aeaff40b128629265b50500a",
-        "deploymentId": "dpl_66YWkCdVSGhUhRdCCL5WpYnL2NUf",
-        "verifiedAt": "2026-10-09T17:32:24.025133+00:00",
-        "publicWithoutAuthentication": true,
-        "runtimeFilesVerified": 31,
-        "runtimeSha256HashesMatch": true,
-        "audioRangeStatus": 206,
-        "audioContentRange": "bytes 100000-100099/5124278",
-        "audioRangeExactBytes": true,
-        "browserChecksPassed": 155,
+      "verification": {
+        "publicShellWithoutAuthentication": true,
+        "fullBookAnonymousAccess": false,
+        "privateApiAuthRequired": true,
+        "anonymousBookStatus": 401,
+        "anonymousAudioStatus": 401,
+        "privateReadingOffline": false,
+        "audioRequiresConnection": true,
+        "physicalPhoneInstallVerified": false,
+        "runtimeFileCount": 54,
+        "runtimeEquivalenceToReviewedPreviewVerified": true,
+        "runtimeTuplesSha256": "f3ed16bc6c0bac11de71e9ff64ada2db1a4593964bdf20a36cdb0d17b4b39e7f",
+        "livePublicShellFingerprintFilesVerified": 6,
+        "hostedHTTPAssetsVerified": 365,
+        "hostedHTTPSampleRangesVerified": 1095,
+        "completeLargestMP3BytesVerified": 35239853,
+        "browserChecksPassed": 36,
         "browserChecksFailed": 0,
         "browserErrors": [],
-        "browserSuites": [
-          {
-            "script": "tests/browser-smoke.cjs",
-            "url": "https://lumen-phi-five.vercel.app/",
-            "generatedAt": "2026-10-09T17:29:40.506Z",
-            "passed": 62,
-            "failed": 0
-          },
-          {
-            "script": "tests/mobile-pwa.cjs",
-            "url": "https://lumen-phi-five.vercel.app/",
-            "generatedAt": "2026-10-09T17:29:57.394Z",
-            "passed": 93,
-            "failed": 0
-          }
+        "nativeNetworkIssues": [],
+        "previewBypassUsed": false,
+        "verificationScope": "Source-bound54-file stage equivalence, six live shell fingerprints, full-release sampled HTTP plus one complete MP3, representative native Chrome playback and two-voice same-release bookmark continuity. No physical device or full-book human listening claim."
+      },
+      "rollback": {
+        "scope": "same-release operational rollback with unchanged manifest/index and access policy",
+        "compatibleVerifiedDeploymentId": "dpl_9GjWhaJ2D7FjZATQtS2nqpBpjWAW",
+        "terminalDeploymentId": "dpl_FyFkovg79KUP2pvZ4sQSTysydpag",
+        "sequence": [
+          "promote-A",
+          "promote-B",
+          "rollback-A",
+          "recover-B"
         ],
-        "serviceWorker": {
-          "status": 200,
-          "contentType": "application/javascript; charset=utf-8",
-          "cacheControl": "public, max-age=0, must-revalidate",
-          "pass": true
+        "bothNarratorBookmarksRetained": true,
+        "pilotFallbackTested": false,
+        "backwardReleaseCompatibilityTested": false
+      },
+      "worker": {
+        "versionId": "d0345c85-bc10-42a9-b94e-f1e1e277076a",
+        "deploymentId": "d1c68fe4-365c-4600-b820-2180fdf2816d",
+        "bundleSha256": "981261a788744bc6ae665ccefdc4656e7aaa3844478f55944590b3943d757a2b",
+        "paidUpgradePerformed": false
+      },
+      "evidence": {
+        "directory": "Audiobook/author-audit/web-release/launch-evidence-20261011-v4-48f4b568",
+        "stageB": {
+          "path": "launch-evidence-20261011-v4-48f4b568/production-stage-b.json",
+          "sha256": "d6f387428bdfcbf35e1b92e425fe720e64c91c6f1534cf6daffa3e3c3a65b981",
+          "bytes": 9155
         },
-        "manifest": {
-          "status": 200,
-          "contentType": "application/manifest+json; charset=utf-8",
-          "cacheControl": "public, max-age=0, must-revalidate",
-          "id": "/",
-          "startUrl": "/",
-          "scope": "/",
-          "display": "standalone",
-          "icons": [
-            {
-              "src": "/icons/icon-192.png",
-              "sizes": "192x192",
-              "purpose": "any",
-              "status": 200,
-              "hashMatches": true
-            },
-            {
-              "src": "/icons/icon-512.png",
-              "sizes": "512x512",
-              "purpose": "any",
-              "status": 200,
-              "hashMatches": true
-            },
-            {
-              "src": "/icons/icon-maskable-512.png",
-              "sizes": "512x512",
-              "purpose": "maskable",
-              "status": 200,
-              "hashMatches": true
-            }
-          ],
-          "pass": true
+        "rehearsal": {
+          "path": "launch-evidence-20261011-v4-48f4b568/production-rehearsal-report.json",
+          "sha256": "fb0c5b7713d70f3c86211839a83af809432ebd6b3aefb281be5180317fdfadb0",
+          "bytes": 176084
         },
-        "chromeInstallabilityErrors": [],
-        "physicalPhoneInstallVerified": false,
-        "offlineReadingVerified": true,
-        "audioRequiresConnection": true,
-        "audioRequestsBypassServiceWorker": true,
-        "authoringPathsReturn404": [
-          "/art-direction/cast-bible.json",
-          "/data/alignment-report.json",
-          "/data/artwork-optimization.json",
-          "/README.md",
-          "/scripts/prepare_pilot.py",
-          "/scripts/optimize_art.py",
-          "/.vercel/project.json"
-        ]
+        "stableChrome": {
+          "path": "launch-evidence-20261011-v4-48f4b568/stable-chrome-report.json",
+          "sha256": "0e10badbddc906bd441ace464880c066378337d77d26db1d20cb962d0e2dcb87",
+          "bytes": 383917
+        },
+        "temporaryTestingCredentials": {
+          "path": "launch-evidence-20261011-v4-48f4b568/temporary-qa-token-lifecycle.json",
+          "sha256": "6e877e55255b5a15905c5cba1e565de0fc7eae5de44b544a15a3fbd00716d732",
+          "bytes": 493
+        }
+      },
+      "historicalPilot": {
+        "current": false,
+        "fallbackCompatibilityTested": false,
+        "purpose": "Historical public-pilot evidence only; not a verified full-book rollback target.",
+        "record": {
+          "provider": "vercel",
+          "projectName": "lumen",
+          "scope": "robert-xies-projects",
+          "projectId": "prj_g2eoQPikqSKEEEouyT3FBTuEfACs",
+          "deploymentId": "dpl_EeReRPLBLBjyRgXwNoLhVULuhKjG",
+          "target": "production",
+          "status": "Ready",
+          "productionUrl": "https://lumen-phi-five.vercel.app/",
+          "deploymentUrl": "https://lumen-hrsbst414-robert-xies-projects.vercel.app/",
+          "projectDashboard": "https://vercel.com/robert-xies-projects/lumen",
+          "sourceCommit": "af0ca044e86a0b8e6f343dc20fcd2af046b2b308",
+          "deployedAt": "2026-10-09T17:41:38Z",
+          "verifiedAt": "2026-10-09T17:43:47.435254+00:00",
+          "runtimeDirectory": "web/dist",
+          "deploymentCommand": "vercel deploy --prod --yes --scope robert-xies-projects",
+          "commandDirectory": "web",
+          "verification": {
+            "publicWithoutAuthentication": true,
+            "runtimeFileCount": 34,
+            "runtimeVerificationScope": "All five runtime files changed or added in this release; remaining reader assets unchanged from the previous verified release.",
+            "runtimeFilesVerified": 5,
+            "runtimeSha256HashesMatch": true,
+            "releaseChecksPassed": 15,
+            "releaseChecksFailed": 0,
+            "browserChecksPassed": 9,
+            "browserChecksFailed": 0,
+            "browserErrors": [],
+            "realPngTransparencyVerified": true,
+            "faviconSizes": [
+              512,
+              32,
+              16
+            ],
+            "offlineReadingVerified": true,
+            "offlineFaviconsVerified": true,
+            "runtimeHashes": [
+              {
+                "file": "index.html",
+                "status": 200,
+                "bytes": 6874,
+                "localBytes": 6874,
+                "liveSha256": "d456afaeb14fc20e06b798353f51bfb864cfde556b71d32b7d7b16ae27305a1f",
+                "localSha256": "d456afaeb14fc20e06b798353f51bfb864cfde556b71d32b7d7b16ae27305a1f",
+                "contentType": "text/html; charset=utf-8",
+                "cacheControl": "public, max-age=0, must-revalidate"
+              },
+              {
+                "file": "sw.js",
+                "status": 200,
+                "bytes": 4955,
+                "localBytes": 4955,
+                "liveSha256": "dbb4670ff968c15693a5ee3d5ae17c537eef861f70f7613bc63dfb997a3363d6",
+                "localSha256": "dbb4670ff968c15693a5ee3d5ae17c537eef861f70f7613bc63dfb997a3363d6",
+                "contentType": "application/javascript; charset=utf-8",
+                "cacheControl": "public, max-age=0, must-revalidate"
+              },
+              {
+                "file": "icons/favicon-lumen-v2.png",
+                "status": 200,
+                "bytes": 125335,
+                "localBytes": 125335,
+                "liveSha256": "e37d0fb0c958054b2a8d83766d38fb4d86e431adae5e8e9833cb0d0be46065f1",
+                "localSha256": "e37d0fb0c958054b2a8d83766d38fb4d86e431adae5e8e9833cb0d0be46065f1",
+                "contentType": "image/png",
+                "cacheControl": "public, max-age=0, must-revalidate"
+              },
+              {
+                "file": "icons/favicon-lumen-32-v2.png",
+                "status": 200,
+                "bytes": 2590,
+                "localBytes": 2590,
+                "liveSha256": "b779aaf0a10e319caff7bb49cc753b712c92cc699bcb73ee1f4a77525cd4fcf8",
+                "localSha256": "b779aaf0a10e319caff7bb49cc753b712c92cc699bcb73ee1f4a77525cd4fcf8",
+                "contentType": "image/png",
+                "cacheControl": "public, max-age=0, must-revalidate"
+              },
+              {
+                "file": "icons/favicon-lumen-16-v2.png",
+                "status": 200,
+                "bytes": 913,
+                "localBytes": 913,
+                "liveSha256": "620d8198c53655f690818e3fa1e4c5bd46e4e8958bf6515a6310070c32ddd864",
+                "localSha256": "620d8198c53655f690818e3fa1e4c5bd46e4e8958bf6515a6310070c32ddd864",
+                "contentType": "image/png",
+                "cacheControl": "public, max-age=0, must-revalidate"
+              }
+            ]
+          },
+          "release": "Transparent PNG favicon inspired by the portfolio Lumen cover",
+          "previousReaderVerification": {
+            "sourceCommit": "cebe1cc15d022327aeaff40b128629265b50500a",
+            "deploymentId": "dpl_66YWkCdVSGhUhRdCCL5WpYnL2NUf",
+            "verifiedAt": "2026-10-09T17:32:24.025133+00:00",
+            "publicWithoutAuthentication": true,
+            "runtimeFilesVerified": 31,
+            "runtimeSha256HashesMatch": true,
+            "audioRangeStatus": 206,
+            "audioContentRange": "bytes 100000-100099/5124278",
+            "audioRangeExactBytes": true,
+            "browserChecksPassed": 155,
+            "browserChecksFailed": 0,
+            "browserErrors": [],
+            "browserSuites": [
+              {
+                "script": "tests/browser-smoke.cjs",
+                "url": "https://lumen-phi-five.vercel.app/",
+                "generatedAt": "2026-10-09T17:29:40.506Z",
+                "passed": 62,
+                "failed": 0
+              },
+              {
+                "script": "tests/mobile-pwa.cjs",
+                "url": "https://lumen-phi-five.vercel.app/",
+                "generatedAt": "2026-10-09T17:29:57.394Z",
+                "passed": 93,
+                "failed": 0
+              }
+            ],
+            "serviceWorker": {
+              "status": 200,
+              "contentType": "application/javascript; charset=utf-8",
+              "cacheControl": "public, max-age=0, must-revalidate",
+              "pass": true
+            },
+            "manifest": {
+              "status": 200,
+              "contentType": "application/manifest+json; charset=utf-8",
+              "cacheControl": "public, max-age=0, must-revalidate",
+              "id": "/",
+              "startUrl": "/",
+              "scope": "/",
+              "display": "standalone",
+              "icons": [
+                {
+                  "src": "/icons/icon-192.png",
+                  "sizes": "192x192",
+                  "purpose": "any",
+                  "status": 200,
+                  "hashMatches": true
+                },
+                {
+                  "src": "/icons/icon-512.png",
+                  "sizes": "512x512",
+                  "purpose": "any",
+                  "status": 200,
+                  "hashMatches": true
+                },
+                {
+                  "src": "/icons/icon-maskable-512.png",
+                  "sizes": "512x512",
+                  "purpose": "maskable",
+                  "status": 200,
+                  "hashMatches": true
+                }
+              ],
+              "pass": true
+            },
+            "chromeInstallabilityErrors": [],
+            "physicalPhoneInstallVerified": false,
+            "offlineReadingVerified": true,
+            "audioRequiresConnection": true,
+            "audioRequestsBypassServiceWorker": true,
+            "authoringPathsReturn404": [
+              "/art-direction/cast-bible.json",
+              "/data/alignment-report.json",
+              "/data/artwork-optimization.json",
+              "/README.md",
+              "/scripts/prepare_pilot.py",
+              "/scripts/optimize_art.py",
+              "/.vercel/project.json"
+            ]
+          }
+        }
       }
     }
   }
