@@ -736,6 +736,67 @@ class ContentContractTests(unittest.TestCase):
         with self.assertRaisesRegex(content.ContentError, "scene"):
             content.resolve_scenes(track, recording, timing, [scene])
 
+    def test_measured_scene_onset_leaves_sentence_gap_and_canonical_prose_untouched(self):
+        track, recording, timing = self.gap_fixture()
+        original = copy.deepcopy(timing)
+        sentence_id = timing["sentences"][1]["sentenceId"]
+        scene = {"id": "waiting", "sentenceId": sentence_id, "src": "assets/waiting.webp"}
+        clock = {"schemaVersion": 1, "kind": "measured-scene-cues", "trackId": track["id"],
+                 "narratorId": recording["narratorId"], "manuscriptVersion": track["manuscriptVersion"],
+                 "textSha256": track["textSha256"], "audioSha256": recording["sha256"],
+                 "duration": recording["decodedDuration"],
+                 "cues": [{"sentenceId": sentence_id, "start": 2.15, "method": "unique-measured-ASR-prefix"}]}
+        with self.assertRaisesRegex(content.ContentError, "measured evidence"):
+            content.resolve_scenes(track, recording, timing, [scene])
+        actual = content.resolve_scenes(track, recording, timing, [scene], clock)[0]
+        self.assertEqual(actual["start"], 2.15)
+        self.assertEqual(actual["triggerAudioSha256"], recording["sha256"])
+        self.assertEqual(actual["triggerSource"], "measured-scene-cue")
+        self.assertEqual(timing, original)
+        self.assertIsNone(timing["sentences"][1]["end"])
+        for change in [{"audioSha256": "f" * 64}, {"narratorId": "autonoe"}, {"textSha256": "f" * 64},
+                       {"cues": clock["cues"] * 2},
+                       {"cues": [dict(clock["cues"][0], start=-1)]}]:
+            with self.subTest(change=change), self.assertRaises(content.ContentError):
+                content.resolve_scenes(track, recording, timing, [scene], dict(clock, **change))
+
+    def test_distinct_scene_anchors_cannot_resolve_to_one_clock(self):
+        track, recording, timing = self.gap_fixture(all_gaps=True)
+        ids = [cue["sentenceId"] for cue in timing["sentences"][:2]]
+        scenes = [{"id": "first", "sentenceId": ids[0], "src": "assets/first.webp"},
+                  {"id": "second", "sentenceId": ids[1], "src": "assets/second.webp"}]
+        clock = {"schemaVersion": 1, "kind": "measured-scene-cues", "trackId": track["id"],
+                 "narratorId": recording["narratorId"], "manuscriptVersion": track["manuscriptVersion"],
+                 "textSha256": track["textSha256"], "audioSha256": recording["sha256"],
+                 "duration": recording["decodedDuration"], "cues": [
+                     {"sentenceId": sentence_id, "start": 1.25, "method": "unique-measured-ASR-prefix"}
+                     for sentence_id in ids]}
+        with self.assertRaisesRegex(content.ContentError, "strictly increasing"):
+            content.resolve_scenes(track, recording, timing, scenes, clock)
+
+    def test_reviewed_phrase_end_cannot_be_borrowed_by_another_painting(self):
+        track, recording, timing = self.gap_fixture()
+        original = copy.deepcopy(timing)
+        sentence_id = timing["sentences"][1]["sentenceId"]
+        scene = {"id": "waiting", "sentenceId": sentence_id, "src": "assets/waiting.webp"}
+        source = dict(scene, sha256="a" * 64, phoneSha256="b" * 64)
+        cue = {"sentenceId": sentence_id, "sceneId": scene["id"], "start": 2.15,
+               "method": "unique-measured-ASR-phrase-end", "sourceSha256": source["sha256"],
+               "phoneSha256": source["phoneSha256"]}
+        clock = {"schemaVersion": 1, "kind": "measured-scene-cues", "trackId": track["id"],
+                 "narratorId": recording["narratorId"], "manuscriptVersion": track["manuscriptVersion"],
+                 "textSha256": track["textSha256"], "audioSha256": recording["sha256"],
+                 "duration": recording["decodedDuration"], "cues": [cue]}
+        self.assertEqual(content.resolve_scenes(track, recording, timing, [scene], clock,
+                                                {scene["id"]: source})[0]["start"], 2.15)
+        self.assertEqual(timing, original)
+        for binding in [None, {}, {scene["id"]: dict(source, id="different")},
+                        {scene["id"]: dict(source, sha256="c" * 64)},
+                        {scene["id"]: dict(source, phoneSha256="c" * 64)},
+                        {scene["id"]: dict(source, sentenceId="unknown")}]:
+            with self.subTest(binding=binding), self.assertRaisesRegex(content.ContentError, "different painting"):
+                content.resolve_scenes(track, recording, timing, [scene], clock, binding)
+
     def test_content_addressed_export_is_idempotent_and_never_overwrites_collision(self):
         destination = Path(self.temp.name) / "staging"
         value = self.registry()["tracks"][1]

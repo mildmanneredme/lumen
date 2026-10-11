@@ -8,6 +8,7 @@
 const fs=require('node:fs/promises'),nativeFS=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');
 const {Readable}=require('node:stream');
 const {buildServerIndex,sha256}=require('../server/private-access.cjs');
+const {releasePrefix,audioObjectIdentity,createReleaseStoragePolicy}=require('./r2-worker-adapter.cjs');
 const HASH=/^[a-f0-9]{64}$/;
 function ensure(condition,message='R2 release validation failed') {if(!condition)throw Error(message);}
 function positive(value) {return Number.isSafeInteger(value)&&value>0;}
@@ -21,27 +22,44 @@ function samplesFor(asset) {
     return Object.freeze({start:sample.start,end:sample.end,sha256:sample.sha256});
   });
 }
-function makePlan(inventory,manifestURL) {
+function makePlan(inventory,manifestURL,{reuseAudio=[]}={}) {
   ensure(inventory&&Array.isArray(inventory.assets)&&inventory.assets.length>0);
   const snapshot={schemaVersion:inventory.schemaVersion,releaseId:inventory.releaseId,accessModel:inventory.accessModel,
     appOrigin:inventory.appOrigin,mediaOrigins:Array.isArray(inventory.mediaOrigins)?[...inventory.mediaOrigins]:null};
+  const uploadPrefix=releasePrefix(snapshot.releaseId);
   const prefix=String(snapshot.appOrigin)+'/api/assets/';
   snapshot.assets=inventory.assets.map(asset=>{
     ensure(asset&&typeof asset.sourcePath==='string'&&path.isAbsolute(asset.sourcePath),'Source path must be absolute');
     return Object.freeze({url:asset.url,sha256:asset.sha256,bytes:asset.bytes,contentType:asset.contentType,immutable:asset.immutable,
       sourcePath:asset.sourcePath,samples:Object.freeze(samplesFor(asset))});
   });
+  ensure(Array.isArray(reuseAudio),'Reuse audio locators must be an explicit array');
+  const reuse=new Map(),readOnlyReleaseIds=new Set(),reusedKeys=new Set();
+  for(const candidate of reuseAudio){
+    ensure(candidate&&typeof candidate==='object'&&!Array.isArray(candidate)&&
+      Object.keys(candidate).length===2&&Object.hasOwn(candidate,'url')&&Object.hasOwn(candidate,'objectKey'),
+      'Reuse audio requires only the current URL and previous object key');
+    const url=candidate.url,objectKey=candidate.objectKey;
+    const asset=snapshot.assets.find(row=>row.url===url),identity=audioObjectIdentity(objectKey);
+    ensure(asset&&asset.contentType==='audio/mpeg'&&identity&&identity.releaseId!==snapshot.releaseId&&
+      identity.sha256===asset.sha256&&!reuse.has(url)&&!reusedKeys.has(objectKey),
+      'Reuse audio locator differs from the current immutable audio inventory');
+    reuse.set(url,objectKey);reusedKeys.add(objectKey);readOnlyReleaseIds.add(identity.releaseId);
+  }
+  const policy=createReleaseStoragePolicy({releaseId:snapshot.releaseId,readOnlyReleaseIds:[...readOnlyReleaseIds].sort()});
   const receipts=snapshot.assets.map(asset=>{
-    const objectKey=`lumen/releases/${snapshot.releaseId}/assets/${String(asset.url).slice(prefix.length)}`;
+    const reused=reuse.has(asset.url),objectKey=reused?reuse.get(asset.url):uploadPrefix+'assets/'+String(asset.url).slice(prefix.length);
     // blobPath is the existing server-index field, independent of provider.
-    return Object.freeze({url:asset.url,objectKey,blobPath:objectKey,sha256:asset.sha256,bytes:asset.bytes,contentType:asset.contentType,access:'private'});
+    return Object.freeze({url:asset.url,objectKey,blobPath:objectKey,sha256:asset.sha256,bytes:asset.bytes,contentType:asset.contentType,access:'private',reused});
   });
   const index=buildServerIndex(snapshot,receipts,manifestURL),indexBytes=Buffer.from(JSON.stringify(index)+'\n'),indexSha256=sha256(indexBytes);
-  const uploadBytes=snapshot.assets.reduce((sum,asset)=>sum+asset.bytes,indexBytes.length);
+  const reusedBytes=snapshot.assets.reduce((sum,asset)=>sum+(reuse.has(asset.url)?asset.bytes:0),0);
+  const uploadBytes=snapshot.assets.reduce((sum,asset)=>sum+(reuse.has(asset.url)?0:asset.bytes),indexBytes.length);
   const verificationBytes=snapshot.assets.reduce((sum,asset)=>sum+asset.bytes+asset.samples.reduce((total,sample)=>total+sample.end-sample.start+1,0),indexBytes.length);
   ensure(positive(uploadBytes)&&positive(verificationBytes),'Release byte totals are unsafe');
   return {assets:Object.freeze(snapshot.assets),receipts:Object.freeze(receipts),index,indexBytes,indexSha256,
-    indexPath:`lumen/releases/${snapshot.releaseId}/server-index.${indexSha256}.json`,uploadBytes,verificationBytes};
+    indexPath:uploadPrefix+'server-index.'+indexSha256+'.json',uploadPrefix,readOnlyReleaseIds:policy.readOnlyReleaseIds,
+    reusedAssetCount:reuse.size,reusedBytes,uploadBytes,verificationBytes};
 }
 function identity(info) {
   return Object.freeze(Object.fromEntries(['dev','ino','size','mtimeNs','ctimeNs'].map(key=>[key,String(info[key])])));
@@ -103,6 +121,11 @@ async function sourceBody(root,asset,proof) {
   body.on('error',()=>{});
   return {body,finished:()=>complete,close:async()=>{body.destroy();await handle.close();}};
 }
+async function sourceUnchanged(root,asset,proof){
+  const {handle,clock}=await openOwned(root,asset.sourcePath);
+  try{ensure(sameIdentity(clock,proof.identity),'Upload source identity changed after preflight');}
+  finally{await handle.close();}
+}
 function remoteIdentity(result,key,expected,pinned) {
   const metadata=result?.httpMetadata;
   ensure(result&&result.key===key&&result.size===expected.bytes&&typeof result.etag==='string'&&result.etag.length>0&&
@@ -140,11 +163,11 @@ function putOptions(expected) {
   return {onlyIf:new Headers({'If-None-Match':'*'}),httpMetadata:{contentType:expected.contentType,cacheControl:'private, no-store'},
     customMetadata:{sha256:expected.sha256},sha256:expected.sha256,contentLength:expected.bytes};
 }
-async function uploadR2Release({root,inventory,manifestURL,r2,maxUploadBytes,verifyByteBudget,onProgress=async()=>{}}) {
+async function uploadR2Release({root,inventory,manifestURL,r2,reuseAudio=[],maxUploadBytes,verifyByteBudget,onProgress=async()=>{}}) {
   ensure(positive(maxUploadBytes)&&positive(verifyByteBudget),'Explicit byte budgets are required');
   ensure(r2&&['head','get','put'].every(method=>typeof r2[method]==='function'),'R2 get, head and conditional put adapter is required');
   ensure(typeof onProgress==='function');root=await fs.realpath(root);
-  const plan=makePlan(inventory,manifestURL);
+  const plan=makePlan(inventory,manifestURL,{reuseAudio});
   ensure(plan.uploadBytes<=maxUploadBytes,'Upload byte budget is insufficient');
   ensure(plan.verificationBytes<=verifyByteBudget,'Verification byte budget is insufficient');
   const proofs=[];
@@ -153,8 +176,10 @@ async function uploadR2Release({root,inventory,manifestURL,r2,maxUploadBytes,ver
   const completed=[],ledger={limit:verifyByteBudget,read:0,ranges:0};let uploadedBytes=0;
   for(let i=0;i<plan.assets.length;i++) {
     const asset=plan.assets[i],receipt=plan.receipts[i],key=receipt.objectKey;
+    if(receipt.reused)await sourceUnchanged(root,asset,proofs[i]);
     let metadata=await r2.head(key);
     if(metadata===null) {
+      ensure(!receipt.reused,'Previously released audio is missing; reuse never uploads or rewrites it');
       const source=await sourceBody(root,asset,proofs[i]);
       try {
         metadata=await r2.put(key,source.body,putOptions(asset));
@@ -169,8 +194,12 @@ async function uploadR2Release({root,inventory,manifestURL,r2,maxUploadBytes,ver
     completed.push({...receipt,...pinned,fullSha256Verified:true,sampleSha256Verified:true,headVerified:true});
     await onProgress({schemaVersion:1,storageProvider:'cloudflare-r2',releaseId:plan.index.releaseId,status:'uploading',assets:completed.map(row=>({...row}))});
   }
+  for(const receipt of completed)remoteIdentity(await r2.head(receipt.objectKey),receipt.objectKey,receipt,receipt);
   const expectedIndex={bytes:plan.indexBytes.length,sha256:plan.indexSha256,contentType:'application/json'};
   let metadata=await r2.head(plan.indexPath);
+  // Remote HEADs may take time. Keep every prepared source clock current
+  // after those reads and immediately before publishing the index.
+  for(let i=0;i<plan.assets.length;i++)await sourceUnchanged(root,plan.assets[i],proofs[i]);
   if(metadata===null) {
     metadata=await r2.put(plan.indexPath,plan.indexBytes,putOptions(expectedIndex));
     ensure(metadata!==null,'R2 conditional index create failed');uploadedBytes+=plan.indexBytes.length;
@@ -178,9 +207,13 @@ async function uploadR2Release({root,inventory,manifestURL,r2,maxUploadBytes,ver
   const pinned=remoteIdentity(metadata,plan.indexPath,expectedIndex);
   await remoteRead(r2,plan.indexPath,expectedIndex,pinned,undefined,ledger);
   remoteIdentity(await r2.head(plan.indexPath),plan.indexPath,expectedIndex,pinned);
+  // Resume and index verification also await storage; do not certify a source
+  // that changed during those final reads.
+  for(let i=0;i<plan.assets.length;i++)await sourceUnchanged(root,plan.assets[i],proofs[i]);
   ensure(ledger.read===plan.verificationBytes,'R2 verification byte count differs');
   return {schemaVersion:1,storageProvider:'cloudflare-r2',releaseId:plan.index.releaseId,status:'uploaded-private-r2',assets:completed,
     index:plan.index,indexPath:plan.indexPath,indexSha256:plan.indexSha256,uploadBytes:plan.uploadBytes,uploadedBytes,
+    uploadPrefix:plan.uploadPrefix,readOnlyReleaseIds:plan.readOnlyReleaseIds,reusedAssetCount:plan.reusedAssetCount,reusedBytes:plan.reusedBytes,
     verificationBytes:ledger.read,rangeReads:ledger.ranges,accessPolicyVerified:false};
 }
 module.exports={makePlan,sourceProof,uploadR2Release};

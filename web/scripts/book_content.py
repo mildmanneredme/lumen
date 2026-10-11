@@ -653,10 +653,43 @@ def validate_timing_map(track, recording, timing, *, require_approved=False, ali
     return True
 
 
-def resolve_scenes(track, recording, timing, scenes):
+SCENE_ONSET_METHODS = {"unique-measured-ASR-prefix", "unique-measured-ASR-phrase-end"}
+
+
+def validate_scene_onset_binding(scene, cue, source):
+    """Keep a reviewed within-sentence phrase specific to its painted subject."""
+    if cue.get("method") != "unique-measured-ASR-phrase-end":
+        return
+    require(isinstance(source, dict) and valid_hash(source.get("sha256"))
+            and (source.get("phoneSha256") is None or valid_hash(source["phoneSha256"]))
+            and source.get("id") == scene.get("id") == cue.get("sceneId")
+            and source.get("sentenceId") == scene.get("sentenceId") == cue.get("sentenceId")
+            and source["sha256"] == cue.get("sourceSha256")
+            and "phoneSha256" in cue and source.get("phoneSha256") == cue["phoneSha256"],
+            "Reviewed phrase onset belongs to a different painting or canonical trigger")
+
+
+def resolve_scenes(track, recording, timing, scenes, scene_clock=None, scene_bindings=None):
     """Resolve shared reveal anchors using this voice's independently bound clock."""
     validate_timing_map(track, recording, timing)
     cues = {cue["sentenceId"]: cue for cue in timing["sentences"]}
+    onsets = {}
+    if scene_clock is not None:
+        require(isinstance(scene_clock, dict) and type(scene_clock.get("schemaVersion")) is int and scene_clock["schemaVersion"] == 1
+                and scene_clock.get("kind") == "measured-scene-cues"
+                and all(scene_clock.get(key) == value for key, value in
+                        {"trackId": track["id"], "narratorId": recording["narratorId"],
+                         "manuscriptVersion": track["manuscriptVersion"], "textSha256": track["textSha256"],
+                         "audioSha256": recording["sha256"], "duration": recording["decodedDuration"]}.items()),
+                "Scene onset proof belongs to a different source or recording")
+        rows = scene_clock.get("cues")
+        require(isinstance(rows, list) and all(isinstance(row, dict) and row.get("sentenceId") in cues
+                and isinstance(row.get("method"), str) and row["method"] in SCENE_ONSET_METHODS
+                and finite_number(row.get("start"))
+                and 0 <= row["start"] < recording["decodedDuration"] for row in rows),
+                "Invalid measured scene onset proof")
+        onsets = {row["sentenceId"]: row for row in rows}
+        require(len(onsets) == len(rows), "Duplicate measured scene onset proof")
     result, seen = [], set()
     previous = -1.0
     for scene in scenes:
@@ -666,11 +699,21 @@ def resolve_scenes(track, recording, timing, scenes):
                 "Invalid scene identity, asset, or canonical trigger")
         seen.add(scene_id)
         start = cues[scene["sentenceId"]]["start"]
-        require(finite_number(start) and cues[scene["sentenceId"]].get("syncStatus") != "unavailable",
-                "Scene reveal requires a measured sentence; unavailable gaps have no reveal clock")
-        require(start >= previous, "Canonical scene triggers are out of order")
+        scene_only = False
+        if not finite_number(start) or cues[scene["sentenceId"]].get("syncStatus") == "unavailable":
+            onset = onsets.get(scene["sentenceId"])
+            if onset is not None:
+                source = scene_bindings.get(scene_id) if isinstance(scene_bindings, dict) else None
+                validate_scene_onset_binding(scene, onset, source)
+            start = onset["start"] if onset is not None else None
+            scene_only = True
+        require(finite_number(start), "Scene reveal requires measured evidence; unavailable gaps have no reveal clock")
+        require(start > previous, "Scene reveal clocks must be strictly increasing; equal starts would hide a painting")
         require("start" not in scene, "Shared scene must not contain a narrator timestamp")
-        result.append(dict(scene, start=start))
+        public = dict(scene, start=start)
+        if scene_only:
+            public.update(triggerSource="measured-scene-cue", triggerAudioSha256=recording["sha256"])
+        result.append(public)
         previous = start
     return result
 

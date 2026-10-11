@@ -1,7 +1,8 @@
 // Temporary operator-only uploader. Remove this Worker after release verification.
 // R2 performs the SHA-256 check atomically before committing the streamed object.
 // https://developers.cloudflare.com/r2/api/workers/workers-api-reference/
-const PREFIX='lumen/releases/lumen-private-192-v4/';
+import adapter from '../scripts/r2-worker-adapter.cjs';
+const {releaseIdFromPrefix,createReleaseStoragePolicy}=adapter;
 const SHA=/^[a-f0-9]{64}$/;
 const ETAG=/^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,255}$/;
 const TYPES={'application/json':'.json','audio/mpeg':'.mp3','image/webp':'.webp'};
@@ -14,8 +15,6 @@ function authenticated(request,secret){
   for(let i=0;i<expected.length;i++)difference|=expected.charCodeAt(i)^(supplied.charCodeAt(i)||0);
   return difference===0;
 }
-function validKey(value){return typeof value==='string'&&value.length<=1024&&value.startsWith(PREFIX)&&
-  value.split('/').every(part=>/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(part)&&part!=='.'&&part!=='..');}
 function privateHeaders(){return new Headers({'Cache-Control':'private, no-store','Vary':'Authorization',
   'X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','X-Robots-Tag':'noindex, nofollow, noarchive'});}
 function failure(status){return new Response(null,{status,headers:privateHeaders()});}
@@ -96,11 +95,17 @@ async function read(request,env,key){
 }
 export default {
   async fetch(request,env){
-    if(!env||!secretValid(env.LUMEN_UPLOAD_SECRET)||env.LUMEN_UPLOAD_PREFIX!==PREFIX||
+    if(!env||!secretValid(env.LUMEN_UPLOAD_SECRET)||
       !env.LUMEN_R2||!['head','get','put'].every(method=>typeof env.LUMEN_R2[method]==='function'))return failure(503);
     if(!authenticated(request,env.LUMEN_UPLOAD_SECRET))return failure(401);
+    let policy;
+    try{
+      const encoded=env.LUMEN_UPLOAD_READ_ONLY_RELEASES_JSON??'[]';
+      requireValue(typeof encoded==='string'&&encoded.length<=4096);
+      policy=createReleaseStoragePolicy({releaseId:releaseIdFromPrefix(env.LUMEN_UPLOAD_PREFIX),readOnlyReleaseIds:JSON.parse(encoded)});
+    }catch{return failure(503);}
     const url=new URL(request.url),key=url.pathname.slice(1);
-    if(url.search||!validKey(key))return failure(400);
+    if(url.search||!(request.method==='PUT'?policy.canWrite(key):policy.canRead(key)))return failure(400);
     if(!['HEAD','GET','PUT'].includes(request.method))return failure(405);
     try{return request.method==='PUT'?await put(request,env,key):await read(request,env,key);}catch{return failure(503);}
   }
