@@ -16,7 +16,7 @@ Bookmarks use `lumen-book-v2`, with chapter history and completion, canonical se
 
 ## Phone and installed app
 
-Phone controls have large touch targets, a full-width timeline and safe-area spacing. iPad and desktop use side-by-side art and text; **Art** can hide the generic placeholder. Narrative illustrations remain pending character/artwork review.
+Phone controls have large touch targets, a full-width timeline and safe-area spacing. iPad and desktop use side-by-side art and text; **Art** can hide the artwork panel. Narrative illustrations remain pending reader release review. The reader supports selected full-size and phone WebPs from the private R2 gateway; the current published release has no new narrative paintings. Independently measured image cues can reveal a painting while uncertain sentence timing stays unhighlighted. [Generated imagery integration](../docs/backlog/imagery-integration.md) records the collection, preparation commands and review status.
 
 In Android Chrome, use the browser menu to install Lumen or add it to the Home screen. The settings panel offers installation help and an install button when Chrome makes it available. iPhone home-screen launch is also supported. Media Session supplies supported system play/pause, seek and chapter controls. Automated Chrome phone, iPad and desktop checks do not constitute a physical-device installation or lock-screen acceptance test.
 
@@ -46,6 +46,12 @@ The release pipeline and deployment steps are documented in `../docs/backlog/`: 
 ## Release operation
 
 Deploy from `web` to the existing `lumen` project in `robert-xies-projects`. Both repository-root and web `vercel.json` files set `git.deploymentEnabled: false`, preventing automatic changes to the live reader when PRs merge. Deployment and explicit promotion use the CLI after media verification; see [Vercel’s Git configuration](https://vercel.com/docs/project-configuration/git-configuration). The Vercel configuration builds the static shell from `dist/` and deploys the authenticated Node APIs. `.vercelignore` excludes local audits, casting references, production data, secrets, scripts/tests and legacy pilot prose/audio. Preserve local originals for historical tabs and production work.
+
+Local deployment checks use `@vercel/routing-utils`. A scoped override pins its
+`path-to-regexp` dependency to patched version 6.3.0; see the [maintainer advisory](https://github.com/pillarjs/path-to-regexp/security/advisories/GHSA-9wv6-86v2-598j).
+Run `npm ci` and `npm run test:private` from `web/` to verify the lockfile and
+compiled private-asset routes. The full dependency audit currently reports zero
+vulnerabilities.
 
 Use encrypted, ignored, owner-only `.env` and `.env.shared` files with a separate owner-only `.env.keys`. Run local tools through `dotenvx run -f .env.shared -- ...` from the matching directory. Configure Vercel secrets on the server; never include them in static assets or Git. Upload and verify immutable private media before promoting the corresponding server index. Keep the production origin stable so bookmarks survive releases. Roll back the app and immutable index together.
 

@@ -414,6 +414,129 @@ uploadPrivateRelease({root:values.root,inventory,manifestURL:values.manifestURL,
                 with self.assertRaises(release.content.ContentError):
                     self.build(scenes_by_track={self.track["id"]: [dict(scene, **change)]})
 
+    def phone_scene_fixture(self):
+        directory = self.root / "approved-art"
+        directory.mkdir()
+        full, phone = directory / "scene.webp", directory / "scene-phone.webp"
+        full.write_bytes(b"fixture full painting")
+        phone.write_bytes(b"fixture phone painting")
+        scene = {"id": "fixture-scene", "sentenceId": self.timing["sentences"][0]["sentenceId"],
+                 "sourcePath": str(full.relative_to(self.root)), "sha256": release.content.file_hash(full),
+                 "phoneSourcePath": str(phone.relative_to(self.root)), "phoneSha256": release.content.file_hash(phone),
+                 "title": "A quiet room", "alt": "A person waiting in a room"}
+        scene["approval"] = {"status": "approved", "reviewer": "Fixture art reviewer",
+                             "reviewedAt": "2026-10-11T00:00:00Z", "sceneSha256": release.scene_content_hash(scene)}
+        return scene, full, phone
+
+    def test_reviewed_phone_and_full_paintings_share_trigger_and_enter_private_inventory(self):
+        scene, full, phone = self.phone_scene_fixture()
+        result = self.build(scenes_by_track={self.track["id"]: [scene]})
+        actual = self.read_chapter(result)["scenes"][0]
+        self.assertEqual(actual["start"], self.timing["sentences"][0]["start"])
+        self.assertEqual(actual["src"], self.plan["mediaURLbase"] + "images/" + scene["sha256"] + ".webp")
+        self.assertEqual(actual["phoneSrc"], self.plan["mediaURLbase"] + "images/" + scene["phoneSha256"] + ".webp")
+        images = [row for row in result["uploadInventory"]["assets"] if row["contentType"] == "image/webp"]
+        self.assertEqual({row["sha256"] for row in images}, {scene["sha256"], scene["phoneSha256"]})
+        self.assertEqual({row["bytes"] for row in images}, {full.stat().st_size, phone.stat().st_size})
+        for key in ["sourcePath", "phoneSourcePath", "phoneSha256", "approval"]:
+            self.assertNotIn(key, actual)
+        self.assert_uploader_source_and_index_compatible(result)
+
+    def test_phone_changes_invalidate_review_and_bytes_are_freshly_verified(self):
+        scene, _, phone = self.phone_scene_fixture()
+        legacy = {key: value for key, value in scene.items() if key not in {"phoneSourcePath", "phoneSha256"}}
+        legacy["approval"] = dict(scene["approval"], sceneSha256=release.scene_content_hash(legacy))
+        for change in [{"phoneSha256": "a" * 64}, {"approval": legacy["approval"]},
+                       {"phoneSourcePath": None}, {"phoneSha256": None}]:
+            with self.subTest(change=change):
+                with self.assertRaises(release.content.ContentError):
+                    self.build(scenes_by_track={self.track["id"]: [dict(scene, **change)]})
+                self.assertFalse(self.staging.exists())
+        phone.write_bytes(b"tampered phone painting")
+        with self.assertRaisesRegex(release.content.ContentError, "Phone image hash"):
+            self.build(scenes_by_track={self.track["id"]: [scene]})
+        self.assertFalse(self.staging.exists())
+
+    def test_phone_file_type_and_owned_root_are_enforced(self):
+        scene, _, phone = self.phone_scene_fixture()
+        png = phone.with_suffix(".png")
+        png.write_bytes(phone.read_bytes())
+        for path in [str(png.relative_to(self.root)), "/etc/hosts"]:
+            with self.subTest(path=path):
+                with self.assertRaises(release.content.ContentError):
+                    self.build(scenes_by_track={self.track["id"]: [dict(scene, phoneSourcePath=path)]})
+                self.assertFalse(self.staging.exists())
+
+    def test_shared_trigger_cannot_silently_hide_a_reviewed_painting(self):
+        scene, _, _ = self.phone_scene_fixture()
+        second = dict(scene, id="fixture-second-scene")
+        second["approval"] = dict(scene["approval"], sceneSha256=release.scene_content_hash(second))
+        with self.assertRaisesRegex(release.content.ContentError, "distinct canonical reveal triggers"):
+            self.build(scenes_by_track={self.track["id"]: [scene, second]})
+        self.assertFalse(self.staging.exists())
+
+    def scene_gap_fixture(self):
+        timing = copy.deepcopy(self.timing)
+        timing["schemaVersion"] = 2
+        for cue in timing["sentences"]:
+            cue["syncStatus"] = "measured"
+        gap = timing["sentences"][0]
+        gap.update(syncStatus="unavailable", start=None, end=None, reason="low-confidence-ASR-anchor",
+                   evidenceIds=[self.recording["selectedClips"][0]["id"]],
+                   recheckWindow={"start": 0, "end": timing["sentences"][1]["start"],
+                                  "beforeSentenceId": None, "afterSentenceId": timing["sentences"][1]["sentenceId"],
+                                  "scope": "neighbor-recheck-only"})
+        timing["coverage"]["introEnd"] = timing["sentences"][1]["start"]
+        timing["approvals"]["alignment"]["timingSha256"] = release.content.timing_content_hash(timing)
+        clock = {"schemaVersion": 1, "kind": "measured-scene-cues", "trackId": self.track["id"],
+                 "narratorId": "charon", "manuscriptVersion": "v6", "textSha256": self.track["textSha256"],
+                 "audioSha256": self.recording["sha256"], "duration": self.recording["decodedDuration"],
+                 "cues": [{"sentenceId": gap["sentenceId"], "start": 1.2, "method": "unique-measured-ASR-prefix"}],
+                 "evidence": [{"sourcePath": "PRIVATE ASR PATH", "prefixTokens": ["PRIVATE RECOGNIZER TEXT"]}]}
+        return timing, clock
+
+    def test_scene_only_reader_payload_omits_private_proof_and_preserves_null_prose_cues(self):
+        scene, _, _ = self.phone_scene_fixture()
+        timing, clock = self.scene_gap_fixture()
+        public_scenes, _ = release.prepare_scenes(self.root, [scene], self.plan["mediaURLbase"])
+        payload = release.reader_payload(self.registry, self.track, self.recording, timing,
+                                        self.plan["tracks"][0], self.plan, "https://reader.example/api/assets/audio.mp3",
+                                        public_scenes, None, clock)
+        gap = payload["paragraphs"][0]["sentences"][0]
+        self.assertIsNone(gap["start"]); self.assertIsNone(gap["end"])
+        self.assertEqual(gap["syncStatus"], "unavailable")
+        self.assertEqual(payload["scenes"][0]["start"], 1.2)
+        self.assertEqual(payload["scenes"][0]["triggerAudioSha256"], self.recording["sha256"])
+        encoded = json.dumps(payload)
+        for private in ["PRIVATE", "sourcePath", "evidence", "prefixTokens", "recheckWindow"]:
+            self.assertNotIn(private, encoded)
+
+    def test_unverified_scene_only_onset_cannot_publish_even_with_reviewed_image_and_sentence_map(self):
+        scene, _, _ = self.phone_scene_fixture()
+        timing, clock = self.scene_gap_fixture()
+        with self.assertRaisesRegex(release.content.ContentError, "Scene baseline"):
+            self.build(timing_maps={self.track["id"]: {"charon": timing}},
+                       scenes_by_track={self.track["id"]: [scene]},
+                       scene_timing_maps={self.track["id"]: {"charon": clock}})
+        self.assertFalse(self.staging.exists())
+
+    def test_reviewed_phrase_payload_binds_private_images_and_omits_narrative_request(self):
+        scene, _, _ = self.phone_scene_fixture()
+        timing, clock = self.scene_gap_fixture()
+        clock["cues"][0].update(method="unique-measured-ASR-phrase-end", sceneId=scene["id"],
+                               sourceSha256=scene["sha256"], phoneSha256=scene["phoneSha256"],
+                               phraseTokens=["PRIVATE", "REVIEWED", "WORDS"], requestSha256="e" * 64)
+        public, _ = release.prepare_scenes(self.root, [scene], self.plan["mediaURLbase"])
+        args = [self.registry, self.track, self.recording, timing, self.plan["tracks"][0], self.plan,
+                "https://reader.example/api/assets/audio.mp3", public, None, clock]
+        with self.assertRaisesRegex(release.content.ContentError, "different painting"):
+            release.reader_payload(*args)
+        payload = release.reader_payload(*args, scene_bindings={scene["id"]: scene})
+        self.assertEqual(payload["scenes"][0]["start"], 1.2)
+        self.assertIsNone(payload["paragraphs"][0]["sentences"][0]["start"])
+        for private in ["PRIVATE", "sourceSha256", "phoneSha256", "phraseTokens", "requestSha256"]:
+            self.assertNotIn(private, json.dumps(payload))
+
     def test_schema2_public_payload_keeps_unavailable_sentence_text_without_private_windows(self):
         timing = copy.deepcopy(self.timing); timing["schemaVersion"] = 2
         for cue in timing["sentences"]:

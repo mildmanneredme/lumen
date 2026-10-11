@@ -124,8 +124,8 @@ upload asset.
 
 ## Optional reviewed scenes
 
-Character and image expansion remains held. The exporter can consume existing
-approved paintings when a release explicitly includes them. `scenes_by_track`
+Private full-book painting production is complete; reader publication remains
+separate. The exporter consumes approved paintings when a release explicitly includes them. `scenes_by_track`
 maps track IDs to ordered scene lists. Each scene requires `id`, canonical
 `sentenceId`, owned local `sourcePath`, physical image `sha256`, plain `title`,
 plain `alt`, and an `approval` record. The record contains an approved or
@@ -139,10 +139,42 @@ Scenes require optimized WebP paintings, matching the reader and remote delivery
 contract. PNG/JPEG source paintings must be optimized and the resulting WebP
 hash reviewed before inclusion. The image is freshly hashed. Public scene objects contain an immutable `src`,
 approved title/alt (`description` mirrors alt for the reader), canonical trigger,
-and narrator-resolved start/end. A scene trigger must use a measured sentence;
-an unavailable gap has no reveal timestamp. Local paths and approvals stay private. Missing
+and narrator-resolved start/end. Each painting needs a distinct, strictly increasing
+measured reveal clock for each voice. Local paths and approvals stay private. Missing
 or malformed scene approval fails; it is never replaced with a generated image
 or an assumed approval.
+
+An optional phone variant uses the paired private fields `phoneSourcePath` and
+`phoneSha256`. Both fields are required together, and the file must be a freshly
+hash-verified WebP inside the selected project root. `scene_content_hash(scene)`
+includes `phoneSha256` when present, so adding or changing this variant requires
+a new review. Existing single-image approval hashes remain valid. The exporter
+adds both images to the inventory and exposes only `phoneSrc` alongside `src`.
+
+Use `web/scripts/prepare_illustrated_scenes.py` to prepare the generated selection
+manifests as a private draft and audit their exact narration anchors. Source-bound
+metadata replaces production notes with reader titles and alt text. Explicit
+`--corrections` records can change a canonical trigger after narrative review;
+they bind the original painting, phone variant, source sentence, target text and
+review hash. The original selections remain intact.
+
+An optional `--scene-timings` mapping supplies independently measured painting
+onsets for unavailable sentence cues. `recover_scene_timings.py` uses exact,
+chapter-unique ASR prefixes in the baseline neighbor window and preserves the
+original sentence timing maps. Export freshly verifies the mastered/raw audio,
+baseline, ASR caches, local model and retained recognition outputs, then
+reproduces every onset. It rejects changed proof and equal or reversed painting
+clocks. Only the onset and recording-bound trigger marker reach the reader;
+uncertain sentence bounds stay null and cannot enable highlighting or seeking.
+For a final painting with no later safe sentence, an explicit reviewed phrase
+request can select the measured end of three to six exact canonical words within
+the unavailable sentence. The phrase must be unique in the chapter and observed
+once wholly inside the original gap. Review binds the selected manifest,
+painting/phone hashes, canonical text and token span. Export checks the cue
+belongs to that painting; it cannot be borrowed by other artwork. Phrase text,
+review records and recognition evidence remain private.
+Pending painting approvals remain pending. See [generated imagery
+integration](imagery-integration.md) for the R2 decision and preparation commands.
 
 ## CLI and promotion gate
 
@@ -155,7 +187,8 @@ python3 web/scripts/release_export.py \
   --out Audiobook/author-audit/lumen-approved-staging
 ```
 
-Use `--scenes` only for an existing reviewed scene mapping. With no `--out`,
+Use `--scenes` only for an existing reviewed scene mapping. Add `--scene-timings`
+when those scenes require verified independent image-onset cues. With no `--out`,
 private/authenticated staging defaults to
 `<selected root>/Audiobook/author-audit/lumen-release-<releaseId>`, so every
 generated JSON source is eligible for the project-owned private uploader.
