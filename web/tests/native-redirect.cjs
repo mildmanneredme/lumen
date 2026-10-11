@@ -1,6 +1,7 @@
 'use strict';
 const test=require('node:test'),assert=require('node:assert/strict'),http=require('node:http'),fs=require('node:fs'),os=require('node:os'),path=require('node:path'),crypto=require('node:crypto');
 const {createNetworkLedger,observeNativeNetwork,mediaNetworkVerdict}=require('./native-network-observer.cjs');
+const {observeRequestScope}=require('./cloudflare-browser.cjs');
 const APP='https://candidate.vercel.app',WORKER='https://media.workers.dev',URL_A=APP+'/api/assets/release/audio/voice/chapter.hash.mp3',URL_M=WORKER+'/media/release/audio/voice/chapter.hash.mp3?grant=PRIVATE_GRANT';
 const headers={'Content-Type':'audio/mpeg','Content-Length':'100','Content-Range':'bytes 0-99/100','Cache-Control':'private, no-store','Access-Control-Allow-Origin':APP};
 function goodLedger(options={}) {
@@ -159,6 +160,16 @@ test('unexpected ExtraInfo cannot be ignored after a completed no-extra response
   assert.ok(l.snapshot().issues.includes('unmatched-extra-info'));
  }
 });
+test('observed request scope leaves allowed native requests unmodified and closes on a sanitized violation',async()=>{
+ const handlers={},violations=[];let closed=0,routes=0;
+ const context={on:(name,fn)=>{handlers[name]=fn;},route:()=>{routes++;throw Error('Routing must not be enabled');},close:async()=>{closed++;}};
+ const settle=observeRequestScope(context,u=>u.origin===APP||u.origin===WORKER&&u.pathname.startsWith('/media/'),row=>violations.push(row));
+ handlers.request({url:()=>URL_A});handlers.request({url:()=>URL_M});await settle();
+ assert.equal(routes,0);assert.equal(closed,0);assert.deepEqual(violations,[]);
+ handlers.request({url:()=>WORKER+'/bridge?grant=PRIVATE_GRANT'});await settle();
+ assert.equal(closed,1);assert.deepEqual(violations,[{origin:WORKER,path:'/bridge'}]);
+ assert.equal(JSON.stringify(violations).includes('PRIVATE_GRANT'),false);
+});
 test('total hop bound includes redirects and invalid counts cannot authorize a proof',()=>{
  const l=createNetworkLedger({appOrigin:APP,workerOrigin:WORKER,maxRequests:1});l.handlers.requestWillBeSent({requestId:'one',request:{url:URL_A,method:'GET'},type:'Media'});l.handlers.requestWillBeSent({requestId:'one',request:{url:URL_M,method:'GET'},type:'Media',redirectHasExtraInfo:false,redirectResponse:{url:URL_A,status:307,headers:{'Content-Length':'0','Cache-Control':'private, no-store'}}});assert.deepEqual(l.snapshot().issues,['request-limit']);assert.equal(verdict(l).apiRedirectsOnly,false);
  const bad=goodLedger();bad.handlers.dataReceived({requestId:'media',dataLength:-1});assert.equal(verdict(bad).workerAudioValid,false);
@@ -190,19 +201,22 @@ test('actual installed Chrome native MP3 redirects preserve raw wire-origin evid
   const env=Object.fromEntries(['PATH','HOME','TMPDIR','LANG'].filter(k=>process.env[k]).map(k=>[k,process.env[k]]));
   browser=await playwrightModule().chromium.launch({headless:true,channel:'chrome',env});
   const context=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
-  await context.route('**/*',route=>{assert.ok([appOrigin,mediaOrigin].includes(new URL(route.request().url()).origin),'No external fixture traffic');return route.continue();});
+  let routeRegistrations=0;context.route=async()=>{routeRegistrations++;throw Error('Native media fixture must not enable request interception');};
+  let externalRequests=0;
+  const settleScope=observeRequestScope(context,u=>[appOrigin,mediaOrigin].includes(u.origin),()=>{externalRequests++;});
   context.on('response',response=>{const task=(async()=>{const u=new URL(response.url());playwrightRows.push({origin:u.origin,path:u.pathname,status:response.status(),contentType:await response.headerValue('content-type')||''});})();pending.add(task);task.finally(()=>pending.delete(task));});
-  const page=await context.newPage();observer=await observeNativeNetwork(page,{appOrigin,workerOrigin:mediaOrigin,phase:()=> 'native-loopback'});
+  const page=await context.newPage();page.route=async()=>{routeRegistrations++;throw Error('Native media fixture must not intercept page requests');};observer=await observeNativeNetwork(page,{appOrigin,workerOrigin:mediaOrigin,phase:()=> 'native-loopback'});
   await page.goto(appOrigin,{waitUntil:'domcontentloaded'});
   for(let i=0;i<24;i++)await page.evaluate(async({url,at})=>{const a=document.querySelector('#a');a.pause();a.src=url;a.load();await new Promise((resolve,reject)=>{const t=setTimeout(()=>reject(Error('Fixture metadata timeout')),5000);a.addEventListener('loadedmetadata',()=>{clearTimeout(t);resolve();},{once:true});a.addEventListener('error',()=>{clearTimeout(t);reject(Error('Fixture decode failure'));},{once:true});});a.currentTime=at;await a.play();await new Promise(r=>setTimeout(r,35));a.pause();},{url:appOrigin+'/api/assets/'+(i%2?'charon':'autonoe')+'.mp3',at:i%3===0?12:0});
-  await page.evaluate(()=>{const a=document.querySelector('#a');a.pause();a.removeAttribute('src');a.load();});await new Promise(r=>setTimeout(r,100));await context.close();await Promise.allSettled([...pending]);
+  await page.evaluate(()=>{const a=document.querySelector('#a');a.pause();a.removeAttribute('src');a.load();});await new Promise(r=>setTimeout(r,100));await context.close();await settleScope();await Promise.allSettled([...pending]);
+  assert.equal(routeRegistrations,0);assert.equal(externalRequests,0);
   const snapshot=observer.snapshot(),result=mediaNetworkVerdict(snapshot,{appOrigin,workerOrigin:mediaOrigin});
   assert.equal(result.apiRedirectsOnly,true);assert.equal(result.workerAudioValid,true);assert.equal(result.apiBodyBytes,0);
   const appWire=wire.filter(r=>r.origin===appOrigin);assert.equal(appWire.length,24);assert.ok(appWire.every(r=>r.status===307&&r.bodyBytes===0));
   assert.equal(result.apiResponses,appWire.length);assert.ok(wire.some(r=>r.origin===mediaOrigin&&r.status===206&&r.bodyBytes>0));
   const anomalies=playwrightRows.filter(r=>r.origin===appOrigin&&r.path.endsWith('.mp3')&&r.status!==307);
   const output=fs.mkdtempSync(path.join(os.tmpdir(),'lumen-native-redirect-'));fs.chmodSync(output,0o700);
-  const proof={scope:'tiny-dual-loopback-installed-Chrome-native-MP3-redirect',externalRequests:false,credentialRead:false,productionAudioRead:false,
+  const proof={scope:'tiny-dual-loopback-installed-Chrome-native-MP3-redirect',externalRequests:false,requestInterceptionUsed:false,routeRegistrations,requestScopeGuard:'observe-and-close-context',credentialRead:false,productionAudioRead:false,
    chromeVersion:browser.version(),fixtureAudioBytes:AUDIO.length,fixtureAudioSha256:crypto.createHash('sha256').update(AUDIO).digest('hex'),
    apiWireResponses:appWire.length,apiWireBodyBytes:0,playwrightMisattributions:anomalies,verdict:result,network:snapshot};
   fs.writeFileSync(path.join(output,'report.json'),JSON.stringify(proof,null,2)+'\n',{mode:0o600,flag:'wx'});
