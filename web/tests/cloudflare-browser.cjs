@@ -443,7 +443,8 @@ async function selfTest() {
 }
 async function localBrowserSelfTest() {
   // This fixture never reads hosted configuration, credentials or release
-  // bodies. The reader's actual HTML/CSS are rendered without scripts/links.
+  // bodies. Render the reader's current shell locally; only the standalone
+  // icon hydrator runs, with every network request excluded.
   const browser=await playwrightModule().chromium.launch(chromeLaunchOptions(browserEnvironment()));
   try {
     const browserCDP=await browser.newBrowserCDPSession();
@@ -452,8 +453,12 @@ async function localBrowserSelfTest() {
     let requests=0;const settleScope=observeRequestScope(context,()=>false,()=>{requests++;});
     const page=await context.newPage(),dist=path.resolve(__dirname,'../dist');
     let html=fs.readFileSync(path.join(dist,'index.html'),'utf8').replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi,'').replace(/<link\b[^>]*>/gi,'').replace('<body>','<body class="authenticated">');
-    const css=['styles.css','mobile.css'].map(name=>fs.readFileSync(path.join(dist,name),'utf8')).join('\n');
+    const css=['styles.css','mobile.css','controls.css'].map(name=>fs.readFileSync(path.join(dist,name),'utf8')).join('\n');
     await page.setContent(html.replace('</head>','<style>'+css+'</style></head>'));
+    await page.addScriptTag({content:fs.readFileSync(path.join(dist,'icons.js'),'utf8')});
+    const iconsPresent=await page.evaluate(()=>[...document.querySelectorAll('[data-lumen-icon]')].every(element=>
+      element.querySelector('svg.lumen-icon')));
+    assert.ok(iconsPresent,'The offline fixture must render the current control icons');
     const baseline=await readLayout(page),cdp=await context.newCDPSession(page);let safe,reset;
     try {
       await cdp.send('Emulation.setSafeAreaInsetsOverride',{insets:PHONE_INSETS});safe=await readLayout(page);
@@ -462,7 +467,7 @@ async function localBrowserSelfTest() {
     }
     await settleScope();
     const proof={scope:'local-installed-Chrome-reader-HTML-CSS-geometry',physicalDeviceTested:false,VercelPreviewTested:false,
-      identity,requests,baseline,safe,reset,baselinePass:validLayout(baseline,true),safePass:validLayout(safe,true,PHONE_INSETS),resetPass:validLayout(reset,true)};
+      identity,requests,iconsPresent,baseline,safe,reset,baselinePass:validLayout(baseline,true),safePass:validLayout(safe,true,PHONE_INSETS),resetPass:validLayout(reset,true)};
     const output=fs.mkdtempSync('/private/tmp/lumen-hosted-proof-local-safearea-');fs.chmodSync(output,0o700);
     fs.writeFileSync(path.join(output,'report.json'),JSON.stringify(proof,null,2)+'\n',{mode:0o600,flag:'wx'});
     console.log(JSON.stringify({scope:proof.scope,identity,requests,baselinePass:proof.baselinePass,safePass:proof.safePass,resetPass:proof.resetPass,output}));

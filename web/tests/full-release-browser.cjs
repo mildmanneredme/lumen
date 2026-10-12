@@ -17,7 +17,7 @@ const root = path.resolve(__dirname, '../..');
 const dist = path.join(root, 'web/dist');
 const {values} = parseArgs({options:{
   inventory:{type:'string'}, registry:{type:'string'}, out:{type:'string'},
-  staging:{type:'string'}, recordings:{type:'string'}
+  staging:{type:'string'}, recordings:{type:'string'}, 'self-test-shell':{type:'boolean'}
 }});
 const staging = path.resolve(values.staging || path.join(root,
   'Audiobook/author-audit/web-release/staging/lumen-private-192-v4'));
@@ -63,7 +63,7 @@ function noPrivateFields(value) {
     noPrivateFields(child);
   }
 }
-const shell = new Set(['/', '/index.html', '/styles.css', '/mobile.css', '/app.js',
+const shell = new Set(['/', '/index.html', '/styles.css', '/mobile.css', '/controls.css', '/icons.js', '/app.js',
   '/progress.js', '/book.js', '/legacy-pilot.js', '/install.js', '/sw.js', '/manifest.webmanifest',
   '/icons/icon.svg', '/icons/icon-192.png', '/icons/icon-512.png', '/icons/icon-maskable-512.png',
   '/icons/apple-touch-icon.png', '/icons/favicon-lumen-32-v2.png', '/icons/favicon-lumen-16-v2.png']);
@@ -154,6 +154,29 @@ async function startFixture(assetsByPath, manifestAsset) {
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   origin = 'http://127.0.0.1:' + server.address().port;
 }
+function recordSourceHashes() {
+  for (const filename of ['app.js','book.js','index.html','styles.css','mobile.css','controls.css','icons.js','sw.js'])
+    sourceHashes['web/dist/' + filename] = hash(fs.readFileSync(path.join(dist, filename)));
+}
+async function verifyControlsShell() {
+  for (const filename of ['controls.css','icons.js']) {
+    const response = await fetch(origin + '/' + filename);
+    assert.equal(response.status, 200, 'The release fixture must serve ' + filename);
+    assert.equal(response.headers.get('content-type'), mime[path.extname(filename)]);
+    assert.equal(hash(Buffer.from(await response.arrayBuffer())), sourceHashes['web/dist/' + filename],
+      'The release fixture must serve the hash-recorded ' + filename);
+  }
+  check('release fixture serves the hash-recorded control styles and icon script', true);
+}
+async function shellSelfTest() {
+  recordSourceHashes();
+  await startFixture(new Map(), null);
+  await verifyControlsShell();
+  const response = await fetch(origin + '/api/book');
+  assert.equal(response.status, 401); await response.body?.cancel();
+  check('shell self-test leaves private book access authenticated', true);
+  return {verificationScope:'local-shell-assets-only', fullReleaseTested:false};
+}
 
 async function run() {
   const inventoryFile = inventoryPath(), inventory = readJSON(inventoryFile);
@@ -213,9 +236,9 @@ async function run() {
   if (registry) check('every paragraph and block matches the canonical registry', registry.manuscriptVersion === manifest.manuscriptVersion);
   check('female voice and generic artwork are the release defaults', manifest.defaultNarratorId === 'autonoe' &&
     manifest.narrators.find(n => n.id === 'autonoe').label === 'Female narrator');
-  for (const filename of ['app.js','book.js','index.html','styles.css','mobile.css','sw.js'])
-    sourceHashes['web/dist/' + filename] = hash(fs.readFileSync(path.join(dist, filename)));
+  recordSourceHashes();
   await startFixture(assetsByPath, assetsByURL.get(manifestAsset.url));
+  await verifyControlsShell();
   for (const [url, method, headers] of [['/api/book','GET',{}], ['/api/assets/' + assetsByURL.get(manifestAsset.url).pathname.split('/api/assets/')[1],'HEAD',{}],
     [new URL(payloads.get('chapter-001/autonoe').audio.src).pathname,'GET',{Range:'bytes=0-1023'}]]) {
     const response = await fetch(origin + url, {method, headers});
@@ -441,7 +464,7 @@ async function run() {
     observedPlayedSeconds:Number(playback.reduce((sum,p)=>sum+p.observedPlayedSeconds,0).toFixed(3))};
 }
 let result = {};
-run().then(value => result = value).catch(error => {
+(values['self-test-shell'] ? shellSelfTest() : run()).then(value => result = value).catch(error => {
   errors.push(error.stack || String(error)); console.error(error.message); process.exitCode = 1;
 }).finally(async () => {
   if (browser) await browser.close();
