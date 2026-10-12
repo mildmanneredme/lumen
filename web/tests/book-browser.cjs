@@ -619,6 +619,39 @@ let browser;
       document.querySelector('#prose').textContent===old.prose && !document.querySelector('#transition-retry').hidden,oldEmphasisState));
   }
   await emphasisReader.context.close();
+  const dashPayload=JSON.parse(JSON.stringify(payloads.get('/fixture/chapter-002-autonoe.json')));
+  dashPayload.schemaVersion=2;
+  const dashParagraph=dashPayload.paragraphs[0],dashFirst='Plain—dash, bold—dash and italic—dash.',dashSecond='Unmeasured—text—ends here.';
+  dashParagraph.text=' '+dashFirst+'  '+dashSecond+' ';
+  dashParagraph.end=6;
+  dashParagraph.emphasis=[['bold—dash','bold'],['italic—dash','italic']].map(([text,kind])=>{
+    const start=dashParagraph.text.indexOf(text);return {start,end:start+text.length,kind};
+  });
+  Object.assign(dashParagraph.sentences[0],{text:dashFirst,textStart:1,textEnd:1+dashFirst.length,end:6});
+  Object.assign(dashParagraph.sentences[1],{text:dashSecond,textStart:3+dashFirst.length,textEnd:3+dashFirst.length+dashSecond.length,start:null,end:null,syncStatus:'unavailable'});
+  const dashReader=await fixtureContext({overrides:new Map([['/fixture/chapter-002-autonoe.json',dashPayload]])});
+  await dashReader.page.goto(origin,{waitUntil:'domcontentloaded'});await ready(dashReader.page);
+  await choose(dashReader.page,'chapter-002');await reached(dashReader.page,'chapter-002');
+  regression('all written dashes normalize while canonical prose, offsets and emphasis stay intact',await dashReader.page.evaluate(expected=>{
+    const source=window.LUMEN_CHAPTER.paragraphs[0],prose=document.querySelector('#prose');
+    return prose.textContent===expected.text.replace(/\u2014/g,'-') && JSON.stringify(source)===JSON.stringify(expected) &&
+      prose.querySelector('strong').textContent==='bold-dash' && prose.querySelector('em').textContent==='italic-dash';
+  },dashParagraph));
+  regression('accessible measured text and unsynchronized text use the same normal dashes',await dashReader.page.evaluate(expected=>{
+    const measured=document.querySelector('.sentence[role="button"]'),unmeasured=document.querySelector('.sentence.unsynchronized');
+    return measured.getAttribute('aria-label')==='Listen: '+expected.first.replace(/\u2014/g,'-') &&
+      unmeasured.textContent===expected.second.replace(/\u2014/g,'-') && !unmeasured.hasAttribute('role');
+  },{first:dashFirst,second:dashSecond}));
+  await dashReader.page.locator('#seek').evaluate(el=>{el.value='2.5';el.dispatchEvent(new Event('input',{bubbles:true}));});
+  await dashReader.page.waitForFunction(()=>Math.abs(document.querySelector('#narration').currentTime-2.5)<.05);
+  await dashReader.page.locator('.sentence[role="button"]').click();
+  await dashReader.page.waitForFunction(()=>document.querySelector('#narration').currentTime<.05);
+  regression('normalized text retains sentence seeking and the canonical bookmark',await dashReader.page.evaluate(id=>{
+    const state=JSON.parse(localStorage.getItem('lumen-book-v2'));
+    return document.querySelector('#narration').paused && document.querySelector('.sentence.active').id===id &&
+      state?.lastPosition?.sentenceId===id && state.lastPosition.audioTime<.05;
+  },dashParagraph.sentences[0].id));
+  await dashReader.context.close();
   const failedNext=['/fixture/chapter-002-autonoe.json'];
   const endedReader=await fixtureContext({failures:failedNext});
   await endedReader.page.goto(origin,{waitUntil:'domcontentloaded'});await ready(endedReader.page);

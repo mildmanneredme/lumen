@@ -1,6 +1,6 @@
 /* Bump the shell version when shipping changes to HTML, scripts, or styles. */
 'use strict';
-const SHELL_CACHE = 'lumen-shell-20261012-reader-controls-v25';
+const SHELL_CACHE = 'lumen-shell-20261012-reader-controls-v26';
 const ART_CACHE = 'lumen-art-v1';
 const MAX_ART_ENTRIES = 40;
 const SHELL_PATHS = [

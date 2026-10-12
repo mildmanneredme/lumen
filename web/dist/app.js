@@ -262,15 +262,18 @@
       if (paragraph) paragraphElements.get(paragraph.id)?.classList.add('active-paragraph');
     }
   }
+  function displayProse(text) {
+    return text.replace(/\u2014/g,'-');
+  }
   function appendText(parent,text,start,end,emphasis) {
     let cursor = start;
     for (const mark of emphasis) {
       const a = Math.max(start,mark.start), b = Math.min(end,mark.end);
       if (b <= a) continue;
-      if (a > cursor) parent.append(document.createTextNode(text.slice(cursor,a)));
-      const em = document.createElement(mark.kind === 'bold' ? 'strong' : 'em'); em.textContent = text.slice(a,b); parent.append(em); cursor = b;
+      if (a > cursor) parent.append(document.createTextNode(displayProse(text.slice(cursor,a))));
+      const em = document.createElement(mark.kind === 'bold' ? 'strong' : 'em'); em.textContent = displayProse(text.slice(a,b)); parent.append(em); cursor = b;
     }
-    if (cursor < end) parent.append(document.createTextNode(text.slice(cursor,end)));
+    if (cursor < end) parent.append(document.createTextNode(displayProse(text.slice(cursor,end))));
   }
   function buildProse() {
   for (const block of chapter.blocks || chapter.paragraphs.map(p => ({kind:'paragraph',paragraphId:p.id}))) {
@@ -292,7 +295,7 @@
         continue;
       }
       span.setAttribute('role','button'); span.tabIndex = sentences.length ? -1 : 0;
-      span.setAttribute('aria-label','Listen: ' + sentence.text);
+      span.setAttribute('aria-label','Listen: ' + displayProse(sentence.text));
       appendText(span,paragraph.text,sentence.textStart,sentence.textEnd,paragraph.emphasis);
       const activate = () => { setFollow(true); seekTo(sentence.start); };
       span.addEventListener('click',activate);
