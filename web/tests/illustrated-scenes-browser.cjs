@@ -333,7 +333,7 @@ let browser;
   check('a CSS-hidden short portrait stage loads no current or next painting while artwork is enabled',
     cssHidden.requests.length === 0 && await cleared(cssHidden.page) && await cssHidden.page.evaluate(() =>
       getComputedStyle(document.querySelector('#scene-stage')).display === 'none' &&
-      document.querySelector('#art-toggle').getAttribute('aria-pressed') === 'true'));
+      document.querySelector('#art-toggle').getAttribute('aria-checked') === 'true'));
   await cssHidden.page.setViewportSize({width:390,height:480});
   await seek(cssHidden.page,6); await cssHidden.page.waitForTimeout(100);
   check('resizing and seeking within a CSS-hidden stage start no painting requests',

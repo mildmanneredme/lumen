@@ -41,11 +41,17 @@ Run the local author audit with `python3 scripts/audit_server.py` from `web`, th
 node --test tests/progress.cjs tests/book-controller.cjs
 node tests/private-shell.cjs
 node tests/book-browser.cjs
+node tests/reader-controls.cjs
+node tests/full-release-browser.cjs --self-test-shell
 npm run test:private
 python3 -m unittest discover -s tests -p 'test_*.py'
 ```
 
 The browser fixture generates short audio in memory and supplies three chapters in both voices. It checks native touch seeking, retries, stale requests, chapter history, narrator switching, completion, private access/logout, source sync gaps and responsive layouts. Playwright and Chrome are required; `PLAYWRIGHT_MODULE` and `LUMEN_QA_OUT` override their locations. Older pilot browser suites remain historical fixtures.
+
+Reader controls use a shared, locally drawn SVG set in `dist/icons.js` and a final style layer in `dist/controls.css`. Decorative icons inherit the charcoal, ivory and gold palette; changing labels preserves the icons and native control semantics. `reader-controls.cjs` checks icon state changes, accessible names, keyboard focus, reduced motion and phone/tablet/desktop geometry using loopback-only historical text and generated audio. It also captures the welcome screen, settings, chapter list and painted reader for visual review.
+
+The release fixture records and verifies the exact control stylesheet and icon script it serves. `full-release-browser.cjs --self-test-shell` checks those local assets and anonymous private-book denial without loading the full release; it does not certify the book or hosted deployment.
 
 After the private full release has been staged, `node tests/full-release-browser.cjs --registry /absolute/path/to/prepared-registry.json` checks all 182 payloads against canonical prose and briefly plays ten representative original MP3s in a loopback-only Chrome fixture. It verifies actual native seeking, chapter/voice changes, resume and explicit cue gaps. QA evidence stays in a private temporary directory. This check does not certify the hosted backend, physical phones or a full-book listening pass.
 

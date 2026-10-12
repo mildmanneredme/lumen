@@ -30,7 +30,7 @@ dialog{max-height:calc(100dvh - 40px - env(safe-area-inset-top) - env(safe-area-
   .skip-button{width:48px;height:52px}.skip-button span:first-child{font-size:38px}.skip-button span:last-child{top:24px}
   .play-button{width:54px;height:54px;font-size:21px}
   .art-toggle{grid-row:2;grid-column:1;justify-self:start;display:flex;align-items:center;justify-content:center;gap:5px;min-width:44px;min-height:48px;padding:4px 0;background:none;border:0;color:var(--muted);font:12px Arial,sans-serif}
-  .art-toggle[aria-pressed=true]{color:var(--gold)}
+  .art-toggle[aria-checked=true]{color:var(--gold)}
   .speed-control{grid-row:2;grid-column:3;justify-self:end;padding:0;border:0}
   .speed-control select{min-width:55px;min-height:48px;font-size:16px}
   .art-hidden .scene-stage{display:none}

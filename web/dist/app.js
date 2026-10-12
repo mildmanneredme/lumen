@@ -5,6 +5,13 @@
   const $ = id => document.getElementById(id);
   const audio = $('narration'), pane = $('reading-pane'), prose = $('prose');
   const play = $('play'), seek = $('seek'), followButton = $('follow');
+  const icons = window.LumenIcons;
+  // Labels change independently of the decorative SVG, including restored state.
+  function setControlLabel(control, label) {
+    const target = control.querySelector('.control-label');
+    if (target) target.textContent = label;
+    else control.textContent = label;
+  }
   if (!pilot || !window.LumenBook || !window.LumenProgress) {
     $('play-status').textContent = 'The book could not be loaded. Please reload.';
     play.disabled = true;
@@ -18,6 +25,7 @@
   const transitionStart = document.createElement('button');
   transitionStart.id = 'transition-start'; transitionStart.type = 'button'; transitionStart.className = 'text-button';
   transitionStart.textContent = 'Start this chapter from the beginning'; transitionStart.hidden = true;
+  icons?.set(transitionStart, 'restart', transitionStart.textContent);
   transitionStart.setAttribute('aria-describedby','transition-status'); $('transition-panel').append(transitionStart);
   let automaticEndHandled = false;
   const descriptions = {
@@ -112,7 +120,9 @@
   function setFollow(value, jump = false) {
     follow = value;
     followButton.setAttribute('aria-pressed', String(follow));
-    followButton.textContent = follow ? 'Following text' : 'Follow text';
+    const label = follow ? 'Following text' : 'Follow text';
+    setControlLabel(followButton, label);
+    followButton.setAttribute('aria-label', label); followButton.title = label;
     if (jump) scrollToActive(true);
   }
   function scrollToActive(force = false) {
@@ -314,8 +324,8 @@
   function setArtworkVisible(value) {
     artworkVisible = value;
     document.body.classList.toggle('art-hidden', !value);
-    $('art-toggle').setAttribute('aria-pressed', String(value));
-    $('art-toggle').setAttribute('aria-label', value ? 'Hide artwork' : 'Show artwork');
+    $('art-toggle').setAttribute('aria-checked', String(value));
+    $('art-toggle').title = value ? 'Hide artwork' : 'Show artwork';
     if (value) render(currentPosition());
     else cancelSceneLoading();
   }
@@ -338,8 +348,15 @@
     if (errorMessage) $('seek-feedback').textContent = errorMessage;
     else if (waiting) $('seek-feedback').textContent = 'Loading your place at ' + formatTime(pendingSeek) + '…';
     const wantsPlayback = pendingTransition?.listen ?? (!audio.paused || (waiting && resumeAfterSeek));
-    $('play-icon').textContent = wantsPlayback ? 'Ⅱ' : '▶';
+    const iconName = ended && !pendingTransition ? 'replay' : wantsPlayback ? 'pause' : 'play';
+    const iconHost = $('play-icon');
+    if (iconHost.dataset.lumenIcon !== iconName) {
+      iconHost.dataset.lumenIcon = iconName;
+      if (icons) icons.hydrate(iconHost);
+      else iconHost.textContent = wantsPlayback ? 'Ⅱ' : '▶';
+    }
     play.setAttribute('aria-label', ended && !pendingTransition ? 'Replay audiobook' : wantsPlayback ? 'Pause audiobook' : 'Play audiobook');
+    play.title = play.getAttribute('aria-label');
     $('play-status').textContent = errorMessage || (ended ? endingLabel() : chapter.title + (audio.paused ? ' · paused' : ' · listening'));
     updateMediaSession(true);
   }
@@ -497,6 +514,9 @@
       const current = element.dataset.trackId === chapter.chapterId;
       if (current) element.setAttribute('aria-current','page'); else element.removeAttribute('aria-current');
       const done = history[element.dataset.trackId]?.completed === true;
+      element.dataset.state = done ? 'finished' : current ? 'current' : 'ready';
+      const marker = element.querySelector('.chapter-marker');
+      if (marker && icons) { marker.dataset.lumenIcon = done ? 'check' : current ? 'bookmark' : 'book-open'; icons.hydrate(marker); }
       element.querySelector('.chapter-state').textContent = done ? 'Finished' : current ? 'Current' : element.dataset.available;
     }
   }
@@ -528,9 +548,12 @@
       button.dataset.trackId = track.id;
       const available = Object.values(track.recordings).some(recording => recording.status === 'ready');
       button.dataset.available = available ? '' : 'Unavailable';
-      const label = document.createElement('span'); label.textContent = track.title;
+      const marker = document.createElement('span'); marker.className = 'chapter-marker'; marker.setAttribute('aria-hidden','true');
+      marker.dataset.lumenIcon = 'book-open'; icons?.hydrate(marker);
+      const label = document.createElement('span'); label.className = 'chapter-label'; label.textContent = track.title;
       const state = document.createElement('span'); state.className = 'chapter-state'; state.textContent = button.dataset.available;
-      button.append(label,state);
+      const arrow = icons?.create('arrow-right');
+      button.append(marker,label,state); if (arrow) button.append(arrow);
       button.addEventListener('click',() => {
         $('chapters').close(); transitionTo(track.id, requestedNarrator(), {reason:'chapter'});
       });
@@ -576,7 +599,9 @@
     if (initial && (position.time > 0 || completed)) {
       $('resume-panel').hidden = false;
       $('resume-message').textContent = completed ? (chapter.id === pilot.id ? 'You’ve finished the opening excerpt.' : 'You’ve finished ' + chapter.title + '.') : 'Your place is saved · ' + chapter.title;
-      $('resume-continue').textContent = completed ? 'Listen again' : 'Continue from ' + formatTime(position.time);
+      const resumeLabel = completed ? 'Listen again' : 'Continue from ' + formatTime(position.time);
+      if (icons) icons.set($('resume-continue'), completed ? 'replay' : 'play', resumeLabel);
+      else setControlLabel($('resume-continue'), resumeLabel);
     }
     committing = false; bookmarkDirty = true;
     seekTo(position.time,true);
