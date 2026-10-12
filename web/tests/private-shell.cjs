@@ -24,6 +24,7 @@ vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../dist/sw.js'),'utf8'),
   let installation;handlers.install({waitUntil:p=>installation=p});await installation;
   const cached=[...stores.values()].flatMap(data=>[...data.keys()]);
   assert.ok(cached.includes('/book.js') && cached.includes('/legacy-pilot.js'),'install the private reader modules');
+  assert.ok(cached.includes('/icons.js') && cached.includes('/controls.css'),'install the icon system and control styles with the shell');
   assert.ok(!cached.some(key=>key.includes('/data/') || key.includes('/api/')),'no prose in the shell cache');
   for(const [url,headers] of [['/api/book',{}],['/api/assets/release/audio.mp3',{}],['/api/assets/release/art.webp',{}],
     ['/app.js',{Range:'bytes=0-10'}]]) {

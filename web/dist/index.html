@@ -17,11 +17,13 @@
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
   <link rel="stylesheet" href="styles.css?v=20261010-book">
   <link rel="stylesheet" href="mobile.css?v=20261010-book">
+  <link rel="stylesheet" href="controls.css?v=20261012-polish">
+  <script src="icons.js?v=20261012-polish" defer></script>
   <script src="legacy-pilot.js?v=20261010-book" defer></script>
   <script src="progress.js?v=20261009-mobile" defer></script>
   <script src="book.js?v=20261010-book" defer></script>
-  <script src="app.js?v=20261010-book" defer></script>
-  <script src="install.js?v=20261009-mobile" defer></script>
+  <script src="app.js?v=20261012-polish" defer></script>
+  <script src="install.js?v=20261012-polish" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#prose">Skip to the book</a>
@@ -29,13 +31,14 @@
     <div class="identity"><span class="wordmark">LUMEN</span><span class="byline">Inspired by Rob Xie</span></div>
     <nav class="reader-tools" aria-label="Reader tools">
       <span class="reading-mode">Read & listen</span>
-      <button id="chapters-open" class="text-button" type="button" aria-label="Choose a chapter" aria-haspopup="dialog">Chapters</button>
-      <button id="follow" class="text-button" type="button" aria-pressed="true">Follow text</button>
-      <button id="settings-open" class="type-button" type="button" aria-label="Reading settings" aria-haspopup="dialog">Aa</button>
-      <button id="sign-out" class="text-button" type="button" hidden>Sign out</button>
+      <button id="chapters-open" class="text-button" type="button" aria-label="Choose a chapter" aria-haspopup="dialog" title="Chapters"><span data-lumen-icon="book-open" aria-hidden="true"></span><span class="control-label">Chapters</span></button>
+      <button id="follow" class="text-button" type="button" aria-pressed="true" aria-label="Follow text" title="Follow text"><span data-lumen-icon="follow" aria-hidden="true"></span><span class="control-label">Follow text</span></button>
+      <button id="settings-open" class="type-button" type="button" aria-label="Reading settings" aria-haspopup="dialog" title="Reading settings"><span data-lumen-icon="settings" aria-hidden="true"></span><span class="control-label">Settings</span></button>
+      <button id="sign-out" class="text-button" type="button" aria-label="Sign out" title="Sign out" hidden><span data-lumen-icon="sign-out" aria-hidden="true"></span><span class="control-label">Sign out</span></button>
     </nav>
   </header>
   <section id="access-gate" class="access-gate" aria-labelledby="access-title">
+    <div class="access-room">
     <div class="access-mark" aria-hidden="true">L</div>
     <p class="chapter-kicker">A private reading room</p>
     <h1 id="access-title">Welcome to Lumen</h1>
@@ -43,23 +46,24 @@
     <form id="invite-form">
       <label for="invite-code">Access code</label>
       <input id="invite-code" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" aria-describedby="access-hint" required>
-      <button id="invite-submit" class="continue-button" type="submit">Open the book</button>
+      <button id="invite-submit" class="continue-button" type="submit"><span data-lumen-icon="book-open" aria-hidden="true"></span><span class="control-label">Open the book</span><span data-lumen-icon="arrow-right" aria-hidden="true"></span></button>
     </form>
     <p id="access-hint">Spaces or dashes work; capital letters are fine. Invitation links work too.</p>
     <p id="access-status" role="status">Checking your access…</p>
-    <p>For help or feedback, contact the person who shared your access code.</p>
-    <p>AI-generated narration. Illustrations are in preparation.</p>
+    <p class="access-help">For help or feedback, contact the person who shared your access code.</p>
+    <p class="access-credit">AI-generated narration. Illustrations are in preparation.</p>
+    </div>
   </section>
   <aside id="resume-panel" class="resume-panel" aria-label="Your listening position" hidden>
     <p id="resume-message">Your place is saved on this browser.</p>
     <div class="resume-actions">
-      <button id="resume-continue" class="continue-button" type="button">Continue listening</button>
-      <button id="start-over" class="text-button" type="button">Start over</button>
+      <button id="resume-continue" class="continue-button" type="button"><span data-lumen-icon="play" aria-hidden="true"></span><span class="control-label">Continue listening</span></button>
+      <button id="start-over" class="text-button" type="button"><span data-lumen-icon="restart" aria-hidden="true"></span><span class="control-label">Start over</span></button>
     </div>
   </aside>
   <aside id="transition-panel" class="transition-panel" hidden>
     <p id="transition-status" role="status"></p>
-    <button id="transition-retry" class="text-button" type="button" hidden>Retry</button>
+    <button id="transition-retry" class="text-button" type="button" hidden><span data-lumen-icon="retry" aria-hidden="true"></span><span class="control-label">Retry</span></button>
   </aside>
   <main class="experience">
     <figure class="scene-stage" id="scene-stage" data-scene="opening-room">
@@ -74,15 +78,15 @@
         <h1 id="chapter-title">Chapter 1</h1>
         <p class="edition-label"><span id="edition-name">Opening excerpt</span> <span aria-hidden="true">·</span> <span id="excerpt-duration">5:20</span></p>
         <div id="chapter-navigation" class="chapter-navigation" aria-label="Chapter navigation">
-          <button id="track-prev" class="text-button" type="button">Previous</button>
+          <button id="track-prev" class="text-button" type="button"><span data-lumen-icon="arrow-left" aria-hidden="true"></span><span class="control-label">Previous</span></button>
           <span id="book-progress"></span>
-          <button id="track-next" class="text-button" type="button">Next</button>
+          <button id="track-next" class="text-button" type="button"><span class="control-label">Next</span><span data-lumen-icon="arrow-right" aria-hidden="true"></span></button>
         </div>
         <article id="prose" aria-label="Chapter 1 prose"></article>
         <section class="excerpt-ending" id="excerpt-ending" aria-label="End of excerpt">
           <div class="fine-rule"></div><p id="ending-label">End of the pilot</p>
-          <button id="chapter-continue" class="text-button" type="button" hidden>Continue to next chapter</button>
-          <button id="replay" class="text-button" type="button">Listen again</button>
+          <button id="chapter-continue" class="text-button" type="button" hidden><span class="control-label">Continue to next chapter</span><span data-lumen-icon="arrow-right" aria-hidden="true"></span></button>
+          <button id="replay" class="text-button" type="button"><span data-lumen-icon="replay" aria-hidden="true"></span><span class="control-label">Listen again</span></button>
         </section>
         <p class="narration-credit">AI-generated narration. Illustrations are in preparation.</p>
       </div>
@@ -91,37 +95,36 @@
   <footer class="player" aria-label="Audiobook player">
     <p id="seek-feedback" class="seek-feedback" role="status" hidden></p>
     <button id="art-toggle" class="art-toggle" type="button" aria-controls="scene-stage" aria-pressed="true" aria-label="Hide artwork">
-      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8" cy="9" r="1.5"/><path d="m3 17 5-5 4 4 4-6 5 7"/></svg>
-      <span>Art</span>
+      <span data-lumen-icon="artwork" aria-hidden="true"></span><span class="control-label">Art</span>
     </button>
     <div class="transport">
-      <button id="back" class="skip-button" type="button" aria-label="Rewind 15 seconds"><span aria-hidden="true">↶</span><span>15</span></button>
-      <button id="play" class="play-button" type="button" aria-label="Play audiobook"><span id="play-icon" aria-hidden="true">▶</span></button>
-      <button id="forward" class="skip-button" type="button" aria-label="Forward 15 seconds"><span aria-hidden="true">↷</span><span>15</span></button>
+      <button id="back" class="skip-button" type="button" aria-label="Rewind 15 seconds" title="Rewind 15 seconds"><span data-lumen-icon="rewind-15" aria-hidden="true"></span></button>
+      <button id="play" class="play-button" type="button" aria-label="Play audiobook" title="Play audiobook"><span id="play-icon" data-lumen-icon="play" aria-hidden="true"></span></button>
+      <button id="forward" class="skip-button" type="button" aria-label="Forward 15 seconds" title="Forward 15 seconds"><span data-lumen-icon="forward-15" aria-hidden="true"></span></button>
     </div>
     <div class="progress-area">
       <div class="progress-heading"><span id="play-status" role="status">Chapter 1</span><span class="timestamps"><span id="elapsed">0:00</span><span class="time-divider"> / </span><span id="total">5:20</span></span></div>
       <label class="sr-only" for="seek">Playback position</label><input id="seek" type="range" min="0" max="320.19" step="0.1" value="0" aria-valuetext="0 minutes 0 seconds">
     </div>
-    <label class="speed-control"><span class="sr-only">Playback speed</span><select id="speed" aria-label="Playback speed"><option value="0.75">0.75×</option><option value="1" selected>1×</option><option value="1.25">1.25×</option><option value="1.5">1.5×</option><option value="2">2×</option></select></label>
+    <label class="speed-control"><span class="sr-only">Playback speed</span><select id="speed" aria-label="Playback speed"><option value="0.75">0.75×</option><option value="1" selected>1×</option><option value="1.25">1.25×</option><option value="1.5">1.5×</option><option value="2">2×</option></select><span data-lumen-icon="chevron-down" aria-hidden="true"></span></label>
   </footer>
   <dialog id="settings" aria-labelledby="settings-title">
-    <div class="dialog-heading"><h2 id="settings-title">Reading settings</h2><button id="settings-close" class="text-button" type="button" aria-label="Close reading settings">Close</button></div>
-    <label class="size-label" for="text-size">Text size <output id="text-size-value">20 px</output></label>
+    <div class="dialog-heading"><h2 id="settings-title"><span data-lumen-icon="settings" aria-hidden="true"></span>Reading settings</h2><button id="settings-close" class="text-button icon-button" type="button" aria-label="Close reading settings" title="Close reading settings"><span data-lumen-icon="close" aria-hidden="true"></span></button></div>
+    <label class="size-label" for="text-size"><span class="setting-name"><span data-lumen-icon="text-size" aria-hidden="true"></span>Text size</span><output id="text-size-value">20 px</output></label>
     <input id="text-size" type="range" min="18" max="28" step="1" value="20">
-    <label class="narrator-label" for="narrator">Narrator</label>
-    <select id="narrator" aria-label="Narrator"></select>
+    <label class="narrator-label" for="narrator"><span data-lumen-icon="headphones" aria-hidden="true"></span>Narrator</label>
+    <div class="select-field"><select id="narrator" aria-label="Narrator"></select><span data-lumen-icon="chevron-down" aria-hidden="true"></span></div>
     <label class="auto-continue-label"><input id="auto-continue" type="checkbox"> Continue to the next chapter automatically</label>
     <p>Click a sentence to hear it. Scroll freely to read ahead, then select Follow text to return to the narration.</p>
     <section id="install-section" class="install-section" aria-labelledby="install-title">
       <h3 id="install-title">Lumen on your phone</h3>
-      <button id="install-app" class="continue-button" type="button">How to install</button>
+      <button id="install-app" class="continue-button" type="button"><span data-lumen-icon="download" aria-hidden="true"></span><span class="control-label">How to install</span></button>
       <p id="install-status" role="status">Add Lumen to your Home screen to open it as an app.</p>
     </section>
-    <button id="sign-out-settings" class="text-button" type="button" hidden>Sign out</button>
+    <button id="sign-out-settings" class="text-button" type="button" hidden><span data-lumen-icon="sign-out" aria-hidden="true"></span><span class="control-label">Sign out</span></button>
   </dialog>
   <dialog id="chapters" aria-labelledby="chapters-title">
-    <div class="dialog-heading"><h2 id="chapters-title">Chapters</h2><button id="chapters-close" class="text-button" type="button" aria-label="Close chapters">Close</button></div>
+    <div class="dialog-heading"><h2 id="chapters-title"><span data-lumen-icon="book-open" aria-hidden="true"></span>Chapters</h2><button id="chapters-close" class="text-button icon-button" type="button" aria-label="Close chapters" title="Close chapters"><span data-lumen-icon="close" aria-hidden="true"></span></button></div>
     <nav id="chapter-list" aria-label="Book chapters"></nav>
   </dialog>
   <audio id="narration" preload="metadata" crossorigin="anonymous"></audio>

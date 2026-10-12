@@ -26,7 +26,10 @@
   function render(message) {
     if (!section || !button || !status) return;
     section.hidden = isInstalled();
-    button.textContent = deferredPrompt ? 'Install Lumen' : 'How to install';
+    const label = deferredPrompt ? 'Install Lumen' : 'How to install';
+    const target = button.querySelector('.control-label');
+    if (target) target.textContent = label;
+    else button.textContent = label;
     if (message) status.textContent = message;
     else status.textContent = 'Add Lumen to your Home screen to open it as an app. Your place stays saved on this browser.';
   }
