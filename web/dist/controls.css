@@ -233,7 +233,9 @@ dialog p { font-size: 12px; }
   #seek::-moz-range-thumb { width: 12px; height: 12px; }
   .art-toggle { flex-direction: column; min-width: 44px; min-height: 48px; padding: 4px; gap: 3px; font-size: 10px; }
   .speed-control { padding: 0; }
-  .speed-control select { min-width: 66px; min-height: 48px; padding: 8px 24px 8px 9px; font-size: 13px; }
+  /* Native phone pickers need 16px text to avoid WebKit's focus zoom. */
+  .speed-control select { min-width: 66px; min-height: 48px; padding: 8px 24px 8px 9px; font-size: 16px; }
+  #narrator { font-size: 16px; }
   .speed-control > [data-lumen-icon] { right: 7px; }
   .speed-control .lumen-icon { width: 13px; height: 13px; }
   dialog { width: calc(100% - 28px); padding: 20px; }
@@ -256,6 +258,7 @@ dialog p { font-size: 12px; }
   .resume-panel { padding-block: 5px; }
   .access-gate { padding-block: 20px; }
   .access-mark { width: 60px; height: 70px; font-size: 48px; }
+  .speed-control select, #narrator { font-size: 16px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .auto-continue-label input::before, .art-switch, .art-switch-thumb { transition: none; }

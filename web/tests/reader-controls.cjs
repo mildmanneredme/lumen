@@ -145,6 +145,8 @@ async function dialogFit(page,id,closeId) {
     check(view.join('x')+' switch and transport targets do not overlap',bounds('art-toggle').right<=bounds('back').x && bounds('back').right<=bounds('play').x && bounds('play').right<=bounds('forward').x && bounds('forward').right<=bounds('speed').x);
     check(view.join('x')+' artwork exposes a named checked switch',await page.getByRole('switch',{name:'Artwork',exact:true}).count()===1 && await page.locator('#art-toggle').getAttribute('aria-checked')==='true');
     if (view[0]<=720) check(view.join('x')+' portrait timeline spans reader',result.controls.find(c=>c.id==='seek').width>=result.width-48);
+    if (view[0]<=720 || view[0]<=960 && view[1]<=520) check(view.join('x')+' native phone selects retain 16px text',await page.evaluate(()=>
+      ['speed','narrator'].every(id=>parseFloat(getComputedStyle(document.getElementById(id)).fontSize)>=16)));
     const visibleButtons=page.locator('button:visible'),names=[];
     for (let index=0;index<await visibleButtons.count();index++) names.push((await visibleButtons.nth(index).ariaSnapshot()).split('\n')[0]);
     check(view.join('x')+' every visible button or switch has an accessible name',names.every(name=>/^- (?:button|switch) \".+\"/.test(name)),names);
