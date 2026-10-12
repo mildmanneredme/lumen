@@ -127,9 +127,9 @@ async function rangeFetch(page, audioURL, range) {
       const before = result.pane.height;
       await page.locator('#art-toggle').tap();
       result = await layout(page);
-      check(`${width}×${height} art toggle gives prose more room`,result.scene.height===0 && result.pane.height >= before && await page.locator('#art-toggle').getAttribute('aria-pressed')==='false',result);
+      check(`${width}×${height} art toggle gives prose more room`,result.scene.height===0 && result.pane.height >= before && await page.locator('#art-toggle').getAttribute('aria-checked')==='false',result);
       await page.reload({waitUntil:'networkidle'});
-      check(`${width}×${height} artwork preference survives reload`,await page.locator('#scene-stage').evaluate(el => getComputedStyle(el).display==='none') && await page.locator('#art-toggle').getAttribute('aria-pressed')==='false');
+      check(`${width}×${height} artwork preference survives reload`,await page.locator('#scene-stage').evaluate(el => getComputedStyle(el).display==='none') && await page.locator('#art-toggle').getAttribute('aria-checked')==='false');
       await context.close();
     });
   }

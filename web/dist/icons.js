@@ -8,11 +8,6 @@
   const filled = { fill: 'currentColor', stroke: 'none' };
 
   // Drawn on one 24px grid: open contours, restrained detail, and soft terminals.
-  // The 15-second numerals are paths, avoiding differences between system fonts.
-  const fifteen = [
-    path('M8.1 10.5 9.3 9.7v5.8M8.1 15.5h2.4', { 'stroke-width': 1.1 }),
-    path('M15.7 9.7h-3.4l-.2 2.7h1.7c1.2 0 2 .6 2 1.6s-.8 1.7-2 1.7c-.8 0-1.4-.2-1.9-.6', { 'stroke-width': 1.1 })
-  ];
   const definitions = Object.freeze({
     'book-open': [
       path('M12 5.6C9.3 3.7 6 3.3 3 4.3v14.2c3-1 6.3-.6 9 1.3 2.7-1.9 6-2.3 9-1.3V4.3c-3-1-6.3-.6-9 1.3Z'),
@@ -43,14 +38,8 @@
       path('M4.7 7.8a8.2 8.2 0 1 1-.8 8.9M4.7 3.8v4h4'),
       path('m10.5 8.6 5 3.4-5 3.4Z', filled)
     ],
-    'rewind-15': [
-      path('M4.7 7.8a8.2 8.2 0 1 1-.8 8.9M4.7 3.8v4h4'),
-      ...fifteen
-    ],
-    'forward-15': [
-      path('M19.3 7.8a8.2 8.2 0 1 0 .8 8.9M19.3 3.8v4h-4'),
-      ...fifteen
-    ],
+    rewind: [path('m11 6-7 6 7 6m9-12-7 6 7 6')],
+    forward: [path('m4 6 7 6-7 6m9-12 7 6-7 6')],
     artwork: [
       ['rect', { x: 3, y: 4.5, width: 18, height: 15, rx: 1.25 }],
       circle(8, 9, 1.5),

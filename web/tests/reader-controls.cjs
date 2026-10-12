@@ -141,10 +141,13 @@ async function dialogFit(page,id,closeId) {
     const fixture=await reader(view),page=fixture.page,result=await layout(page),visible=result.controls.filter(control=>!control.hidden);
     check(view.join('x')+' controls remain visible and at least 44px',result.scrollWidth<=result.width && result.pane.height>=100 && visible.every(c=>c.width>=44 && c.height>=44 && c.x>=-.1 && c.y>=-.1 && c.right<=result.width+.1 && c.bottom<=result.height+.1),result);
     check(view.join('x')+' skip glyphs stay centered in touch targets',await page.evaluate(()=>['back','forward'].every(id=>{const button=document.getElementById(id).getBoundingClientRect(),icon=document.querySelector('#'+id+' svg').getBoundingClientRect();return Math.abs((button.x+button.width/2)-(icon.x+icon.width/2))<.5 && Math.abs((button.y+button.height/2)-(icon.y+icon.height/2))<.5;})));
+    const bounds=id=>result.controls.find(control=>control.id===id);
+    check(view.join('x')+' switch and transport targets do not overlap',bounds('art-toggle').right<=bounds('back').x && bounds('back').right<=bounds('play').x && bounds('play').right<=bounds('forward').x && bounds('forward').right<=bounds('speed').x);
+    check(view.join('x')+' artwork exposes a named checked switch',await page.getByRole('switch',{name:'Artwork',exact:true}).count()===1 && await page.locator('#art-toggle').getAttribute('aria-checked')==='true');
     if (view[0]<=720) check(view.join('x')+' portrait timeline spans reader',result.controls.find(c=>c.id==='seek').width>=result.width-48);
     const visibleButtons=page.locator('button:visible'),names=[];
     for (let index=0;index<await visibleButtons.count();index++) names.push((await visibleButtons.nth(index).ariaSnapshot()).split('\n')[0]);
-    check(view.join('x')+' every visible button has an accessible name',names.every(name=>/^- button \".+\"/.test(name)),names);
+    check(view.join('x')+' every visible button or switch has an accessible name',names.every(name=>/^- (?:button|switch) \".+\"/.test(name)),names);
     if (view[0]===820) check('tablet sign out stays named and visible',await page.getByRole('button',{name:'Sign out',exact:true}).count()===1 && await page.locator('#sign-out').isVisible());
     check(view.join('x')+' icons are decorative without duplicate accessible text',await page.evaluate(() => [...document.querySelectorAll('svg.lumen-icon')].every(svg=>svg.getAttribute('aria-hidden')==='true' && svg.getAttribute('focusable')==='false' && !svg.querySelector('title,text'))));
     if ([390,1440].includes(view[0])) await shot(page,'reader-'+view[0]);
@@ -194,6 +197,30 @@ async function dialogFit(page,id,closeId) {
     check('completed bookmark retains resume replay icon',await icon(page,'#resume-continue','replay') && await page.getByRole('button',{name:'Listen again',exact:true}).count()===2);
     await fixture.context.close();
   });
+  await section('artwork switch and transport',async () => {
+    const fixture=await reader([320,720]),page=fixture.page;
+    const artwork=page.getByRole('switch',{name:'Artwork',exact:true});
+    await artwork.click();
+    check('artwork switch turns off with a stable accessible name',await artwork.getAttribute('aria-checked')==='false' && await page.locator('#scene-stage').isHidden() && await artwork.getAttribute('aria-pressed')===null);
+    await page.waitForFunction(()=>new DOMMatrixReadOnly(getComputedStyle(document.querySelector('.art-switch-thumb')).transform).m41===0);
+    check('off state places the switch thumb at the start',await page.locator('.art-switch-thumb').evaluate(element=>getComputedStyle(element).transform==='none'));
+    await page.reload({waitUntil:'networkidle'});
+    await page.waitForFunction(()=>window.LUMEN_CHAPTER?.chapterId && document.querySelector('#narration').readyState>=1);
+    check('artwork switch restores its off preference without starting audio',await artwork.getAttribute('aria-checked')==='false' && await page.locator('#scene-stage').isHidden() && await page.locator('#narration').evaluate(element=>element.paused));
+    await artwork.focus();await page.keyboard.press('Space');await ready(page);
+    await page.waitForFunction(()=>new DOMMatrixReadOnly(getComputedStyle(document.querySelector('.art-switch-thumb')).transform).m41===14);
+    check('Space turns artwork on and moves the thumb',await artwork.getAttribute('aria-checked')==='true' && await page.locator('#scene-stage').isVisible() && await page.locator('.art-switch-thumb').evaluate(element=>new DOMMatrixReadOnly(getComputedStyle(element).transform).m41===14));
+    await page.keyboard.press('Enter');
+    check('Enter turns the same switch off',await artwork.getAttribute('aria-checked')==='false' && await page.locator('#scene-stage').isHidden());
+    await artwork.click();await ready(page);
+    check('transport uses clean named rewind and forward icons',await icon(page,'#back','rewind') && await icon(page,'#forward','forward') && await page.getByRole('button',{name:'Rewind 15 seconds',exact:true}).count()===1 && await page.getByRole('button',{name:'Forward 15 seconds',exact:true}).count()===1);
+    await seek(page,40);await page.getByRole('button',{name:'Forward 15 seconds',exact:true}).click();
+    await page.waitForFunction(()=>Math.abs(document.querySelector('#narration').currentTime-55)<.1);
+    await page.getByRole('button',{name:'Rewind 15 seconds',exact:true}).click();
+    await page.waitForFunction(()=>Math.abs(document.querySelector('#narration').currentTime-40)<.1);
+    check('icon transport retains fifteen-second skips and paused listening',await page.locator('#narration').evaluate(element=>element.paused));
+    await fixture.context.close();
+  });
   await section('bookmark recovery',async () => {
     const bookmark={schemaVersion:1,bookId:'lumen',manuscriptVersion:'v6',chapterId:'chapter-001',sentenceId:'v6:chapter-001:p999-s01',audioSha256:'f'.repeat(64),audioTime:12,sentenceFraction:.5,narratorId:'charon',completed:false,readingExtentId:'chapter-001-controls-fixture'};
     const seed={schemaVersion:2,bookId:'lumen',manuscriptVersion:'v6',releaseId:'older-fixture',lastPosition:bookmark,history:{}};
@@ -214,7 +241,7 @@ async function dialogFit(page,id,closeId) {
     check('keyboard opens settings and Escape dismisses',await page.locator('#settings').evaluate(element=>element.open));
     await page.keyboard.press('Escape');
     check('Escape restores focus to settings opener',await page.locator('#settings-open').evaluate(element=>document.activeElement===element) && !await page.locator('#settings').evaluate(element=>element.open));
-    check('reduced motion suppresses control and painting transitions',await page.evaluate(()=>['#follow','#play','.chapter-choice','#scene-incoming'].every(selector=>getComputedStyle(document.querySelector(selector)).transitionDuration.split(',').every(value=>parseFloat(value)===0))));
+    check('reduced motion suppresses control, switch and painting transitions',await page.evaluate(()=>['#follow','#play','.chapter-choice','#scene-incoming','.art-switch','.art-switch-thumb'].every(selector=>getComputedStyle(document.querySelector(selector)).transitionDuration.split(',').every(value=>parseFloat(value)===0))));
     await fixture.context.close();
   });
   check('no browser runtime errors',report.errors.length===0,report.errors);

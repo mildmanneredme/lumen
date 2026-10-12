@@ -324,8 +324,8 @@
   function setArtworkVisible(value) {
     artworkVisible = value;
     document.body.classList.toggle('art-hidden', !value);
-    $('art-toggle').setAttribute('aria-pressed', String(value));
-    $('art-toggle').setAttribute('aria-label', value ? 'Hide artwork' : 'Show artwork');
+    $('art-toggle').setAttribute('aria-checked', String(value));
+    $('art-toggle').title = value ? 'Hide artwork' : 'Show artwork';
     if (value) render(currentPosition());
     else cancelSceneLoading();
   }
