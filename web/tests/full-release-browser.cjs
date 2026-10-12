@@ -313,7 +313,7 @@ async function run() {
     assert.ok(!before.error && Math.abs(before.duration-payload.duration) < .5,
       'Native MP3 metadata differs from the decoded release clock');
     assert.ok(await page.evaluate(() => window.LUMEN_CHAPTER.paragraphs.every(paragraph =>
-      document.getElementById(paragraph.id)?.textContent === paragraph.text)),
+      document.getElementById(paragraph.id)?.textContent === paragraph.text.replace(/\u2014/g,'-'))),
       'Rendered representative paragraphs differ from faithful prepared prose');
     await page.locator('#play').click();
     await page.waitForFunction(at => {const audio=document.querySelector('#narration'); return !audio.paused && audio.currentTime > at + .5;}, before.time);
@@ -402,7 +402,7 @@ async function run() {
   await waitTrack(gapCase.payload.chapterId, gapCase.payload.audio.narratorId);
   const gapSpan = page.locator(`[id="${gapCase.sentence.id}"]`);
   check('actual unavailable sentence stays faithful prose without a seek control',
-    await gapSpan.textContent() === gapCase.sentence.text && await gapSpan.getAttribute('role') === null);
+    await gapSpan.textContent() === gapCase.sentence.text.replace(/\u2014/g,'-') && await gapSpan.getAttribute('role') === null);
   // This sets a known diagnostic interval through the reader's input handler.
   // Separate mouse/touch checks above and below exercise native range gestures.
   await page.locator('#seek').evaluate((element, time) => {

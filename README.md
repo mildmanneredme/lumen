@@ -2,7 +2,7 @@
 
 A novel about a world where democracy finally becomes real.
 
-- `Draft/`: manuscript versions, Word exports, revision notes, and narration text. The latest manuscript is in `Draft/v6/`.
+- `Draft/`: manuscript versions, Word exports, revision notes, and narration text. The latest written manuscript is in `Draft/v7/`; `Draft/v6/` remains the source for the existing audiobook and reader timings.
 - `Planning/`: novel plans, style guides, and editorial critiques.
 - `Research/`: author studies and reference material.
 - `Audiobook/v6/`: narration, transcription, mastering, and packaging scripts, with production metadata and review reports.
