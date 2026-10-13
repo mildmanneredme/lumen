@@ -66,7 +66,8 @@ function noPrivateFields(value) {
 const shell = new Set(['/', '/index.html', '/styles.css', '/mobile.css', '/controls.css', '/icons.js', '/app.js',
   '/progress.js', '/book.js', '/legacy-pilot.js', '/install.js', '/sw.js', '/manifest.webmanifest',
   '/icons/icon.svg', '/icons/icon-192.png', '/icons/icon-512.png', '/icons/icon-maskable-512.png',
-  '/icons/apple-touch-icon.png', '/icons/favicon-lumen-32-v2.png', '/icons/favicon-lumen-16-v2.png']);
+  '/icons/apple-touch-icon.png', '/icons/favicon-lumen-32-v2.png', '/icons/favicon-lumen-16-v2.png',
+  '/icons/audio-flag-v1.png']);
 const mime = {'.html':'text/html', '.js':'text/javascript', '.css':'text/css', '.png':'image/png',
   '.svg':'image/svg+xml', '.webmanifest':'application/manifest+json'};
 const cookieName = 'lumen_full_release_qa';
