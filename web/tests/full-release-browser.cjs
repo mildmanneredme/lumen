@@ -156,18 +156,18 @@ async function startFixture(assetsByPath, manifestAsset) {
   origin = 'http://127.0.0.1:' + server.address().port;
 }
 function recordSourceHashes() {
-  for (const filename of ['app.js','book.js','index.html','styles.css','mobile.css','controls.css','icons.js','sw.js'])
+  for (const filename of ['app.js','book.js','index.html','styles.css','mobile.css','controls.css','icons.js','sw.js','icons/audio-flag-v1.png'])
     sourceHashes['web/dist/' + filename] = hash(fs.readFileSync(path.join(dist, filename)));
 }
 async function verifyControlsShell() {
-  for (const filename of ['controls.css','icons.js']) {
+  for (const filename of ['controls.css','icons.js','icons/audio-flag-v1.png']) {
     const response = await fetch(origin + '/' + filename);
     assert.equal(response.status, 200, 'The release fixture must serve ' + filename);
     assert.equal(response.headers.get('content-type'), mime[path.extname(filename)]);
     assert.equal(hash(Buffer.from(await response.arrayBuffer())), sourceHashes['web/dist/' + filename],
       'The release fixture must serve the hash-recorded ' + filename);
   }
-  check('release fixture serves the hash-recorded control styles and icon script', true);
+  check('release fixture serves the hash-recorded control styles and icon assets', true);
 }
 async function shellSelfTest() {
   recordSourceHashes();
