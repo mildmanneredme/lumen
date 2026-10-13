@@ -1,11 +1,13 @@
 # Private reader delivery
 
 Current reader update, 13 October 2026: the stable URL uses deployment
-`dpl_2r1f9G7fHc8D7qeSzaHh4MBvpBux`, shell v29, with owner audio flags,
-rounded controls and the settings cog. The illustrated release and both audio
-editions are unchanged. The reviewed caption and preview playback fixes in shell v30 await an
-explicit production deployment; merging this PR does not publish it. [Current deployment
-record](../data/deployment.json).
+`dpl_FGQLGhauGzhAzLCn5ZEoFSJicFWW`, shell v30, from merged PR23
+`917fd3f`. The runtime matches reviewed `f66b70f`, including owner audio flags,
+caption and preview playback fixes, rounded controls and the settings cog.
+The illustrated release and both audio editions are unchanged. Final static,
+access, representative media and browser checks passed, including preview
+playback without changing the book clock. Physical-phone installation and
+headset listening remain untested. [Current deployment record](../data/deployment.json).
 
 Illustration release, 11 October 2026: the stable URL now serves
 `lumen-illustrated-192-v1` with 1,379 paintings / 2,758 WebPs and all 182
