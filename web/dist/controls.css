@@ -24,7 +24,14 @@ button:focus-visible, select:focus-visible, input:focus-visible, .sentence:focus
   font: 13px/1.35 Arial, sans-serif; letter-spacing: .015em;
   transition: background-color .18s, border-color .18s, color .18s;
 }
-.audio-flag-button { border-radius: var(--control-radius); }
+.audio-flag-button {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 44px; height: 44px; min-width: 44px; min-height: 44px; padding: 5px;
+  border-radius: var(--control-radius);
+  transition: background-color .18s, border-color .18s;
+}
+.audio-flag-button img { display: block; width: 32px; height: 32px; mix-blend-mode: screen; }
+.audio-flag-button:hover:not(:disabled) { background: var(--control-hover); border-color: var(--gold); }
 .text-button, .type-button { border: 1px solid transparent; padding: 9px 12px; color: var(--muted); }
 .text-button:hover:not(:disabled), .type-button:hover:not(:disabled) {
   background: var(--control-hover); border-color: var(--control-edge); color: var(--paper);
@@ -130,6 +137,7 @@ button:focus-visible, select:focus-visible, input:focus-visible, .sentence:focus
 #seek::-webkit-slider-thumb { width: 16px; height: 16px; margin-top: -6px; background: #ead1a0; border: 3px solid #ac8b52; box-shadow: 0 0 0 4px #dfbd7d0c; }
 #seek::-moz-range-track, #seek::-moz-range-progress { height: 4px; }
 #seek::-moz-range-thumb { width: 10px; height: 10px; background: #ead1a0; border: 3px solid #ac8b52; box-shadow: 0 0 0 4px #dfbd7d0c; }
+.player-tools { display: flex; flex: none; align-items: center; gap: 8px; }
 .speed-control { display: flex; position: relative; align-items: center; padding-left: 16px; }
 .speed-control select, #narrator {
   appearance: none; -webkit-appearance: none; border: 1px solid var(--control-edge); border-radius: var(--control-radius);
@@ -224,7 +232,8 @@ dialog p { font-size: 12px; }
   .chapter-navigation { margin: 0 0 22px; gap: 8px; }
   .chapter-navigation .text-button { padding: 7px 4px; font-size: 11px; gap: 5px; }
   #book-progress { max-width: 145px; font-size: 9px; }
-  .player { gap: 0 9px; padding-top: 9px; }
+  .player { gap: 0 6px; padding-top: 9px; }
+  .player-tools { gap: 6px; }
   .progress-heading { font-size: 10px; }
   .transport { gap: 4px; }
   .play-button { width: 56px; height: 56px; }
@@ -236,18 +245,19 @@ dialog p { font-size: 12px; }
   .art-toggle { flex-direction: column; min-width: 44px; min-height: 48px; padding: 4px; gap: 3px; font-size: 10px; }
   .speed-control { padding: 0; }
   /* Native phone pickers need 16px text to avoid WebKit's focus zoom. */
-  .speed-control select { min-width: 66px; min-height: 48px; padding: 8px 24px 8px 9px; font-size: 16px; }
+  .speed-control select { width: 66px; min-width: 66px; min-height: 48px; padding: 8px 17px 8px 5px; font-size: 16px; }
   #narrator { font-size: 16px; }
-  .speed-control > [data-lumen-icon] { right: 7px; }
+  .speed-control > [data-lumen-icon] { right: 4px; }
   .speed-control .lumen-icon { width: 13px; height: 13px; }
   dialog { width: calc(100% - 28px); padding: 20px; }
   .dialog-heading { margin-bottom: 20px; padding-bottom: 14px; gap: 12px; }
   .dialog-heading h2 { font-size: 24px; gap: 10px; }
 }
 @media (max-width: 360px) {
-  .player { gap: 0 6px; }
+  .player { gap: 0 4px; }
   .transport { gap: 3px; }
-  .speed-control select { min-width: 61px; padding-left: 7px; }
+  .player-tools { gap: 4px; }
+  .speed-control select { width: 64px; min-width: 64px; padding-left: 4px; }
   .chapter-choice { gap: 8px; }
   .chapter-marker { width: 25px; }
   .chapter-choice > .lumen-icon { display: none; }
@@ -261,6 +271,20 @@ dialog p { font-size: 12px; }
   .access-gate { padding-block: 20px; }
   .access-mark { width: 60px; height: 70px; font-size: 48px; }
   .speed-control select, #narrator { font-size: 16px; }
+}
+@media (orientation: landscape) and (max-height: 520px) and (max-width: 360px) {
+  .player { gap: 0 4px; }
+}
+@media (max-width: 340px) {
+  .player {
+    gap: 0 2px;
+    padding-left: max(12px, env(safe-area-inset-left));
+    padding-right: max(12px, env(safe-area-inset-right));
+  }
+  .transport { gap: 0; }
+  .play-button { width: 44px; height: 44px; }
+  .player-tools { gap: 2px; }
+  .speed-control select { width: 68px; min-width: 68px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .auto-continue-label input::before, .art-switch, .art-switch-thumb { transition: none; }

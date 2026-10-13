@@ -16,8 +16,8 @@
   <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-lumen-16-v2.png">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
   <link rel="stylesheet" href="styles.css?v=20261013-reader-restore">
-  <link rel="stylesheet" href="mobile.css?v=20261013-reader-restore">
-  <link rel="stylesheet" href="controls.css?v=20261013-rounded-controls">
+  <link rel="stylesheet" href="mobile.css?v=20261013-audio-flag-tools">
+  <link rel="stylesheet" href="controls.css?v=20261013-audio-flag-tools">
   <script src="icons.js?v=20261013-settings-cog" defer></script>
   <script src="legacy-pilot.js?v=20261010-book" defer></script>
   <script src="progress.js?v=20261009-mobile" defer></script>
@@ -106,8 +106,10 @@
       <div class="progress-heading"><span id="play-status" role="status">Chapter 1</span><span class="timestamps"><span id="elapsed">0:00</span><span class="time-divider"> / </span><span id="total">5:20</span></span></div>
       <label class="sr-only" for="seek">Playback position</label><input id="seek" type="range" min="0" max="320.19" step="0.1" value="0" aria-valuetext="0 minutes 0 seconds">
     </div>
-    <label class="speed-control"><span class="sr-only">Playback speed</span><select id="speed" aria-label="Playback speed"><option value="0.75">0.75×</option><option value="1" selected>1×</option><option value="1.25">1.25×</option><option value="1.5">1.5×</option><option value="2">2×</option></select><span data-lumen-icon="chevron-down" aria-hidden="true"></span></label>
-    <button id="audio-flag-open" class="audio-flag-button" type="button" aria-haspopup="dialog" hidden>Flag audio</button>
+    <div class="player-tools">
+      <label class="speed-control"><span class="sr-only">Playback speed</span><select id="speed" aria-label="Playback speed"><option value="0.75">0.75×</option><option value="1" selected>1×</option><option value="1.25">1.25×</option><option value="1.5">1.5×</option><option value="2">2×</option></select><span data-lumen-icon="chevron-down" aria-hidden="true"></span></label>
+      <button id="audio-flag-open" class="audio-flag-button" type="button" aria-label="Flag audio" title="Flag audio" aria-haspopup="dialog" hidden><img src="icons/audio-flag-v1.png" width="32" height="32" alt="" aria-hidden="true"></button>
+    </div>
   </footer>
   <dialog id="settings" aria-labelledby="settings-title">
     <div class="dialog-heading"><h2 id="settings-title"><span data-lumen-icon="settings" aria-hidden="true"></span>Reading settings</h2><button id="settings-close" class="text-button icon-button" type="button" aria-label="Close reading settings" title="Close reading settings"><span data-lumen-icon="close" aria-hidden="true"></span></button></div>
