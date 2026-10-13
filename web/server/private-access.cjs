@@ -1,6 +1,7 @@
 'use strict';
 // Server only. Reader assets and the invite registry never enter the static bundle.
 const crypto = require('node:crypto');
+const {buildAudioFlag,AudioFlagError}=require('./audio-flags.cjs');
 const SESSION_COOKIE = '__Host-lumen_session';
 const SESSION_SECONDS = 30 * 86400;
 const BODY_LIMIT = 4096;
@@ -64,7 +65,8 @@ function readConfig(env) {
     requireValue(object(invite) && typeof invite.id === 'string' && /^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$/.test(invite.id) &&
       !ids.has(invite.id) && isHash(invite.tokenHash) && !hashes.has(invite.tokenHash) &&
       Number.isSafeInteger(invite.version) && invite.version > 0 && Number.isSafeInteger(invite.expiresAt) &&
-      invite.expiresAt > 0 && typeof invite.revoked === 'boolean');
+      invite.expiresAt > 0 && typeof invite.revoked === 'boolean' &&
+      (invite.role === undefined || ['reader','owner'].includes(invite.role)));
     ids.add(invite.id); hashes.add(invite.tokenHash);
   }
   return {origin, requestOrigin, secret, invites};
@@ -94,6 +96,12 @@ function authorizeClaims(request, config, now) {
   } catch (_) { return false; }
 }
 function authorize(request, config, now) { return Boolean(authorizeClaims(request,config,now)); }
+function canFlagAudio(claims,config) {
+  return Boolean(claims && config.invites.some(invite=>invite.id===claims.i&&invite.version===claims.v&&invite.role==='owner'));
+}
+function sessionState(claims,config) {
+  return {authenticated:Boolean(claims),...(canFlagAudio(claims,config)?{canFlagAudio:true}:{})};
+}
 function headers(extra = {}) {
   return new Headers({'Cache-Control':'private, no-store','Vary':'Cookie',
     'X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer',
@@ -191,7 +199,7 @@ function exactStream(stream, expected, {signal} = {}) {
     flush() { if (count !== expected) throw new Error('Private asset length mismatch'); }
   }), {signal});
 }
-function createPrivateReader({env = process.env, now = Date.now, loadIndex, getBlob, assetLookup, assetResponse, protectStream = exactStream}) {
+function createPrivateReader({env = process.env, now = Date.now, loadIndex, getBlob, assetLookup, assetResponse, protectStream = exactStream, flagStore}) {
   requireValue(typeof loadIndex === 'function' && typeof getBlob === 'function');
   // Only a trusted server adapter may supply a lookup for its verified index.
   // Other callers still validate their potentially mutable index every time.
@@ -203,14 +211,15 @@ function createPrivateReader({env = process.env, now = Date.now, loadIndex, getB
     try { config = readConfig(env); } catch (_) { return failure(503); }
     const url = new URL(request.url), method = request.method;
     const session = url.pathname === '/api/session';
+    const flags = url.pathname === '/api/audio-flags';
     const resource = url.pathname === '/api/book' || url.pathname.startsWith('/api/assets/');
-    if (!session && !resource) return failure(404);
+    if (!session && !resource && !flags) return failure(404);
     if (url.search) return failure(400);
-    if (!(session ? ['GET','POST','DELETE'] : ['GET','HEAD']).includes(method)) return json({error:'Method not allowed.'},405,{Allow:session?'GET, POST, DELETE':'GET, HEAD'});
-    if (!sameOrigin(request,config,session && method !== 'GET')) return failure(403);
+    if (!(session ? ['GET','POST','DELETE'] : flags ? ['GET','POST'] : ['GET','HEAD']).includes(method)) return json({error:'Method not allowed.'},405,{Allow:session?'GET, POST, DELETE':flags?'GET, POST':'GET, HEAD'});
+    if (!sameOrigin(request,config,(session && method !== 'GET') || (flags && method === 'POST'))) return failure(403);
     const clock = Math.floor(now()/1000);
     if (session) {
-      if (method === 'GET') return json({authenticated:authorize(request,config,clock)});
+      if (method === 'GET') return json(sessionState(authorizeClaims(request,config,clock),config));
       if (method === 'DELETE') return json({authenticated:false},200,{'Set-Cookie':`${SESSION_COOKIE}=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0`});
       if (!/^application\/json(?:;|$)/i.test(request.headers.get('content-type') || '')) return failure(400);
       const contentLength = request.headers.get('content-length');
@@ -228,10 +237,27 @@ function createPrivateReader({env = process.env, now = Date.now, loadIndex, getB
       }
       if (!invite) return failure(401);
       const signed = signedSession(invite,config,clock);
-      return json({authenticated:true},200,{'Set-Cookie':`${SESSION_COOKIE}=${signed.value}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${signed.expires-clock}`});
+      return json({authenticated:true,...(invite.role==='owner'?{canFlagAudio:true}:{})},200,{'Set-Cookie':`${SESSION_COOKIE}=${signed.value}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${signed.expires-clock}`});
     }
     const claims=authorizeClaims(request,config,clock);
     if (!claims) return failure(401);
+    if (flags) {
+      if (!canFlagAudio(claims,config)) return failure(403);
+      if (!flagStore || typeof flagStore.save!=='function' || typeof flagStore.list!=='function') return failure(503);
+      try {
+        if (method==='GET') return json({flags:await flagStore.list()});
+        if (!/^application\/json(?:;|$)/i.test(request.headers.get('content-type') || '')) return failure(400);
+        const contentLength=request.headers.get('content-length');
+        if (contentLength && (!/^\d+$/.test(contentLength) || Number(contentLength)>BODY_LIMIT)) return failure(413);
+        let input;
+        try {input=JSON.parse((await boundedBytes(request.body,BODY_LIMIT)).toString('utf8'));}
+        catch (_) {return failure(400);}
+        const index=await loadIndex(request.signal);
+        const assets=validateIndex(index,config.origin);
+        const record=await buildAudioFlag({input,index,assets,getBlob,config,now:clock,signal:request.signal});
+        return json({flag:await flagStore.save(record)},201);
+      } catch (error) {return failure(error instanceof AudioFlagError ? error.status : 503);}
+    }
     try {
       const index = await loadIndex(request.signal);
       const assets = assetLookup ? null : validateIndex(index,config.origin);

@@ -8,7 +8,7 @@ const {createCloudflareBridge}=require('../server/cloudflare-bridge.cjs');
 const {execFileSync,spawnSync}=require('node:child_process');
 const project=path.resolve(__dirname,'..');
 const privateShell=fs.readFileSync(path.join(project,'dist/index.html'),'utf8').includes('legacy-pilot.js');
-const allowed=['api/session.js','api/book.js','api/assets.js','server/private-access.cjs','server/cloudflare-bridge.cjs',
+const allowed=['api/session.js','api/book.js','api/assets.js','api/audio-flags.js','server/audio-flags.cjs','server/private-access.cjs','server/cloudflare-bridge.cjs',
   'server/runtime.cjs','server/node-handler.cjs','dist/index.html','dist/app.js','dist/styles.css','dist/controls.css','dist/icons.js','dist/sw.js',
   'dist/icons/icon-192.png','dist/assets/opening-room.webp','package.json','package-lock.json','vercel.json'];
 const blocked=['.env','.env.shared','.env.keys','server/.env','audit/index.html','art-direction/cast-bible.json',

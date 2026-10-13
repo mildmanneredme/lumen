@@ -22,6 +22,9 @@
   let duration = chapter.duration, scenes = [];
   let book, manifest, transitionToken = 0, retryTransition = null, continuationToken = 0, committing = false;
   let pendingTransition = null, accessToken = 0, inviteRequest = 0, retainedInvite = '', sessionExchange = null;
+  let canFlagAudio = false, flagGeneration = 0, flagDraft = null, savedAudioFlags = [];
+  let flagRequest = null, flagListRequest = null, flagPreviewEnd = null, flagPreviewTimer = 0;
+  const flagPlayer = $('audio-flag-player');
   const transitionStart = document.createElement('button');
   transitionStart.id = 'transition-start'; transitionStart.type = 'button'; transitionStart.className = 'text-button';
   transitionStart.textContent = 'Start this chapter from the beginning'; transitionStart.hidden = true;
@@ -453,6 +456,226 @@
   $('settings-open').addEventListener('click',() => settings.showModal());
   $('settings-close').addEventListener('click',() => settings.close());
   settings.addEventListener('click',event => { if (event.target === settings) { const r=settings.getBoundingClientRect(); if (event.clientX<r.left||event.clientX>r.right||event.clientY<r.top||event.clientY>r.bottom) settings.close(); } });
+  function stopFlagPreview(clear = false) {
+    flagPreviewEnd = null; clearTimeout(flagPreviewTimer); flagPlayer.pause();
+    $('audio-flag-preview').textContent = 'Preview snippet';
+    if (clear) { flagPlayer.removeAttribute('src'); flagPlayer.load(); }
+  }
+  function clearAudioFlags() {
+    ++flagGeneration;
+    flagRequest?.abort(); flagListRequest?.abort(); flagRequest = flagListRequest = null;
+    stopFlagPreview(true); flagDraft = null; savedAudioFlags = [];
+    for (const id of ['audio-flag-dialog','audio-flags-dialog']) {
+      if ($(id).open) $(id).close(); $(id).hidden = true;
+    }
+    $('audio-flag-form').reset(); $('audio-flags-list').replaceChildren();
+    for (const id of ['audio-flag-context','audio-flag-excerpt','audio-flag-status','audio-flags-status']) $(id).textContent = '';
+    $('audio-flags-export').disabled = true;
+  }
+  function updateFlagControls() {
+    $('audio-flag-open').hidden = $('audio-flag-settings').hidden = !canFlagAudio || !book?.getActive();
+    $('audio-flag-open').disabled = !!pendingTransition;
+  }
+  function setFlagPermission(value) {
+    const allowed = value === true;
+    if (!allowed) clearAudioFlags();
+    canFlagAudio = allowed; updateFlagControls();
+  }
+  function flagTime(value) {
+    // Keep the displayed endpoint inside fractional decoded recording durations.
+    const truncated = Math.floor(value * 1000) / 1000;
+    return Math.floor(truncated / 60) + ':' + (truncated % 60).toFixed(3).padStart(6,'0');
+  }
+  function parseFlagTime(value) {
+    const text = value.trim();
+    if (/^\d+(?:\.\d{1,3})?$/.test(text)) return Number(text);
+    const match = /^(\d+):([0-5]\d(?:\.\d{1,3})?)$/.exec(text);
+    return match ? Number(match[1]) * 60 + Number(match[2]) : NaN;
+  }
+  function flagRange() {
+    const startText = $('audio-flag-start').value, endText = $('audio-flag-end').value;
+    // Display milliseconds, but retain the mastered clock's full precision until edited.
+    const start = flagDraft && startText === flagDraft.initialRange.startText ? flagDraft.initialRange.start : parseFlagTime(startText);
+    const end = flagDraft && endText === flagDraft.initialRange.endText ? flagDraft.initialRange.end : parseFlagTime(endText);
+    if (!flagDraft || !Number.isFinite(start) || !Number.isFinite(end) || start < 0 || end > flagDraft.duration || end <= start || end - start > 120) return null;
+    return {start,end};
+  }
+  function flagContext(record) {
+    const title = manifest?.tracks.find(track => track.id === record.chapterId)?.title || record.chapterId;
+    const voice = manifest?.narrators.find(narrator => narrator.id === record.narratorId)?.label || record.narratorId;
+    return title + ' · ' + voice;
+  }
+  function flagExcerpt(range) {
+    if (!range || !flagDraft) return '';
+    const relevant = flagDraft.sentences.filter(sentence => Number.isFinite(sentence.start) && Number.isFinite(sentence.end) && sentence.end > range.start && sentence.start < range.end);
+    return relevant.length ? relevant.map(sentence => displayProse(sentence.text)).join(' ') : 'Sentence timing is unavailable here. Preview the selected audio to check the range.';
+  }
+  function updateFlagForm() {
+    const range = flagRange(), pending = !!flagRequest, saved = !!flagDraft?.saved, stale = !!flagDraft?.stale;
+    for (const id of ['audio-flag-start','audio-flag-end','audio-flag-note']) $(id).disabled = pending || saved || stale;
+    $('audio-flag-save').disabled = !range || pending || saved || stale;
+    $('audio-flag-save').textContent = pending ? 'Saving…' : saved ? 'Saved' : 'Save flag';
+    $('audio-flag-preview').disabled = !range || stale;
+    $('audio-flag-excerpt').textContent = flagExcerpt(range);
+    if (!range && flagDraft) $('audio-flag-status').textContent = 'Enter a valid range of up to 2 minutes within this recording.';
+  }
+  function openAudioFlag() {
+    const active = book?.getActive();
+    if (!canFlagAudio || !active || pendingTransition) return;
+    clearAudioFlags();
+    const time = Math.max(0,Math.min(duration,currentPosition()));
+    resumeAfterSeek = false; setListeningIntent(false); audio.pause(); savePosition(true);
+    const canonical = chapter.paragraphs.flatMap(paragraph => paragraph.sentences || []);
+    const cue = canonical.find(sentence => Number.isFinite(sentence.start) && Number.isFinite(sentence.end) && sentence.start <= time &&
+      (time < sentence.end || (time === duration && sentence.end === duration)));
+    let start = cue?.start ?? Math.max(0,time - 10), end = cue?.end ?? time;
+    if (end <= start) end = Math.min(duration,start + 10);
+    end = Math.min(end,start + 120,duration);
+    const initialRange = {start,end,startText:flagTime(start),endText:flagTime(end)};
+    flagDraft = {id:crypto.randomUUID(),releaseId:manifest.releaseId,chapterId:active.trackId,narratorId:active.narratorId,
+      audioSha256:chapter.audio.sha256,duration,sentences:canonical,saved:false,payload:null,stale:false};
+    flagDraft.initialRange = initialRange;
+    $('audio-flag-context').textContent = flagContext(flagDraft);
+    $('audio-flag-start').value = initialRange.startText; $('audio-flag-end').value = initialRange.endText;
+    $('audio-flag-note').value = ''; $('audio-flag-status').textContent = cue ? 'The current sentence is selected. Adjust the range if needed.' : 'The last 10 seconds are selected. Adjust the range if needed.';
+    flagPlayer.src = audio.currentSrc || audio.src;
+    updateFlagForm(); $('audio-flag-dialog').hidden = false; $('audio-flag-dialog').showModal();
+  }
+  function flagResponseCurrent(generation, token, draft) {
+    const active = book?.getActive();
+    return canFlagAudio && generation === flagGeneration && token === accessToken &&
+      (!draft || (draft === flagDraft && active?.trackId === draft.chapterId && active?.narratorId === draft.narratorId));
+  }
+  function handleFlagAccess(response) {
+    if (response.status === 401) { closeAccess(); return true; }
+    if (response.status === 403) {
+      setFlagPermission(false);
+      $('transition-panel').hidden = false; $('transition-status').textContent = 'Audio flagging access has expired. Reopen your owner invitation to flag audio.';
+      $('transition-retry').hidden = true; transitionStart.hidden = true;
+      return true;
+    }
+    return false;
+  }
+  $('audio-flag-open').addEventListener('click',openAudioFlag);
+  $('audio-flag-close').addEventListener('click',() => $('audio-flag-dialog').close());
+  $('audio-flag-dialog').addEventListener('close',() => {
+    if ($('audio-flag-dialog').open) return;
+    stopFlagPreview(true);
+    ++flagGeneration; flagRequest?.abort(); flagRequest = null; flagDraft = null;
+    $('audio-flag-form').reset(); $('audio-flag-context').textContent = $('audio-flag-excerpt').textContent = $('audio-flag-status').textContent = '';
+    $('audio-flag-dialog').hidden = true;
+  });
+  for (const id of ['audio-flag-start','audio-flag-end','audio-flag-note']) $(id).addEventListener('input',() => {
+    if (!flagDraft) return;
+    stopFlagPreview();
+    if (flagDraft.payload) { flagDraft.id = crypto.randomUUID(); flagDraft.payload = null; }
+    $('audio-flag-status').textContent = ''; updateFlagForm();
+  });
+  function watchFlagPreview() {
+    if (flagPreviewEnd === null || flagPlayer.paused) return;
+    if (flagPlayer.currentTime >= flagPreviewEnd || flagPlayer.ended) { stopFlagPreview(); return; }
+    flagPreviewTimer = setTimeout(watchFlagPreview,Math.max(10,Math.min(50,(flagPreviewEnd-flagPlayer.currentTime)*1000/flagPlayer.playbackRate)));
+  }
+  flagPlayer.addEventListener('timeupdate',() => { if (flagPreviewEnd !== null && flagPlayer.currentTime >= flagPreviewEnd) stopFlagPreview(); });
+  flagPlayer.addEventListener('ended',() => stopFlagPreview());
+  flagPlayer.addEventListener('error',() => {
+    stopFlagPreview();
+    if (flagDraft) $('audio-flag-status').textContent = 'Preview could not load. Reconnect and try again.';
+  });
+  $('audio-flag-preview').addEventListener('click',async () => {
+    const range = flagRange(), draft = flagDraft, generation = flagGeneration, token = accessToken;
+    if (!range || !canFlagAudio || !draft) return;
+    if (!flagPlayer.paused) { stopFlagPreview(); return; }
+    audio.pause(); resumeAfterSeek = false;
+    try {
+      flagPlayer.currentTime = range.start; flagPlayer.playbackRate = audio.playbackRate;
+      flagPreviewEnd = range.end; await flagPlayer.play();
+      if (!flagResponseCurrent(generation,token,draft)) { stopFlagPreview(); return; }
+      $('audio-flag-preview').textContent = 'Stop preview'; watchFlagPreview();
+    } catch (_) {
+      stopFlagPreview();
+      if (flagResponseCurrent(generation,token,draft)) $('audio-flag-status').textContent = 'Preview could not start. Reconnect and try again.';
+    }
+  });
+  $('audio-flag-form').addEventListener('submit',async event => {
+    event.preventDefault();
+    const range = flagRange(), draft = flagDraft, generation = flagGeneration, token = accessToken;
+    if (!range || !draft || !canFlagAudio || flagRequest || draft.saved || draft.stale) return;
+    stopFlagPreview();
+    draft.payload ||= {id:draft.id,releaseId:draft.releaseId,chapterId:draft.chapterId,narratorId:draft.narratorId,
+      audioSha256:draft.audioSha256,start:range.start,end:range.end,note:$('audio-flag-note').value.trim()};
+    const controller = flagRequest = new AbortController();
+    $('audio-flag-status').textContent = 'Saving your flag…'; updateFlagForm();
+    try {
+      const response = await fetch('/api/audio-flags',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify(draft.payload),cache:'no-store',signal:controller.signal});
+      if (!flagResponseCurrent(generation,token,draft)) return;
+      if (handleFlagAccess(response)) return;
+      if (response.status === 409) {
+        draft.stale = true;
+        $('audio-flag-status').textContent = 'This recording has changed. Close this flag and reload the chapter, then create a fresh flag.';
+        return;
+      }
+      if (!response.ok) throw new Error('Flag response ' + response.status);
+      const result = await response.json();
+      if (!flagResponseCurrent(generation,token,draft)) return;
+      if (result.flag?.id !== draft.id) throw new Error('The saved flag could not be verified.');
+      draft.saved = true; $('audio-flag-status').textContent = 'Saved for regeneration. Find it in Settings → Saved audio flags.';
+    } catch (error) {
+      if (flagResponseCurrent(generation,token,draft) && error.name !== 'AbortError')
+        $('audio-flag-status').textContent = 'Your flag has not been confirmed saved. Reconnect, then select Save flag to retry.';
+    } finally {
+      if (flagRequest === controller) flagRequest = null;
+      if (flagResponseCurrent(generation,token,draft)) updateFlagForm();
+    }
+  });
+  async function loadAudioFlags() {
+    if (!canFlagAudio || !book?.getActive()) return;
+    flagListRequest?.abort();
+    const controller = flagListRequest = new AbortController(), generation = flagGeneration, token = accessToken;
+    savedAudioFlags = []; $('audio-flags-list').replaceChildren(); $('audio-flags-export').disabled = true;
+    $('audio-flags-status').textContent = 'Loading saved flags…';
+    try {
+      const response = await fetch('/api/audio-flags',{cache:'no-store',signal:controller.signal});
+      if (!flagResponseCurrent(generation,token) || flagListRequest !== controller) return;
+      if (handleFlagAccess(response)) return;
+      if (!response.ok) throw new Error('Flag list response ' + response.status);
+      const result = await response.json();
+      if (!flagResponseCurrent(generation,token) || flagListRequest !== controller) return;
+      if (!Array.isArray(result.flags)) throw new Error('Invalid flag list');
+      savedAudioFlags = result.flags.slice(0,100);
+      for (const record of savedAudioFlags) {
+        const item = document.createElement('li'), heading = document.createElement('strong');
+        heading.textContent = flagContext(record) + ' · ' + flagTime(record.start) + '–' + flagTime(record.end);
+        item.append(heading);
+        for (const text of [record.note,record.text]) if (text) { const paragraph = document.createElement('p'); paragraph.textContent = text; item.append(paragraph); }
+        $('audio-flags-list').append(item);
+      }
+      $('audio-flags-status').textContent = savedAudioFlags.length ? savedAudioFlags.length + ' saved flag' + (savedAudioFlags.length === 1 ? '' : 's') + (savedAudioFlags.length === 100 ? ' · latest 100 shown' : '') : 'No audio flags saved yet.';
+      $('audio-flags-export').disabled = !savedAudioFlags.length;
+    } catch (error) {
+      if (flagResponseCurrent(generation,token) && flagListRequest === controller && error.name !== 'AbortError')
+        $('audio-flags-status').textContent = 'Saved flags could not load. Reconnect, then select Refresh.';
+    } finally { if (flagListRequest === controller) flagListRequest = null; }
+  }
+  $('audio-flags-open').addEventListener('click',() => {
+    if (!canFlagAudio) return;
+    settings.close(); $('audio-flags-dialog').hidden = false; $('audio-flags-dialog').showModal(); loadAudioFlags();
+  });
+  $('audio-flags-refresh').addEventListener('click',loadAudioFlags);
+  $('audio-flags-close').addEventListener('click',() => $('audio-flags-dialog').close());
+  $('audio-flags-dialog').addEventListener('close',() => {
+    if ($('audio-flags-dialog').open) return;
+    flagListRequest?.abort(); flagListRequest = null; savedAudioFlags = [];
+    $('audio-flags-list').replaceChildren(); $('audio-flags-status').textContent = ''; $('audio-flags-export').disabled = true;
+    $('audio-flags-dialog').hidden = true;
+  });
+  $('audio-flags-export').addEventListener('click',() => {
+    if (!canFlagAudio || !savedAudioFlags.length) return;
+    const url = URL.createObjectURL(new Blob([JSON.stringify({schemaVersion:1,bookId:manifest.bookId,exportedAt:new Date().toISOString(),flags:savedAudioFlags},null,2) + '\n'],{type:'application/json'}));
+    const link = document.createElement('a'); link.href = url; link.download = 'lumen-audio-flags-' + new Date().toISOString().slice(0,10) + '.json'; link.click();
+    setTimeout(() => URL.revokeObjectURL(url),1000);
+  });
   function setTextSize(value) {
     const size = Math.min(28,Math.max(18,Number(value) || 20));
     document.documentElement.style.setProperty('--text-size',size+'px');
@@ -570,6 +793,7 @@
     if (mode === 'replace') history.replaceState(state,'',url); else history.pushState(state,'',url);
   }
   function commitChapter(payload,position,{initial=false,listen=false}={}) {
+    clearAudioFlags();
     committing = true;
     audio.pause(); cancelAnimationFrame(animationFrame); clearTimeout(seekTimer); clearTimeout(sceneTimer);
     ++sceneToken; ++continuationToken;
@@ -609,17 +833,20 @@
     committing = false; bookmarkDirty = true;
     seekTo(position.time,true);
     play.disabled = false;
+    updateFlagControls();
     if (listen && !completed) { if (pendingSeek !== null) resumeAfterSeek = true; else startPlayback(); }
     setPlayState();
   }
   async function transitionTo(trackId,narratorId,options={}) {
     if (!book) return;
+    clearAudioFlags();
     const token = ++transitionToken, oldActive = book.getActive();
     const listen = options.listen ?? pendingTransition?.listen ?? (!audio.paused || resumeAfterSeek);
     const resumePrevious = pendingTransition?.resumePrevious ?? (!audio.paused && !audio.ended && !completed);
     const persistNarrator = options.reason === 'voice' || options.persistNarrator === true ||
       (options.reason === 'chapter' && pendingTransition?.persistNarrator === true && pendingTransition.narratorId === narratorId);
     pendingTransition = {listen,resumePrevious,narratorId,persistNarrator};
+    updateFlagControls();
     const sameTrackVoice = options.reason === 'voice' && oldActive?.trackId === trackId;
     const bookmark = options.bookmark === undefined && sameTrackVoice ? book.capture(currentPosition(),{completed}) : options.bookmark;
     if (oldActive) savePosition(true);
@@ -642,6 +869,7 @@
       if (token !== transitionToken) return;
       const requestedListening = pendingTransition.listen;
       pendingTransition = null;
+      updateFlagControls();
       $('transition-status').textContent = error.message || 'This chapter could not be loaded. Try again.';
       $('transition-retry').hidden = false;
       retryTransition.errorCode = error.code; transitionStart.hidden = error.code !== 'MISSING_ANCHOR';
@@ -684,6 +912,7 @@
   });
   async function bootstrap() {
     const token = ++accessToken;
+    setFlagPermission(false);
     transitionStart.hidden = true;
     play.disabled = true; $('play-status').textContent = 'Loading your book…';
     try {
@@ -693,6 +922,7 @@
       const sessionState = await session.json();
       if (token !== accessToken) return;
       if (sessionState.authenticated !== true) { closeAccess(); return; }
+      setFlagPermission(sessionState.canFlagAudio);
       document.body.classList.add('authenticated'); $('sign-out').hidden = $('sign-out-settings').hidden = false;
       const response = await fetch('/api/book',{cache:'no-store'});
       if (token !== accessToken) return;
@@ -736,6 +966,7 @@
     if (sceneLoadState === 'failed') { sceneLoadState = 'idle'; render(currentPosition()); }
   });
   function closeAccess() {
+    setFlagPermission(false);
     ++accessToken; ++inviteRequest; ++transitionToken; ++sceneToken; ++continuationToken;
     cancelSessionExchange();
     retainedInvite = ''; pendingTransition = null; $('invite-code').required = true; $('invite-submit').disabled = false;
@@ -800,6 +1031,7 @@
       return;
     }
     const attempt = ++accessToken, request = ++inviteRequest, canceled = cancelSessionExchange();
+    setFlagPermission(false);
     $('invite-submit').disabled = true; $('access-status').textContent = 'Opening your reading room…';
     try {
       await canceled;
@@ -816,6 +1048,7 @@
   $('invite-form').addEventListener('submit',event => { event.preventDefault(); activateInvite($('invite-code').value); });
   async function signOut() {
     const attempt = ++accessToken;
+    setFlagPermission(false);
     ++inviteRequest; retainedInvite = ''; $('invite-code').required = true;
     try {
       await cancelSessionExchange();
@@ -834,7 +1067,10 @@
     try { const response = await fetch('/api/session',{cache:'no-store'});
       if (token !== accessToken || book !== activeBook || sessionExchange || !response.ok) return;
       const session = await response.json();
-      if (token === accessToken && book === activeBook && !sessionExchange && session.authenticated !== true) closeAccess();
+      if (token === accessToken && book === activeBook && !sessionExchange) {
+        if (session.authenticated !== true) closeAccess();
+        else setFlagPermission(session.canFlagAudio);
+      }
     } catch (_) { /* A connection failure keeps the existing retry and bookmark. */ }
   });
   function consumeInvitation() {

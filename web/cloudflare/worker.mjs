@@ -1,8 +1,10 @@
 import crypto from 'node:crypto';
 import {Buffer} from 'node:buffer';
 import access from '../server/private-access.cjs';
+import audioFlags from '../server/audio-flags.cjs';
 
 const {createPrivateReader,readConfig,claimsAllowed,validateIndex,parseRange,boundedBytes,sha256}=access;
+const {createR2FlagStore}=audioFlags;
 const JSON_LIMIT=2*1024*1024;
 const BRIDGE_LIMIT=12288;
 const BODY_LIMIT=4096;
@@ -194,10 +196,10 @@ export function createWorker({now=Date.now,FixedLengthStream=globalThis.FixedLen
     let url;try {url=new URL(envelope.url);}catch(_){return failure(400);}
     if(url.href!==envelope.url||url.username||url.password||url.hash||url.search)return failure(400);
     if(!config.allowed.has(url.origin))return failure(403);
-    const isSession=url.pathname==='/api/session';
-    if(!isSession&&url.pathname!=='/api/book'&&!url.pathname.startsWith('/api/assets/'))return failure(404);
-    if(!(isSession?['GET','POST','DELETE']:['GET','HEAD']).includes(envelope.method))return failure(405);
-    const bodyExpected=isSession&&envelope.method==='POST';
+    const isSession=url.pathname==='/api/session',isFlags=url.pathname==='/api/audio-flags';
+    if(!isSession&&!isFlags&&url.pathname!=='/api/book'&&!url.pathname.startsWith('/api/assets/'))return failure(404);
+    if(!(isSession?['GET','POST','DELETE']:isFlags?['GET','POST']:['GET','HEAD']).includes(envelope.method))return failure(405);
+    const bodyExpected=(isSession||isFlags)&&envelope.method==='POST';
     if(bodyExpected?!Object.hasOwn(envelope,'body'):Object.hasOwn(envelope,'body'))return failure(400);
     if(bodyExpected&&Buffer.byteLength(envelope.body)>BODY_LIMIT)return failure(413);
     const headers=new Headers();
@@ -209,6 +211,7 @@ export function createWorker({now=Date.now,FixedLengthStream=globalThis.FixedLen
       ...(bodyExpected?{body:envelope.body}:{})});
     const dependencies=storage(env,config);
     const reader=createPrivateReader({env:readerEnvironment(env,url.origin,config.origin),now,...dependencies,protectStream,
+      flagStore:createR2FlagStore(env.LUMEN_R2),
       assetResponse:({request:original,index,asset,claims})=>{
         if(!['audio/mpeg','image/webp'].includes(asset.contentType))return null;
         const grant={schemaVersion:1,aud:config.audience,origin:url.origin,releaseId:index.releaseId,path:asset.path,
