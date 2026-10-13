@@ -1,5 +1,12 @@
 # Lumen private reader
 
+Current reader update, 13 October 2026: the stable URL uses deployment
+`dpl_2r1f9G7fHc8D7qeSzaHh4MBvpBux`, shell v29, with owner audio flags,
+rounded controls and the settings cog. The illustrated release and both audio
+editions are unchanged. The caption and preview playback fixes in shell v30 await PR review and an
+explicit deployment; merging this PR does not publish it. [Current deployment
+record](data/deployment.json).
+
 Illustration release, 11 October 2026: the stable URL now serves
 `lumen-illustrated-192-v1` with 1,379 paintings / 2,758 WebPs and all 182
 unchanged recordings through private R2. Protected candidate acceptance passed
@@ -25,13 +32,30 @@ Play/pause, fifteen-second skips, the timeline and playback speed use native bro
 
 Bookmarks use `lumen-book-v2`, with chapter history and completion, canonical sentence position, narrator, final recording hash and exact audio time. The same recording restores exact seconds, including silence. Old pilot bookmarks migrate without deleting their original key; completing the excerpt does not mark the full chapter complete. Storage failures retain usable in-memory progress, and saves merge other tabs' chapter history. If an audio revision cannot map a saved passage, the reader keeps the bookmark and offers **Start this chapter from the beginning**. This deliberate action replaces only that chapter’s bookmark after a successful load; failed or cancelled recovery preserves it. Progress is local to this browser and site address; cross-device sync remains later work.
 
+## Owner audio review
+
+Sign in with the separate private owner invitation to reveal **Flag audio**.
+It pauses narration and selects the current measured sentence on the mastered
+recording clock. An unmeasured passage defaults to the preceding ten seconds.
+Adjust a range of up to two minutes, preview it, optionally add a note, then save. The flag retains the chapter, narrator, exact recording hash
+and canonical sentence context. Previewing leaves the listening bookmark intact;
+a failed save remains an explicit retry with the same request ID.
+
+Settings → **Saved audio flags** lists up to 100 latest private flags and downloads
+only the records shown. Large passage text may reduce the number shown to keep
+the response within the private bridge limit; the list says when older flags
+were omitted. The shared reader code has no flagging permission;
+the server rechecks the owner role for every flag request. Flagging records a
+regeneration request and does not regenerate or replace narration. Flags need
+a connection and bypass the service worker.
+
 ## Phone and installed app
 
 Phone controls have large touch targets, a full-width timeline and safe-area spacing. iPad and desktop use side-by-side art and text; **Art** can hide the artwork panel. The illustrated release adds 1,379 narration-bound paintings with full-size and phone WebPs through the private R2 gateway. It is published at the stable URL with fresh stable Chrome 105/105 and final provider postflight passed, with persisted production routing reconciled; the preceding v4 release used generic placeholders. Independently measured image cues can reveal a painting while uncertain sentence timing stays unhighlighted. [Generated imagery integration](../docs/backlog/imagery-integration.md) records the collection, preparation commands and review status.
 
 In Android Chrome, use the browser menu to install Lumen or add it to the Home screen. The settings panel offers installation help and an install button when Chrome makes it available. iPhone home-screen launch is also supported. Media Session supplies supported system play/pause, seek and chapter controls. Automated Chrome phone, iPad and desktop checks do not constitute a physical-device installation or lock-screen acceptance test.
 
-The service worker caches the public reader shell and up to 40 visited public pilot paintings under `/assets/`. Private `/api/` text, timings, audio and paintings, plus all Range requests, bypass it. Private reading and listening need a connection; local bookmarks survive disconnection. New workers activate after existing tabs close, without forced reloads during listening. Obsolete shell and prose caches are cleared on activation while the visited public paintings are retained. Private offline artwork remains deferred until it can honor access expiry, revocation and sign-out.
+The service worker caches the public reader shell and up to 40 visited public pilot paintings under `/assets/`. Private `/api/` text, timings, audio, paintings and audio flags, plus all Range requests, bypass it. Private reading and listening need a connection; local bookmarks survive disconnection. New workers activate after existing tabs close, without forced reloads during listening. Obsolete shell and prose caches are cleared on activation while the visited public paintings are retained. Private offline artwork remains deferred until it can honor access expiry, revocation and sign-out.
 
 ## Development and verification
 
@@ -43,6 +67,7 @@ node tests/private-shell.cjs
 node tests/book-browser.cjs
 node tests/reader-controls.cjs
 node tests/full-release-browser.cjs --self-test-shell
+npm --prefix cloudflare ci
 npm run test:private
 python3 -m unittest discover -s tests -p 'test_*.py'
 ```
@@ -66,10 +91,17 @@ Deploy from `web` to the existing `lumen` project in `robert-xies-projects`. Bot
 
 Local deployment checks use `@vercel/routing-utils`. A scoped override pins its
 `path-to-regexp` dependency to patched version 6.3.0; see the [maintainer advisory](https://github.com/pillarjs/path-to-regexp/security/advisories/GHSA-9wv6-86v2-598j).
-Run `npm ci` and `npm run test:private` from `web/` to verify the lockfile and
+Run `npm ci`, `npm --prefix cloudflare ci` and `npm run test:private` from `web/` to verify the lockfiles and
 compiled private-asset routes. The full dependency audit currently reports zero
 vulnerabilities.
 
 Use encrypted, ignored, owner-only `.env` and `.env.shared` files with a separate owner-only `.env.keys`. Run local tools through `dotenvx run -f .env.shared -- ...` from the matching directory. Configure Vercel secrets on the server; never include them in static assets or Git. Upload and verify immutable private media before promoting the corresponding server index. Keep the production origin stable so bookmarks survive releases. Retain the matching app, Worker and immutable index for each release. The static previous-release bridge preserves still-open reader asset paths in both rollout directions; use the current access policy throughout. The encrypted local environments retain the v4 operator context, while the reviewed illustrated-media operator pins its separate Worker and index explicitly. See [illustration release operations](../docs/backlog/illustration-release.md).
+
+For owner review operations, the selected policy is the encrypted, ignored
+`Audiobook/author-audit/audio-flags-v2/.env`, with `web/.env.keys`. The historical
+`web/.env` and `.env.shared` retain shared-reader operator context; do not use
+them to replace the current owner registry. Preserve `rob-owner` and the
+unchanged shared grant when deploying review changes. See the [owner policy and
+rotation rules](server/README.md#owner-audio-review).
 
 Bump `SHELL_CACHE` in `dist/sw.js` for runtime changes. Do not use `skipWaiting` or force a reader reload. The Google Drive `test-apps` folder is for Nimblip only; Lumen backups go to the existing private Lumen folder.

@@ -105,6 +105,27 @@ test('stale release and audio hashes reject with conflicts and malformed snippet
     {id:'../arbitrary'},{audioSrc:'https://evil.example/x'},{chapterId:'chapter-999'},{narratorId:'unavailable'},{canFlagAudio:true}])assert.equal((await post(f,owner.cookie,{...f.input,...change})).status,400);
   assert.equal(f.calls.filter(row=>row.method==='put').length,0);
 });
+test('non-string UUIDs and recording hashes cannot create durable flags or poison listing',async()=>{
+  const f=fixture(),owner=await login(f);
+  for(const value of [[id],[[id]],{toString:id},null,42,true]) {
+    assert.equal((await post(f,owner.cookie,{...f.input,id:value})).status,400);
+  }
+  for(const value of [[f.input.audioSha256],{toString:f.input.audioSha256},null,42,true]) {
+    assert.equal((await post(f,owner.cookie,{...f.input,audioSha256:value})).status,400);
+  }
+  assert.equal(f.calls.filter(row=>row.method==='put').length,0);
+  const listed=await f.bridge('/api/audio-flags','GET',{cookie:owner.cookie});
+  assert.equal(listed.status,200);assert.deepEqual(await listed.json(),{flags:[]});
+});
+test('stored-record validation rejects array UUIDs before issuing R2 writes',async()=>{
+  const f=fixture(),owner=await login(f),first=await post(f,owner.cookie),record=(await first.json()).flag;
+  const malformed={...record,id:[record.id]};
+  const {createdAt,bindingSha256,...identity}=malformed;malformed.bindingSha256=digest(JSON.stringify(identity));
+  const before=f.calls.filter(row=>row.method==='put').length;
+  await assert.rejects(()=>createR2FlagStore(f.bucket).save(malformed),error=>error.status===503);
+  assert.equal(f.calls.filter(row=>row.method==='put').length,before);
+  assert.deepEqual(await createR2FlagStore(f.bucket).list(),[record]);
+});
 test('all manifest and chapter bytes remain physically hash-bound before flags are stored',async()=>{
   for(const select of [f=>f.index.assets.find(row=>row.path===f.index.manifestPath),f=>f.index.assets.find(row=>row.path.startsWith('tracks/chapter-001/'))]) {
     const f=fixture(),owner=await login(f),asset=select(f),row=f.objects.get(asset.blobPath);row.bytes=Buffer.alloc(row.size);
@@ -133,6 +154,30 @@ test('list pagination uses timestamps rather than UUID ordering and returns the 
   }
   f.bucket.list=async options=>options.cursor?{objects:rows.slice(60),truncated:false}:{objects:rows.slice(0,60),truncated:true,cursor:'second'};
   const flags=await createR2FlagStore(f.bucket).list();assert.equal(flags.length,100);assert.equal(flags[0].createdAt,new Date(now+104000).toISOString());assert.equal(flags.at(-1).createdAt,new Date(now+5000).toISOString());
+  const listed=await f.bridge('/api/audio-flags','GET',{cookie:owner.cookie});assert.equal(listed.status,200);assert.deepEqual(await listed.json(),{flags});
+});
+test('large valid latest flags stay within the Cloudflare bridge JSON budget without dropping newer records',async()=>{
+  const f=fixture(),owner=await login(f),saved=await post(f,owner.cookie),original=(await saved.json()).flag;
+  const base='lumen/owner-audio-flags/v1/',records=[];
+  f.objects.delete(base+original.id+'.json');
+  for(let i=0;i<100;i++) {
+    const record={...original,id:i.toString(16).padStart(8,'0')+'-1234-4234-8234-123456789abc',
+      createdAt:new Date(now+i*1000).toISOString(),text:'文'.repeat(20000)+'\n"\\'.repeat(10000)};
+    const {createdAt,bindingSha256,...identity}=record;record.bindingSha256=digest(JSON.stringify(identity));
+    const bytes=Buffer.from(JSON.stringify(record));assert.ok(bytes.length<=128*1024);
+    const row={key:base+record.id+'.json',bytes,size:bytes.length,httpMetadata:{contentType:'application/json'},
+      customMetadata:{sha256:digest(bytes),createdAt:record.createdAt}};
+    f.objects.set(row.key,row);records.unshift(record);
+  }
+  const worker=createWorker({now:()=>now});
+  const bridge=createCloudflareBridge({env:f.env,fetch:(url,init)=>worker.fetch(new Request(url,init),f.env)});
+  const response=await bridge(new Request(origin+'/api/audio-flags',{headers:{Cookie:owner.cookie}}));
+  assert.equal(response.status,200);assert.equal(response.headers.get('cache-control'),'private, no-store');
+  const bytes=Buffer.from(await response.arrayBuffer());assert.ok(bytes.length<=2*1024*1024);
+  assert.equal(response.headers.get('content-length'),String(bytes.length));
+  const payload=JSON.parse(bytes);assert.equal(payload.truncated,true);assert.ok(payload.flags.length>0&&payload.flags.length<100);
+  assert.deepEqual(payload.flags,records.slice(0,payload.flags.length));
+  assert.ok(Buffer.byteLength(JSON.stringify({flags:[...payload.flags,records[payload.flags.length]],truncated:true}))>2*1024*1024);
 });
 test('Node handler and Cloudflare bridge preserve bounded owner POST bodies and reject CSRF before forwarding',async()=>{
   const f=fixture(),owner=await login(f);let captured;

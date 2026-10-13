@@ -7,6 +7,8 @@ const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}
 const HASH=/^[a-f0-9]{64}$/;
 const object=value=>value!==null&&typeof value==='object'&&!Array.isArray(value);
 const finite=value=>typeof value==='number'&&Number.isFinite(value);
+const isUUID=value=>typeof value==='string'&&UUID.test(value);
+const isHash=value=>typeof value==='string'&&HASH.test(value);
 const digest=value=>crypto.createHash('sha256').update(value).digest('hex');
 class AudioFlagError extends Error {constructor(status){super('Audio flag rejected.');this.status=status;}}
 function ensure(value,status=503){if(!value)throw new AudioFlagError(status);}
@@ -38,10 +40,10 @@ function identity(record) {
 }
 async function buildAudioFlag({input,index,assets,getBlob,config,now,signal}) {
   const fields=['id','releaseId','chapterId','narratorId','audioSha256','start','end','note'];
-  ensure(object(input)&&Object.keys(input).every(key=>fields.includes(key))&&UUID.test(input.id||'')&&
+  ensure(object(input)&&Object.keys(input).every(key=>fields.includes(key))&&isUUID(input.id)&&
     typeof input.releaseId==='string'&&/^[a-z][a-z0-9-]*$/.test(input.releaseId)&&
     typeof input.chapterId==='string'&&/^chapter-[0-9]{3}$/.test(input.chapterId)&&
-    typeof input.narratorId==='string'&&/^[a-z][a-z0-9-]*$/.test(input.narratorId)&&HASH.test(input.audioSha256||'')&&
+    typeof input.narratorId==='string'&&/^[a-z][a-z0-9-]*$/.test(input.narratorId)&&isHash(input.audioSha256)&&
     finite(input.start)&&finite(input.end)&&input.start>=0&&input.end>input.start&&input.end-input.start<=120&&
     typeof input.note==='string'&&input.note.length<=1000,400);
   ensure(input.releaseId===index.releaseId,409);
@@ -85,18 +87,29 @@ async function buildAudioFlag({input,index,assets,getBlob,config,now,signal}) {
   return record;
 }
 function validRecord(record) {
-  return object(record)&&record.schemaVersion===1&&UUID.test(record.id||'')&&HASH.test(record.bindingSha256||'')&&
+  return object(record)&&record.schemaVersion===1&&isUUID(record.id)&&isHash(record.bindingSha256)&&
     identity(record)===record.bindingSha256&&typeof record.createdAt==='string'&&
     Number.isFinite(Date.parse(record.createdAt))&&new Date(record.createdAt).toISOString()===record.createdAt&&
     record.status==='regenerate'&&typeof record.text==='string'&&Array.isArray(record.sentenceIds);
 }
+function flagListPayload(flags) {
+  ensure(Array.isArray(flags));const selected=[];
+  // Reserve the truncation marker before counting UTF-8 JSON, including escapes.
+  let bytes=Buffer.byteLength(JSON.stringify({flags:[],truncated:true}));
+  for(const flag of flags) {
+    const count=Buffer.byteLength(JSON.stringify(flag))+(selected.length?1:0);
+    if(bytes+count>JSON_LIMIT)return {flags:selected,truncated:true};
+    selected.push(flag);bytes+=count;
+  }
+  return {flags:selected};
+}
 function createR2FlagStore(bucket) {
   async function read(id) {
-    ensure(UUID.test(id));const key=PREFIX+id+'.json',result=await bucket.get(key);
+    ensure(isUUID(id));const key=PREFIX+id+'.json',result=await bucket.get(key);
     if(!result)return null;
     ensure(result.key===key&&result.httpMetadata?.contentType==='application/json'&&
       !result.httpMetadata.contentEncoding&&Number.isSafeInteger(result.size)&&result.size>0&&result.size<=FLAG_LIMIT&&
-      HASH.test(result.customMetadata?.sha256||''));
+      isHash(result.customMetadata?.sha256));
     const bytes=await bytesOf(result.body,FLAG_LIMIT);ensure(bytes.length===result.size&&digest(bytes)===result.customMetadata.sha256);
     const record=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(bytes));
     ensure(validRecord(record)&&record.id===id&&result.customMetadata.createdAt===record.createdAt);
@@ -123,7 +136,7 @@ function createR2FlagStore(bucket) {
         ensure(result&&Array.isArray(result.objects)&&typeof result.truncated==='boolean');
         for(const row of result.objects) {
           const id=row.key?.slice(PREFIX.length,-5),createdAt=row.customMetadata?.createdAt;
-          ensure(row.key===PREFIX+id+'.json'&&UUID.test(id||'')&&typeof createdAt==='string'&&Number.isFinite(Date.parse(createdAt)));
+          ensure(row.key===PREFIX+id+'.json'&&isUUID(id)&&typeof createdAt==='string'&&Number.isFinite(Date.parse(createdAt)));
           selected.push({id,createdAt});
         }
         selected.sort((a,b)=>b.createdAt.localeCompare(a.createdAt)||b.id.localeCompare(a.id));selected=selected.slice(0,100);
@@ -134,4 +147,4 @@ function createR2FlagStore(bucket) {
     }
   };
 }
-module.exports={AudioFlagError,buildAudioFlag,createR2FlagStore};
+module.exports={AudioFlagError,buildAudioFlag,flagListPayload,createR2FlagStore};

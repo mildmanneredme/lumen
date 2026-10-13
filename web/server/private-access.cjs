@@ -1,7 +1,7 @@
 'use strict';
 // Server only. Reader assets and the invite registry never enter the static bundle.
 const crypto = require('node:crypto');
-const {buildAudioFlag,AudioFlagError}=require('./audio-flags.cjs');
+const {buildAudioFlag,flagListPayload,AudioFlagError}=require('./audio-flags.cjs');
 const SESSION_COOKIE = '__Host-lumen_session';
 const SESSION_SECONDS = 30 * 86400;
 const BODY_LIMIT = 4096;
@@ -245,7 +245,7 @@ function createPrivateReader({env = process.env, now = Date.now, loadIndex, getB
       if (!canFlagAudio(claims,config)) return failure(403);
       if (!flagStore || typeof flagStore.save!=='function' || typeof flagStore.list!=='function') return failure(503);
       try {
-        if (method==='GET') return json({flags:await flagStore.list()});
+        if (method==='GET') return json(flagListPayload(await flagStore.list()));
         if (!/^application\/json(?:;|$)/i.test(request.headers.get('content-type') || '')) return failure(400);
         const contentLength=request.headers.get('content-length');
         if (contentLength && (!/^\d+$/.test(contentLength) || Number(contentLength)>BODY_LIMIT)) return failure(413);

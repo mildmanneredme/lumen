@@ -22,209 +22,6 @@
     "webpVariants": 2758,
     "description": "Private full audiobook with narration-bound painted illustrations and unchanged recordings"
   },
-  "deploymentId": "dpl_4DfmAArqZN9tug2waKLLostcGNzd",
-  "status": "Ready",
-  "deploymentUrl": "https://lumen-2q0xd1zhp-robert-xies-projects.vercel.app/",
-  "sourceCommit": "880bd1872478d92dc47e734398813eb09c4ba15b",
-  "mediaBackendSourceCommit": "a595efd03fe634366e65796c6f1e6ebd920b3ee0",
-  "mergedMediaSourceCommit": "2aedf89e4d2becd3a98f5285ae9c50ae82cec8ef",
-  "reviewedPullRequests": [
-    "https://github.com/mildmanneredme/lumen/pull/13",
-    "https://github.com/mildmanneredme/lumen/pull/18",
-    "https://github.com/mildmanneredme/lumen/pull/19"
-  ],
-  "stagedAt": "2026-10-11T07:34:09.686Z",
-  "firstPromotionProviderVerifiedAt": "2026-10-11T09:19:35.826Z",
-  "recoveryProviderVerifiedAt": "2026-10-11T09:29:36.626Z",
-  "finalAcceptanceStatus": "VERIFIED",
-  "access": {
-    "inviteId": "shared-readers",
-    "inviteVersion": 2,
-    "ownerCodeAndHashExcluded": true,
-    "currentPolicyCopiedToBothWorkers": true,
-    "policyChangedByIllustrationRelease": false
-  },
-  "verification": {
-    "sourceBoundStageVerified": true,
-    "runtimeFileCount": 54,
-    "protectedCandidateAssertionsPassed": 108,
-    "historicalFunctionalAssertionsPassed": 268,
-    "historicalOverallQaStatus": "failed",
-    "historicalHeaderShutdownVerified": false,
-    "supplementalStableHeaderProofStatus": "verified",
-    "finalProviderPostflightStatus": "verified",
-    "privateReadingOffline": false,
-    "audioRequiresConnection": true,
-    "physicalPhoneInstallVerified": false,
-    "previewBypassUsedInHistoricalCandidate": true,
-    "humanFullBookListeningClaimed": false,
-    "humanIndividualOnsetApprovalClaimed": false,
-    "supplementalStableAssertionsPassed": 105,
-    "browserChecksPassed": 105,
-    "browserChecksFailed": 0,
-    "browserErrors": [],
-    "previewBypassUsedInFinalStable": false,
-    "normalContextClosureVerified": true,
-    "publicShellWithoutAuthentication": true,
-    "privateApiAuthRequired": true,
-    "fullBookAnonymousAccess": false,
-    "anonymousBookStatus": 401,
-    "anonymousAudioStatus": 401,
-    "anonymousAudioRangeStatus": 401,
-    "anonymousPaintingStatus": 401,
-    "bucketPrivate": true,
-    "deploymentProtectionPreserved": true,
-    "compositeCoverageContract": "preserved-functional-rehearsal-plus-fresh-stable-CDP-v1",
-    "historicalHeaderCoverageRetroactivelyClaimed": false,
-    "productionRoutingPersistenceStatus": "production-routing-persisted-reconciled",
-    "sensitiveOriginPlaintextReadbackClaimed": false
-  },
-  "worker": {
-    "name": "lumen-media-illustrated-v1",
-    "origin": "https://lumen-media-illustrated-v1.lumen-robxie.workers.dev",
-    "versionId": "acc6ed0a-af65-4bee-a88d-7f408d26368d",
-    "deploymentId": "acc6ed0aaf654beea88d7f408d26368d",
-    "sourceCommit": "a595efd03fe634366e65796c6f1e6ebd920b3ee0",
-    "bundleSha256": "fdef1dd6ee6cf010936eda703ef8807971e9b03a968122e598ea95cea7291f42",
-    "configSha256": "8df67cac54d095a7f662bf7ce272f6e2609ff235bdaa9b1eaab10e485aa5b279",
-    "percentage": 100,
-    "deployedAt": "2026-10-11T08:41:51.293Z",
-    "indexSha256": "02a2567d48185b1fa4a745c92c52aff10c3fd76f80ec8874e444bddc5369a76a",
-    "currentSharedAccessPolicyCopied": true,
-    "ownerAccessCodeExcluded": true,
-    "oldWorkerChanged": false,
-    "observabilityEnabled": false,
-    "logpush": false,
-    "observabilityReadbackVerified": true,
-    "paidUpgradePerformed": false,
-    "subscriptionSettingsChanged": false,
-    "receipt": {
-      "path": "Audiobook/author-audit/imagery-release-v1/operations/media-receipts/2026-10-11T08-41-12-610Z-5d87dee9-9e66-4610-9c03-7733cb601d2f/candidate-media-deployment.966c737aac6bf440f7af0ac84a89c3e1080ae2d50d22667ace4425115dbd44ca.json",
-      "sha256": "966c737aac6bf440f7af0ac84a89c3e1080ae2d50d22667ace4425115dbd44ca",
-      "bytes": 2794
-    }
-  },
-  "rollback": {
-    "scope": "cross-release operational rollback with unchanged recordings and current shared access policy",
-    "compatibleDeploymentId": "dpl_B1ZNDHFYWi1ZzS6xT2JqLJcfc1x6",
-    "terminalDeploymentId": "dpl_4DfmAArqZN9tug2waKLLostcGNzd",
-    "sequence": [
-      "prepare-Cq-to-retained-v4-A",
-      "illustrate-A-to-B",
-      "rollback-B-to-A",
-      "recover-A-to-B"
-    ],
-    "bothNarratorBookmarksRetained": true,
-    "completedBookmarkRetained": true,
-    "heldReleaseNavigationBeforeReloadVerified": true,
-    "historicalHeaderShutdownVerified": false,
-    "compositeFinalAcceptanceStatus": "FUNCTIONAL_AND_FRESH_STABLE_HEADER_EVIDENCE_BOUND_BY_FINAL_POSTFLIGHT"
-  },
-  "evidence": {
-    "directory": "Audiobook/author-audit/imagery-release-v1/operations",
-    "upload": {
-      "path": "Audiobook/author-audit/imagery-release-v1/operations/receipts/2026-10-11T07-26-53-138Z-0a7edfad-92e2-4a86-87e0-7397ae8bdb35/upload-verification.json",
-      "sha256": "d7c4058d3464443d8bb20aeb2e81aeca8b4539d52d426c9b4455821f365a5694",
-      "bytes": 4303526
-    },
-    "uploaderCleanup": {
-      "path": "Audiobook/author-audit/imagery-release-v1/operations/receipts/2026-10-11T07-26-53-138Z-0a7edfad-92e2-4a86-87e0-7397ae8bdb35/temporary-uploader-cleanup.json",
-      "sha256": "73699a8e4f67f35c05e4ad13be3cf483038e826f23ff57cbd569940efb0f3851",
-      "bytes": 540
-    },
-    "mediaDeployment": {
-      "path": "Audiobook/author-audit/imagery-release-v1/operations/media-receipts/2026-10-11T08-41-12-610Z-5d87dee9-9e66-4610-9c03-7733cb601d2f/candidate-media-deployment.966c737aac6bf440f7af0ac84a89c3e1080ae2d50d22667ace4425115dbd44ca.json",
-      "sha256": "966c737aac6bf440f7af0ac84a89c3e1080ae2d50d22667ace4425115dbd44ca",
-      "bytes": 2794
-    },
-    "protectedCandidate": {
-      "path": "Audiobook/author-audit/imagery-release-v1/operations/qa-archive/2026-10-11-vbtbfF/browser/candidate-report.json",
-      "sha256": "dea4bd03e7fc1a2261af5140bce8598e00cce82a60a96264ec03272675fb5f15",
-      "bytes": 381261
-    },
-    "productionTransitions": [
-      {
-        "path": "Audiobook/author-audit/imagery-release-v1/operations/promotion-receipts/2026-10-11T09-14-58-798Z-e0480398-b701-4521-9bd1-f7d4ed2193ef/verified.3f398cffd86fd8c7a9f774466e8d77aba9348a8b36d36bd676ab6a31d7b00454.json",
-        "sha256": "3f398cffd86fd8c7a9f774466e8d77aba9348a8b36d36bd676ab6a31d7b00454",
-        "bytes": 62388
-      },
-      {
-        "path": "Audiobook/author-audit/imagery-release-v1/operations/promotion-receipts/2026-10-11T09-17-56-397Z-fda2cc90-eb44-4f83-9bef-533b89659df5/verified.6bcf96595889673595e0baad91289b075e94dce5c2d54d73107dc7a57854f825.json",
-        "sha256": "6bcf96595889673595e0baad91289b075e94dce5c2d54d73107dc7a57854f825",
-        "bytes": 62734
-      },
-      {
-        "path": "Audiobook/author-audit/imagery-release-v1/operations/promotion-receipts/2026-10-11T09-23-39-419Z-4f7abe7c-5896-4fe1-b27f-34f15e8bbbd4/verified.484eaa308f1bac7eeb57edfce312592e88cab25e1dc470ab656b7408f933ce88.json",
-        "sha256": "484eaa308f1bac7eeb57edfce312592e88cab25e1dc470ab656b7408f933ce88",
-        "bytes": 62470
-      },
-      {
-        "path": "Audiobook/author-audit/imagery-release-v1/operations/promotion-receipts/2026-10-11T09-27-56-899Z-51a99b1c-84cc-4abf-82bb-54cf0a700c15/verified.5417e62cd5799f6d54e3c793f8d546d7be0f46416c4499630e60fcb512dfae20.json",
-        "sha256": "5417e62cd5799f6d54e3c793f8d546d7be0f46416c4499630e60fcb512dfae20",
-        "bytes": 62731
-      }
-    ],
-    "historicalFunctionalQa": {
-      "path": "Audiobook/author-audit/imagery-release-v1/operations/qa-archive/2026-10-11-vbtbfF/browser/report.json",
-      "sha256": "1cb926075d250250d84d6759b02474ddfb6396d49bd62eeb6ad2f97f7a85d939",
-      "bytes": 1177315
-    },
-    "historicalWrapper": {
-      "path": "Audiobook/author-audit/imagery-release-v1/operations/qa-archive/2026-10-11-vbtbfF/wrapper-report.json",
-      "sha256": "f92c95a657690bee6fea20f5acc9d9318e96ef35933f07abff8c076c1a9dcf7d",
-      "bytes": 663
-    },
-    "qaArchive": {
-      "path": "Audiobook/author-audit/imagery-release-v1/operations/qa-archive/2026-10-11-vbtbfF/archive.f2f5fbdb9853afad4f48463bc9993d0023f44a416dd0c1de33e9b00347444421.json",
-      "sha256": "f2f5fbdb9853afad4f48463bc9993d0023f44a416dd0c1de33e9b00347444421",
-      "bytes": 2133
-    },
-    "temporaryTokenCreated": {
-      "path": "Audiobook/author-audit/imagery-release-v1/operations/qa-archive/2026-10-11-vbtbfF/token/token-created.json",
-      "sha256": "c51f0be2f245acc583c0294c5050a30f208a0c3f9d991519ff64687bfb7ba0db",
-      "bytes": 518
-    },
-    "temporaryTokenRevoked": {
-      "path": "Audiobook/author-audit/imagery-release-v1/operations/qa-archive/2026-10-11-vbtbfF/token/token-revoked.json",
-      "sha256": "d95e66097d8908e050a9faf89bf2bdd2ecaabbe2a02a730b4525b6fdea4be7f6",
-      "bytes": 601
-    },
-    "cpuMetrics": {
-      "path": "Audiobook/author-audit/imagery-release-v1/operations/cpu-metrics-receipts/2026-10-11T09-40-55-439Z-26379280-07d6-48d1-a39f-5d108a75d0ee.window.04d0dd8c5f79bf2074ca1a52b303c183e4b8cb3816f6b0290b717e2f28f11e0f.json",
-      "sha256": "04d0dd8c5f79bf2074ca1a52b303c183e4b8cb3816f6b0290b717e2f28f11e0f",
-      "bytes": 13862
-    },
-    "cpuMetricUnits": {
-      "path": "Audiobook/author-audit/imagery-release-v1/operations/cpu-metrics-receipts/2026-10-11T08-13-33-776Z-ee3ac157-773c-4b28-9e47-c57083a27f47.settings.9ea80c76839c49f33dd93ca49d59837204d550d1ce7291400ef4a2db943b8147.json",
-      "sha256": "9ea80c76839c49f33dd93ca49d59837204d550d1ce7291400ef4a2db943b8147",
-      "bytes": 4599
-    },
-    "supplementalStableChrome": {
-      "path": "Audiobook/author-audit/imagery-release-v1/operations/qa-archive/2026-10-11-J5dRb3/browser/report.json",
-      "sha256": "c0ad8b103029b460378021d55461ac31a820e39cd2c0a3de5492135cf8084fb8",
-      "bytes": 564595
-    },
-    "finalProviderPostflight": {
-      "path": "Audiobook/author-audit/imagery-release-v1/operations/postflight-receipts/2026-10-11T10-10-57-133Z-e3b77287-3031-4528-89d1-682c43b1f934.after.72755e9360047e5440a150bbf405d6b57024f6e9e0cf342baf24bfa85a5f4772.json",
-      "sha256": "72755e9360047e5440a150bbf405d6b57024f6e9e0cf342baf24bfa85a5f4772",
-      "bytes": 5132
-    },
-    "productionRoutingPersistence": {
-      "path": "Audiobook/author-audit/imagery-release-v1/operations/routing-receipts/2026-10-11T10-52-53-599Z-c428f714-c840-4a28-b7e9-b1c69e961814/reconciled-verified.223e0e2365a69b9e7baf2320eedcf412b8004329852f5ade66d77a35d7323461.json",
-      "sha256": "223e0e2365a69b9e7baf2320eedcf412b8004329852f5ade66d77a35d7323461",
-      "bytes": 2853
-    },
-    "supplementalStableWrapper": {
-      "path": "Audiobook/author-audit/imagery-release-v1/operations/qa-archive/2026-10-11-J5dRb3/wrapper-report.json",
-      "sha256": "87a794a3652d4080d80a71ba898dad05b50debb5909be7739ae667adc778acf5",
-      "bytes": 991
-    },
-    "supplementalStableArchive": {
-      "path": "Audiobook/author-audit/imagery-release-v1/operations/qa-archive/2026-10-11-J5dRb3/archive.3e4aad777ec34495690ddc0b47af8519f18222b94b8b8de6ca381deac210c368.json",
-      "sha256": "3e4aad777ec34495690ddc0b47af8519f18222b94b8b8de6ca381deac210c368",
-      "bytes": 2047
-    }
-  },
   "historicalSharedAccessRotation": {
     "current": false,
     "purpose": "Complete preserved v4 shared-access rotation and initial-launch provenance; no current illustrated acceptance claim.",
@@ -1393,9 +1190,368 @@
       }
     ],
     "currentProductionDeploymentId": "dpl_4DfmAArqZN9tug2waKLLostcGNzd",
-    "productionProviderVerifiedAt": "2026-10-11T09:29:36.626Z"
+    "productionProviderVerifiedAt": "2026-10-11T09:29:36.626Z",
+    "historicalDeploymentRecord": true,
+    "recordScope": "Illustrated media release and 11 October deployment evidence; current reader and owner Worker identities are recorded at the top level."
   },
-  "verifiedAt": "2026-10-11T10:10:57.132Z",
-  "routingVerificationObservedAt": "2026-10-11T10:53:23Z",
-  "routingVerificationTimeSource": "root-observed-success; receipt directory time is operation start"
+  "historicalIllustrationDeployment": {
+    "historical": true,
+    "recordedReleaseId": "lumen-illustrated-192-v1",
+    "description": "11 October illustrated release deployment, acceptance and rollback record; later reader deployments are recorded at the top level.",
+    "deploymentId": "dpl_4DfmAArqZN9tug2waKLLostcGNzd",
+    "status": "Ready",
+    "deploymentUrl": "https://lumen-2q0xd1zhp-robert-xies-projects.vercel.app/",
+    "sourceCommit": "880bd1872478d92dc47e734398813eb09c4ba15b",
+    "mediaBackendSourceCommit": "a595efd03fe634366e65796c6f1e6ebd920b3ee0",
+    "mergedMediaSourceCommit": "2aedf89e4d2becd3a98f5285ae9c50ae82cec8ef",
+    "reviewedPullRequests": [
+      "https://github.com/mildmanneredme/lumen/pull/13",
+      "https://github.com/mildmanneredme/lumen/pull/18",
+      "https://github.com/mildmanneredme/lumen/pull/19"
+    ],
+    "stagedAt": "2026-10-11T07:34:09.686Z",
+    "firstPromotionProviderVerifiedAt": "2026-10-11T09:19:35.826Z",
+    "recoveryProviderVerifiedAt": "2026-10-11T09:29:36.626Z",
+    "finalAcceptanceStatus": "VERIFIED",
+    "access": {
+      "inviteId": "shared-readers",
+      "inviteVersion": 2,
+      "ownerCodeAndHashExcluded": true,
+      "currentPolicyCopiedToBothWorkers": true,
+      "policyChangedByIllustrationRelease": false
+    },
+    "verification": {
+      "sourceBoundStageVerified": true,
+      "runtimeFileCount": 54,
+      "protectedCandidateAssertionsPassed": 108,
+      "historicalFunctionalAssertionsPassed": 268,
+      "historicalOverallQaStatus": "failed",
+      "historicalHeaderShutdownVerified": false,
+      "supplementalStableHeaderProofStatus": "verified",
+      "finalProviderPostflightStatus": "verified",
+      "privateReadingOffline": false,
+      "audioRequiresConnection": true,
+      "physicalPhoneInstallVerified": false,
+      "previewBypassUsedInHistoricalCandidate": true,
+      "humanFullBookListeningClaimed": false,
+      "humanIndividualOnsetApprovalClaimed": false,
+      "supplementalStableAssertionsPassed": 105,
+      "browserChecksPassed": 105,
+      "browserChecksFailed": 0,
+      "browserErrors": [],
+      "previewBypassUsedInFinalStable": false,
+      "normalContextClosureVerified": true,
+      "publicShellWithoutAuthentication": true,
+      "privateApiAuthRequired": true,
+      "fullBookAnonymousAccess": false,
+      "anonymousBookStatus": 401,
+      "anonymousAudioStatus": 401,
+      "anonymousAudioRangeStatus": 401,
+      "anonymousPaintingStatus": 401,
+      "bucketPrivate": true,
+      "deploymentProtectionPreserved": true,
+      "compositeCoverageContract": "preserved-functional-rehearsal-plus-fresh-stable-CDP-v1",
+      "historicalHeaderCoverageRetroactivelyClaimed": false,
+      "productionRoutingPersistenceStatus": "production-routing-persisted-reconciled",
+      "sensitiveOriginPlaintextReadbackClaimed": false
+    },
+    "worker": {
+      "name": "lumen-media-illustrated-v1",
+      "origin": "https://lumen-media-illustrated-v1.lumen-robxie.workers.dev",
+      "versionId": "acc6ed0a-af65-4bee-a88d-7f408d26368d",
+      "deploymentId": "acc6ed0aaf654beea88d7f408d26368d",
+      "sourceCommit": "a595efd03fe634366e65796c6f1e6ebd920b3ee0",
+      "bundleSha256": "fdef1dd6ee6cf010936eda703ef8807971e9b03a968122e598ea95cea7291f42",
+      "configSha256": "8df67cac54d095a7f662bf7ce272f6e2609ff235bdaa9b1eaab10e485aa5b279",
+      "percentage": 100,
+      "deployedAt": "2026-10-11T08:41:51.293Z",
+      "indexSha256": "02a2567d48185b1fa4a745c92c52aff10c3fd76f80ec8874e444bddc5369a76a",
+      "currentSharedAccessPolicyCopied": true,
+      "ownerAccessCodeExcluded": true,
+      "oldWorkerChanged": false,
+      "observabilityEnabled": false,
+      "logpush": false,
+      "observabilityReadbackVerified": true,
+      "paidUpgradePerformed": false,
+      "subscriptionSettingsChanged": false,
+      "receipt": {
+        "path": "Audiobook/author-audit/imagery-release-v1/operations/media-receipts/2026-10-11T08-41-12-610Z-5d87dee9-9e66-4610-9c03-7733cb601d2f/candidate-media-deployment.966c737aac6bf440f7af0ac84a89c3e1080ae2d50d22667ace4425115dbd44ca.json",
+        "sha256": "966c737aac6bf440f7af0ac84a89c3e1080ae2d50d22667ace4425115dbd44ca",
+        "bytes": 2794
+      }
+    },
+    "rollback": {
+      "scope": "cross-release operational rollback with unchanged recordings and current shared access policy",
+      "compatibleDeploymentId": "dpl_B1ZNDHFYWi1ZzS6xT2JqLJcfc1x6",
+      "terminalDeploymentId": "dpl_4DfmAArqZN9tug2waKLLostcGNzd",
+      "sequence": [
+        "prepare-Cq-to-retained-v4-A",
+        "illustrate-A-to-B",
+        "rollback-B-to-A",
+        "recover-A-to-B"
+      ],
+      "bothNarratorBookmarksRetained": true,
+      "completedBookmarkRetained": true,
+      "heldReleaseNavigationBeforeReloadVerified": true,
+      "historicalHeaderShutdownVerified": false,
+      "compositeFinalAcceptanceStatus": "FUNCTIONAL_AND_FRESH_STABLE_HEADER_EVIDENCE_BOUND_BY_FINAL_POSTFLIGHT"
+    },
+    "evidence": {
+      "directory": "Audiobook/author-audit/imagery-release-v1/operations",
+      "upload": {
+        "path": "Audiobook/author-audit/imagery-release-v1/operations/receipts/2026-10-11T07-26-53-138Z-0a7edfad-92e2-4a86-87e0-7397ae8bdb35/upload-verification.json",
+        "sha256": "d7c4058d3464443d8bb20aeb2e81aeca8b4539d52d426c9b4455821f365a5694",
+        "bytes": 4303526
+      },
+      "uploaderCleanup": {
+        "path": "Audiobook/author-audit/imagery-release-v1/operations/receipts/2026-10-11T07-26-53-138Z-0a7edfad-92e2-4a86-87e0-7397ae8bdb35/temporary-uploader-cleanup.json",
+        "sha256": "73699a8e4f67f35c05e4ad13be3cf483038e826f23ff57cbd569940efb0f3851",
+        "bytes": 540
+      },
+      "mediaDeployment": {
+        "path": "Audiobook/author-audit/imagery-release-v1/operations/media-receipts/2026-10-11T08-41-12-610Z-5d87dee9-9e66-4610-9c03-7733cb601d2f/candidate-media-deployment.966c737aac6bf440f7af0ac84a89c3e1080ae2d50d22667ace4425115dbd44ca.json",
+        "sha256": "966c737aac6bf440f7af0ac84a89c3e1080ae2d50d22667ace4425115dbd44ca",
+        "bytes": 2794
+      },
+      "protectedCandidate": {
+        "path": "Audiobook/author-audit/imagery-release-v1/operations/qa-archive/2026-10-11-vbtbfF/browser/candidate-report.json",
+        "sha256": "dea4bd03e7fc1a2261af5140bce8598e00cce82a60a96264ec03272675fb5f15",
+        "bytes": 381261
+      },
+      "productionTransitions": [
+        {
+          "path": "Audiobook/author-audit/imagery-release-v1/operations/promotion-receipts/2026-10-11T09-14-58-798Z-e0480398-b701-4521-9bd1-f7d4ed2193ef/verified.3f398cffd86fd8c7a9f774466e8d77aba9348a8b36d36bd676ab6a31d7b00454.json",
+          "sha256": "3f398cffd86fd8c7a9f774466e8d77aba9348a8b36d36bd676ab6a31d7b00454",
+          "bytes": 62388
+        },
+        {
+          "path": "Audiobook/author-audit/imagery-release-v1/operations/promotion-receipts/2026-10-11T09-17-56-397Z-fda2cc90-eb44-4f83-9bef-533b89659df5/verified.6bcf96595889673595e0baad91289b075e94dce5c2d54d73107dc7a57854f825.json",
+          "sha256": "6bcf96595889673595e0baad91289b075e94dce5c2d54d73107dc7a57854f825",
+          "bytes": 62734
+        },
+        {
+          "path": "Audiobook/author-audit/imagery-release-v1/operations/promotion-receipts/2026-10-11T09-23-39-419Z-4f7abe7c-5896-4fe1-b27f-34f15e8bbbd4/verified.484eaa308f1bac7eeb57edfce312592e88cab25e1dc470ab656b7408f933ce88.json",
+          "sha256": "484eaa308f1bac7eeb57edfce312592e88cab25e1dc470ab656b7408f933ce88",
+          "bytes": 62470
+        },
+        {
+          "path": "Audiobook/author-audit/imagery-release-v1/operations/promotion-receipts/2026-10-11T09-27-56-899Z-51a99b1c-84cc-4abf-82bb-54cf0a700c15/verified.5417e62cd5799f6d54e3c793f8d546d7be0f46416c4499630e60fcb512dfae20.json",
+          "sha256": "5417e62cd5799f6d54e3c793f8d546d7be0f46416c4499630e60fcb512dfae20",
+          "bytes": 62731
+        }
+      ],
+      "historicalFunctionalQa": {
+        "path": "Audiobook/author-audit/imagery-release-v1/operations/qa-archive/2026-10-11-vbtbfF/browser/report.json",
+        "sha256": "1cb926075d250250d84d6759b02474ddfb6396d49bd62eeb6ad2f97f7a85d939",
+        "bytes": 1177315
+      },
+      "historicalWrapper": {
+        "path": "Audiobook/author-audit/imagery-release-v1/operations/qa-archive/2026-10-11-vbtbfF/wrapper-report.json",
+        "sha256": "f92c95a657690bee6fea20f5acc9d9318e96ef35933f07abff8c076c1a9dcf7d",
+        "bytes": 663
+      },
+      "qaArchive": {
+        "path": "Audiobook/author-audit/imagery-release-v1/operations/qa-archive/2026-10-11-vbtbfF/archive.f2f5fbdb9853afad4f48463bc9993d0023f44a416dd0c1de33e9b00347444421.json",
+        "sha256": "f2f5fbdb9853afad4f48463bc9993d0023f44a416dd0c1de33e9b00347444421",
+        "bytes": 2133
+      },
+      "temporaryTokenCreated": {
+        "path": "Audiobook/author-audit/imagery-release-v1/operations/qa-archive/2026-10-11-vbtbfF/token/token-created.json",
+        "sha256": "c51f0be2f245acc583c0294c5050a30f208a0c3f9d991519ff64687bfb7ba0db",
+        "bytes": 518
+      },
+      "temporaryTokenRevoked": {
+        "path": "Audiobook/author-audit/imagery-release-v1/operations/qa-archive/2026-10-11-vbtbfF/token/token-revoked.json",
+        "sha256": "d95e66097d8908e050a9faf89bf2bdd2ecaabbe2a02a730b4525b6fdea4be7f6",
+        "bytes": 601
+      },
+      "cpuMetrics": {
+        "path": "Audiobook/author-audit/imagery-release-v1/operations/cpu-metrics-receipts/2026-10-11T09-40-55-439Z-26379280-07d6-48d1-a39f-5d108a75d0ee.window.04d0dd8c5f79bf2074ca1a52b303c183e4b8cb3816f6b0290b717e2f28f11e0f.json",
+        "sha256": "04d0dd8c5f79bf2074ca1a52b303c183e4b8cb3816f6b0290b717e2f28f11e0f",
+        "bytes": 13862
+      },
+      "cpuMetricUnits": {
+        "path": "Audiobook/author-audit/imagery-release-v1/operations/cpu-metrics-receipts/2026-10-11T08-13-33-776Z-ee3ac157-773c-4b28-9e47-c57083a27f47.settings.9ea80c76839c49f33dd93ca49d59837204d550d1ce7291400ef4a2db943b8147.json",
+        "sha256": "9ea80c76839c49f33dd93ca49d59837204d550d1ce7291400ef4a2db943b8147",
+        "bytes": 4599
+      },
+      "supplementalStableChrome": {
+        "path": "Audiobook/author-audit/imagery-release-v1/operations/qa-archive/2026-10-11-J5dRb3/browser/report.json",
+        "sha256": "c0ad8b103029b460378021d55461ac31a820e39cd2c0a3de5492135cf8084fb8",
+        "bytes": 564595
+      },
+      "finalProviderPostflight": {
+        "path": "Audiobook/author-audit/imagery-release-v1/operations/postflight-receipts/2026-10-11T10-10-57-133Z-e3b77287-3031-4528-89d1-682c43b1f934.after.72755e9360047e5440a150bbf405d6b57024f6e9e0cf342baf24bfa85a5f4772.json",
+        "sha256": "72755e9360047e5440a150bbf405d6b57024f6e9e0cf342baf24bfa85a5f4772",
+        "bytes": 5132
+      },
+      "productionRoutingPersistence": {
+        "path": "Audiobook/author-audit/imagery-release-v1/operations/routing-receipts/2026-10-11T10-52-53-599Z-c428f714-c840-4a28-b7e9-b1c69e961814/reconciled-verified.223e0e2365a69b9e7baf2320eedcf412b8004329852f5ade66d77a35d7323461.json",
+        "sha256": "223e0e2365a69b9e7baf2320eedcf412b8004329852f5ade66d77a35d7323461",
+        "bytes": 2853
+      },
+      "supplementalStableWrapper": {
+        "path": "Audiobook/author-audit/imagery-release-v1/operations/qa-archive/2026-10-11-J5dRb3/wrapper-report.json",
+        "sha256": "87a794a3652d4080d80a71ba898dad05b50debb5909be7739ae667adc778acf5",
+        "bytes": 991
+      },
+      "supplementalStableArchive": {
+        "path": "Audiobook/author-audit/imagery-release-v1/operations/qa-archive/2026-10-11-J5dRb3/archive.3e4aad777ec34495690ddc0b47af8519f18222b94b8b8de6ca381deac210c368.json",
+        "sha256": "3e4aad777ec34495690ddc0b47af8519f18222b94b8b8de6ca381deac210c368",
+        "bytes": 2047
+      }
+    },
+    "verifiedAt": "2026-10-11T10:10:57.132Z",
+    "routingVerificationObservedAt": "2026-10-11T10:53:23Z",
+    "routingVerificationTimeSource": "root-observed-success; receipt directory time is operation start"
+  },
+  "deploymentId": "dpl_2r1f9G7fHc8D7qeSzaHh4MBvpBux",
+  "status": "Ready",
+  "deploymentUrl": "https://lumen-8xtqswac2-robert-xies-projects.vercel.app/",
+  "stagedAt": "2026-10-13T07:52:37.335Z",
+  "promotedAt": "2026-10-13T07:55:21.663Z",
+  "verifiedAt": "2026-10-13T07:57:18.529Z",
+  "runtimeInputSha256": "31f0c98dc57083e59f817699afbdb0eec6495c4606a9748c40b7988f02cd1f75",
+  "approvedReaderBaselineCommit": "a3546faeccc73906bfab78327f92bd4e24bb54df",
+  "sourceCommit": null,
+  "sourceState": "Live shell v29 was deployed from a frozen snapshot integrating the approved main reader baseline with owner review and control changes; the PR caption fix in shell v30 has not been deployed.",
+  "finalAcceptanceStatus": "VERIFIED_V29_RUNTIME_UPDATE",
+  "access": {
+    "inviteId": "shared-readers",
+    "inviteVersion": 2,
+    "sharedReaderRole": "reader",
+    "ownerInviteId": "rob-owner",
+    "ownerInviteVersion": 1,
+    "ownerInviteRole": "owner",
+    "ownerCodeAndHashExcluded": true,
+    "sharedGrantPreserved": true,
+    "existingOwnerSessionsPreserved": true,
+    "encryptedSelectedPolicy": "Audiobook/author-audit/audio-flags-v2/.env"
+  },
+  "verification": {
+    "publicShellWithoutAuthentication": true,
+    "privateApiAuthRequired": true,
+    "privateReadingOffline": false,
+    "audioRequiresConnection": true,
+    "physicalPhoneInstallVerified": false,
+    "settingsCogVerified": true,
+    "settingsDialogOpensAndClosesVerified": true,
+    "hostedExistingOwnerSessionPreserved": true,
+    "hostedFlagControlVisible": true,
+    "hostedSavedPositionPreservedSeconds": 15.2,
+    "bookManifestUnchanged": true,
+    "runtimeInputSha256": "31f0c98dc57083e59f817699afbdb0eec6495c4606a9748c40b7988f02cd1f75",
+    "verificationScope": "Frozen v29 runtime, settings cog and modal action. Prior owner/native/rounded-control acceptance is retained in the ignored evidence references; the original illustrated release acceptance remains historical.",
+    "priorOwnerAcceptanceDirectory": "Audiobook/author-audit/audio-flags-v3",
+    "priorRoundedControlAcceptanceDirectory": "Audiobook/author-audit/rounded-controls-v1",
+    "historicalIllustratedAcceptanceRecord": "historicalIllustrationDeployment.verification"
+  },
+  "worker": {
+    "name": "lumen-media-illustrated-v1",
+    "versionId": "02d900f7-ada1-4256-ac00-cc5c0e270fdf",
+    "deploymentId": "a120d5e4-155b-4645-8ffc-6967db3a1076",
+    "previousVersionId": "0b71bd78-814e-4ef0-9cf2-c39172ae2694",
+    "bundleSha256": "ad4491777f424dcf67646fe88985166550ef6922884b1acaf923dc09d1138e1c",
+    "sourceHashes": {
+      "web/cloudflare/worker.mjs": "f3f37ec54e54454a0c61b8511d25f307671e6729bdb6b725ad146479c97213c8",
+      "web/server/private-access.cjs": "f577f066ba6604077588f765a647bd5131153d37227bcfe400f63a53484338fc",
+      "web/server/audio-flags.cjs": "78021c06e853e8ff68c215c21c9eea05254662aeaf3c38b152086507aab2e29e",
+      "web/server/cloudflare-bridge.cjs": "63b14b9c63f68f46b4dde82398e41003df267b488c4b2f1a173663f3c3dff5dc",
+      "web/cloudflare/cloudflare.config.ts": "8e2b5c425533a46611b192fba6f5fdca2f076342fad185a5269a71baeb45ed4d"
+    },
+    "percentage": 100,
+    "observabilityEnabled": false,
+    "logpush": false,
+    "paidUpgradePerformed": false,
+    "sharedGrantAndReleasePreserved": true,
+    "inheritedSecretNames": [
+      "LUMEN_APP_ORIGIN",
+      "LUMEN_WORKER_ORIGIN",
+      "LUMEN_ALLOWED_ORIGINS_JSON",
+      "LUMEN_SESSION_SECRET",
+      "LUMEN_INVITES_JSON",
+      "LUMEN_BRIDGE_KEY",
+      "LUMEN_MEDIA_SECRET",
+      "LUMEN_RELEASE_INDEX_PATH",
+      "LUMEN_RELEASE_INDEX_SHA256"
+    ],
+    "overriddenSecretNames": [],
+    "nativeLengthGuardRestored": true,
+    "immutableIndexCacheRestored": true,
+    "approvedReaderBaselineCommit": "a3546faeccc73906bfab78327f92bd4e24bb54df",
+    "origin": "https://lumen-media-illustrated-v1.lumen-robxie.workers.dev",
+    "indexSha256": "02a2567d48185b1fa4a745c92c52aff10c3fd76f80ec8874e444bddc5369a76a",
+    "sourceCommit": null,
+    "sourceState": "Frozen owner review Worker with approved native length guard and authenticated immutable index cache restored; release, shared grant and inherited bindings preserved."
+  },
+  "rollback": {
+    "previousFrontendDeploymentId": "dpl_8WsE7kAgA6KTqKEjQbkmdNWRrGyk",
+    "ownerCapabilityRequiresCurrentWorker": true,
+    "currentPolicyCompatibleRollbackVerified": false,
+    "instruction": "Preserve the new owner registry and inherited signing keys when rolling back reader code; restore compatible code with the current access policy."
+  },
+  "ownerAudioFlags": {
+    "privateOwnerOnly": true,
+    "api": "/api/audio-flags",
+    "storagePrefix": "lumen/owner-audio-flags/v1/",
+    "recordingHashBound": true,
+    "canonicalSentenceIds": true,
+    "maximumSnippetSeconds": 120,
+    "savedListLimit": 100,
+    "automaticRegeneration": false,
+    "encryptedSelectedPolicy": "Audiobook/author-audit/audio-flags-v2/.env",
+    "privateEvidenceDirectory": "Audiobook/author-audit/audio-flags-v3",
+    "shellVersion": 29
+  },
+  "ownerAccessCodeRotation": {
+    "verifiedAt": "2026-10-13T07:08:00.179Z",
+    "ownerId": "rob-owner",
+    "ownerVersion": 1,
+    "existingOwnerSessionPreserved": true,
+    "oldCodeDenied": true,
+    "newOwnerCodeVerified": true,
+    "sharedReaderDeniedFlags": true,
+    "workerScriptAndOtherBindingsPreserved": true,
+    "bookManifestUnchanged": true,
+    "ownerPolicyPath": "Audiobook/author-audit/audio-flags-v2/.env"
+  },
+  "roundedControls": {
+    "cornerRadiusPixels": 12,
+    "shellVersion": 28,
+    "changedRuntimeFiles": [
+      "dist/controls.css",
+      "dist/index.html",
+      "dist/sw.js"
+    ],
+    "allOtherRuntimeBytesPreserved": true,
+    "circularTransportPreserved": true
+  },
+  "settingsCog": {
+    "icon": "outlined-eight-tooth-cog",
+    "shellVersion": 29,
+    "locations": [
+      "reader toolbar",
+      "Reading settings heading"
+    ],
+    "textSizeIconPreserved": true,
+    "allOtherRuntimeBytesPreserved": true
+  },
+  "evidence": {
+    "directory": "Audiobook/author-audit/settings-cog-v1",
+    "stage": "candidate.json",
+    "inputs": "inputs.json",
+    "staticVerification": "static-verification.json",
+    "promotion": "promotion.json",
+    "iconChangeVerification": "icon-change-verification.json",
+    "liveVerification": "live-verification.json",
+    "liveBrowserScreenshot": "live-settings-cog.jpg",
+    "runtimeInputSha256": "31f0c98dc57083e59f817699afbdb0eec6495c4606a9748c40b7988f02cd1f75",
+    "previousEvidenceDirectory": "Audiobook/author-audit/rounded-controls-v1"
+  },
+  "pendingRuntime": {
+    "shellVersion": 30,
+    "status": "awaiting-pr-deployment",
+    "description": "Caption fix included in the PR; the stable reader still uses shell v29.",
+    "automaticDeploymentOnMerge": false
+  }
 }

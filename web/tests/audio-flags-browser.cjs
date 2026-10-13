@@ -64,6 +64,13 @@ let browser;
   async function fixture(role = 'owner', width = 390) {
     const context = await browser.newContext({viewport:{width,height:844},isMobile:true,hasTouch:true,serviceWorkers:'block',acceptDownloads:true});
     const page = await context.newPage(); page.on('pageerror',error => errors.push(String(error)));
+    await page.addInitScript(() => {
+      const actions = {}, session = {playbackState:'none',metadata:null,
+        setActionHandler(action,handler) { actions[action] = handler; },
+        setPositionState(position) { this.positionState = {...position}; }};
+      Object.defineProperty(navigator,'mediaSession',{configurable:true,value:session});
+      window.__lumenMediaActions = actions; window.__lumenMediaSession = session;
+    });
     const state = {role,posts:[],gets:0,records:[],failSave:false,status:200,holdSave:null};
     await page.route('**/api/session',route => {
       if (route.request().method() === 'DELETE') state.role = 'guest';
@@ -207,6 +214,82 @@ let browser;
   await precise.page.waitForFunction(() => document.querySelector('#audio-flag-status').textContent.startsWith('Saved for regeneration'));
   check('unchanged displayed fields save both full-precision measured boundaries',precise.state.posts[0].start === secondStart && precise.state.posts[0].end === secondEnd);
   await precise.context.close();
+  const native = await fixture(), nativePage = native.page;
+  await nativePage.locator('#seek').evaluate(element => { element.value = '7'; element.dispatchEvent(new Event('input',{bubbles:true})); });
+  await nativePage.waitForFunction(() => Math.abs(document.querySelector('#narration').currentTime-7) < .001 && !document.querySelector('#narration').seeking);
+  await nativePage.locator('#audio-flag-open').click();
+  async function nativePreview() {
+    await nativePage.locator('#audio-flag-preview').click();
+    await nativePage.waitForFunction(() => !document.querySelector('#audio-flag-player').paused &&
+      document.querySelector('#audio-flag-preview').textContent === 'Stop preview' && window.__lumenMediaSession.playbackState === 'playing');
+  }
+  await nativePreview();
+  check('native media position and playback state follow the active preview',await nativePage.evaluate(() => {
+    const preview = document.querySelector('#audio-flag-player'), session = window.__lumenMediaSession;
+    return document.querySelector('#narration').paused && Math.abs(session.positionState.position-preview.currentTime) < .3 &&
+      Math.abs(session.positionState.duration-preview.duration) < .001;
+  }));
+  await nativePage.evaluate(() => {
+    document.body.dispatchEvent(new KeyboardEvent('keydown',{key:' ',code:'Space',bubbles:true}));
+    document.body.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowRight',code:'ArrowRight',bubbles:true}));
+  });
+  check('an open flag dialog blocks main keyboard shortcuts even with a body target',await nativePage.evaluate(() =>
+    document.querySelector('#narration').paused && Math.abs(document.querySelector('#narration').currentTime-7) < .001 && !document.querySelector('#audio-flag-player').paused));
+  for (const action of ['pause','stop']) {
+    if (action === 'stop') await nativePreview();
+    const before = await nativePage.evaluate(() => JSON.parse(localStorage.getItem('lumen-book-v2')).lastPosition);
+    await nativePage.evaluate(action => window.__lumenMediaActions[action](),action);
+    await nativePage.waitForFunction(() => document.querySelector('#audio-flag-player').paused && window.__lumenMediaSession.playbackState === 'paused');
+    check('native ' + action + ' stops preview and restores main media state without moving the bookmark',await nativePage.evaluate(before => {
+      const main = document.querySelector('#narration'), saved = JSON.parse(localStorage.getItem('lumen-book-v2')).lastPosition;
+      return main.paused && document.querySelector('#audio-flag-preview').textContent === 'Preview snippet' &&
+        Math.abs(window.__lumenMediaSession.positionState.position-main.currentTime) < .001 &&
+        saved.audioTime === before.audioTime && saved.completed === before.completed;
+    },before));
+  }
+  await nativePreview();
+  await nativePage.evaluate(() => window.__lumenMediaActions.play());
+  await nativePage.waitForFunction(() => !document.querySelector('#narration').paused && document.querySelector('#audio-flag-player').paused);
+  check('native play stops the preview before starting main narration',await nativePage.evaluate(() =>
+    document.querySelector('#audio-flag-preview').textContent === 'Preview snippet' && window.__lumenMediaSession.playbackState === 'playing'));
+  await nativePage.evaluate(() => window.__lumenMediaActions.pause());
+  for (const [action,details,expected] of [['seekbackward',{seekOffset:1},6],['seekforward',{seekOffset:1},8],['seekto',{seekTime:9},9]]) {
+    await nativePage.locator('#narration').evaluate(element => { element.currentTime = 7; });
+    await nativePage.waitForFunction(() => !document.querySelector('#narration').seeking);
+    await nativePreview();
+    await nativePage.evaluate(({action,details}) => window.__lumenMediaActions[action](details),{action,details});
+    await nativePage.waitForFunction(expected => Math.abs(document.querySelector('#narration').currentTime-expected) < .001 &&
+      !document.querySelector('#narration').seeking && document.querySelector('#audio-flag-player').paused,expected);
+    check('native ' + action + ' stops preview and seeks only the main clock',await nativePage.evaluate(expected => {
+      const saved = JSON.parse(localStorage.getItem('lumen-book-v2')).lastPosition;
+      return document.querySelector('#narration').paused && saved.audioTime === expected && window.__lumenMediaSession.playbackState === 'paused';
+    },expected));
+  }
+  for (const outcome of ['resolve','reject']) {
+    await nativePage.evaluate(() => {
+      const player = document.querySelector('#audio-flag-player'), original = player.play.bind(player);
+      window.__restorePreviewPlay = () => { player.play = original; };
+      player.play = () => {
+        original().catch(() => {});
+        return new Promise((resolve,reject) => {
+          window.__finishHeldPreview = outcome => outcome === 'resolve' ? resolve() : reject(new Error('Canceled fixture preview'));
+        });
+      };
+    });
+    await nativePage.locator('#audio-flag-preview').click();
+    await nativePage.waitForFunction(() => !document.querySelector('#audio-flag-player').paused && !!window.__finishHeldPreview);
+    await nativePage.locator('#audio-flag-preview').click();
+    check('a preview with an unresolved play promise can be stopped',await nativePage.locator('#audio-flag-preview').textContent() === 'Preview snippet');
+    await nativePage.evaluate(() => window.__restorePreviewPlay());
+    await nativePreview();
+    await nativePage.evaluate(outcome => window.__finishHeldPreview(outcome),outcome);
+    await nativePage.evaluate(() => new Promise(resolve => requestAnimationFrame(resolve)));
+    check('a late preview ' + outcome + ' cannot stop or relabel a newer preview',await nativePage.evaluate(() =>
+      !document.querySelector('#audio-flag-player').paused && document.querySelector('#narration').paused &&
+      document.querySelector('#audio-flag-preview').textContent === 'Stop preview' && window.__lumenMediaSession.playbackState === 'playing'));
+    await nativePage.locator('#audio-flag-preview').click();
+  }
+  await native.context.close();
   const denied = await fixture(); denied.state.status = 403;
   await denied.page.locator('#audio-flag-open').click(); await denied.page.locator('#audio-flag-save').click();
   await denied.page.waitForFunction(() => document.querySelector('#audio-flag-open').hidden);

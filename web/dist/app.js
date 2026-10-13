@@ -23,7 +23,7 @@
   let book, manifest, transitionToken = 0, retryTransition = null, continuationToken = 0, committing = false;
   let pendingTransition = null, accessToken = 0, inviteRequest = 0, retainedInvite = '', sessionExchange = null;
   let canFlagAudio = false, flagGeneration = 0, flagDraft = null, savedAudioFlags = [];
-  let flagRequest = null, flagListRequest = null, flagPreviewEnd = null, flagPreviewTimer = 0;
+  let flagRequest = null, flagListRequest = null, flagPreviewEnd = null, flagPreviewTimer = 0, flagPreviewGeneration = 0;
   const flagPlayer = $('audio-flag-player');
   const transitionStart = document.createElement('button');
   transitionStart.id = 'transition-start'; transitionStart.type = 'button'; transitionStart.className = 'text-button';
@@ -92,6 +92,7 @@
   function attemptSeek() {
     if (pendingSeek === null || issuedSeek === pendingSeek) return;
     if (!canSeekTo(pendingSeek)) { setPlayState(); return; }
+    stopFlagPreview();
     try {
       issuedSeek = pendingSeek;
       audio.currentTime = pendingSeek;
@@ -103,6 +104,7 @@
   }
   function seekTo(value, restoring = false) {
     if (!book?.getActive()) return;
+    stopFlagPreview();
     const next = Math.min(duration, Math.max(0, Number(value) || 0));
     if (next < duration - .08) automaticEndHandled = false;
     if (!restoring) { bookmarkDirty = true; $('resume-panel').hidden = true; completed = next >= duration - .08; }
@@ -340,10 +342,11 @@
     const now = performance.now();
     if (!force && now - lastMediaUpdate < 1000) return;
     lastMediaUpdate = now;
-    navigator.mediaSession.playbackState = audio.paused ? 'paused' : 'playing';
-    if (navigator.mediaSession.setPositionState && Number.isFinite(audio.duration) && audio.duration > 0) {
-      try { navigator.mediaSession.setPositionState({duration:audio.duration, playbackRate:audio.playbackRate,
-        position:Math.max(0,Math.min(audio.duration,audio.currentTime))}); } catch (_) {}
+    const player = flagPreviewEnd !== null && !flagPlayer.paused ? flagPlayer : audio;
+    navigator.mediaSession.playbackState = player.paused ? 'paused' : 'playing';
+    if (navigator.mediaSession.setPositionState && Number.isFinite(player.duration) && player.duration > 0) {
+      try { navigator.mediaSession.setPositionState({duration:player.duration, playbackRate:player.playbackRate,
+        position:Math.max(0,Math.min(player.duration,player.currentTime))}); } catch (_) {}
     }
   }
   function setPlayState() {
@@ -367,6 +370,7 @@
     updateMediaSession(true);
   }
   async function startPlayback() {
+    stopFlagPreview();
     try { await audio.play(); } catch (_) { $('play-status').textContent = 'Playback could not start. Select Play to try again.'; }
   }
   function setListeningIntent(listen) {
@@ -375,6 +379,7 @@
   }
   async function togglePlayback() {
     if (!book?.getActive()) return;
+    stopFlagPreview();
     bookmarkDirty = true;
     $('resume-panel').hidden = true;
     if (pendingTransition) {
@@ -425,6 +430,7 @@
   });
   $('speed').addEventListener('change',() => { audio.playbackRate = Number($('speed').value); savePreferences({speed:audio.playbackRate}); render(); });
   function startOver(listen = false) {
+    stopFlagPreview();
     setListeningIntent(listen);
     resumeAfterSeek = false;
     audio.pause(); setFollow(true); seekTo(0);
@@ -434,7 +440,7 @@
   $('replay').addEventListener('click',() => startOver(true));
   $('start-over').addEventListener('click',() => startOver());
   $('resume-continue').addEventListener('click',togglePlayback);
-  audio.addEventListener('play',() => { setPlayState(); cancelAnimationFrame(animationFrame); tick(); });
+  audio.addEventListener('play',() => { if (!audio.paused) stopFlagPreview(); setPlayState(); cancelAnimationFrame(animationFrame); tick(); });
   audio.addEventListener('pause',() => { cancelAnimationFrame(animationFrame); render(); savePosition(true); setPlayState(); });
   audio.addEventListener('timeupdate',() => { render(); savePosition(); });
   audio.addEventListener('seeked',() => { finishSeek(); render(currentPosition(),true); setPlayState(); });
@@ -457,9 +463,11 @@
   $('settings-close').addEventListener('click',() => settings.close());
   settings.addEventListener('click',event => { if (event.target === settings) { const r=settings.getBoundingClientRect(); if (event.clientX<r.left||event.clientX>r.right||event.clientY<r.top||event.clientY>r.bottom) settings.close(); } });
   function stopFlagPreview(clear = false) {
+    ++flagPreviewGeneration;
     flagPreviewEnd = null; clearTimeout(flagPreviewTimer); flagPlayer.pause();
     $('audio-flag-preview').textContent = 'Preview snippet';
     if (clear) { flagPlayer.removeAttribute('src'); flagPlayer.load(); }
+    updateMediaSession(true);
   }
   function clearAudioFlags() {
     ++flagGeneration;
@@ -571,13 +579,21 @@
     if (flagDraft.payload) { flagDraft.id = crypto.randomUUID(); flagDraft.payload = null; }
     $('audio-flag-status').textContent = ''; updateFlagForm();
   });
-  function watchFlagPreview() {
-    if (flagPreviewEnd === null || flagPlayer.paused) return;
+  function watchFlagPreview(generation = flagPreviewGeneration) {
+    if (generation !== flagPreviewGeneration || flagPreviewEnd === null || flagPlayer.paused) return;
     if (flagPlayer.currentTime >= flagPreviewEnd || flagPlayer.ended) { stopFlagPreview(); return; }
-    flagPreviewTimer = setTimeout(watchFlagPreview,Math.max(10,Math.min(50,(flagPreviewEnd-flagPlayer.currentTime)*1000/flagPlayer.playbackRate)));
+    flagPreviewTimer = setTimeout(() => watchFlagPreview(generation),Math.max(10,Math.min(50,(flagPreviewEnd-flagPlayer.currentTime)*1000/flagPlayer.playbackRate)));
   }
-  flagPlayer.addEventListener('timeupdate',() => { if (flagPreviewEnd !== null && flagPlayer.currentTime >= flagPreviewEnd) stopFlagPreview(); });
-  flagPlayer.addEventListener('ended',() => stopFlagPreview());
+  flagPlayer.addEventListener('playing',() => updateMediaSession(true));
+  flagPlayer.addEventListener('timeupdate',() => {
+    if (flagPreviewEnd !== null && flagPlayer.currentTime >= flagPreviewEnd) stopFlagPreview();
+    else updateMediaSession();
+  });
+  flagPlayer.addEventListener('pause',() => {
+    if (flagPlayer.paused && flagPreviewEnd !== null) stopFlagPreview();
+    else updateMediaSession(true);
+  });
+  flagPlayer.addEventListener('ended',() => { if (flagPlayer.ended) stopFlagPreview(); });
   flagPlayer.addEventListener('error',() => {
     stopFlagPreview();
     if (flagDraft) $('audio-flag-status').textContent = 'Preview could not load. Reconnect and try again.';
@@ -585,14 +601,17 @@
   $('audio-flag-preview').addEventListener('click',async () => {
     const range = flagRange(), draft = flagDraft, generation = flagGeneration, token = accessToken;
     if (!range || !canFlagAudio || !draft) return;
-    if (!flagPlayer.paused) { stopFlagPreview(); return; }
-    audio.pause(); resumeAfterSeek = false;
+    if (flagPreviewEnd !== null || !flagPlayer.paused) { stopFlagPreview(); return; }
+    audio.pause(); resumeAfterSeek = false; setListeningIntent(false);
+    const previewGeneration = ++flagPreviewGeneration;
     try {
       flagPlayer.currentTime = range.start; flagPlayer.playbackRate = audio.playbackRate;
       flagPreviewEnd = range.end; await flagPlayer.play();
+      if (previewGeneration !== flagPreviewGeneration) return;
       if (!flagResponseCurrent(generation,token,draft)) { stopFlagPreview(); return; }
-      $('audio-flag-preview').textContent = 'Stop preview'; watchFlagPreview();
+      $('audio-flag-preview').textContent = 'Stop preview'; updateMediaSession(true); watchFlagPreview();
     } catch (_) {
+      if (previewGeneration !== flagPreviewGeneration) return;
       stopFlagPreview();
       if (flagResponseCurrent(generation,token,draft)) $('audio-flag-status').textContent = 'Preview could not start. Reconnect and try again.';
     }
@@ -651,7 +670,7 @@
         for (const text of [record.note,record.text]) if (text) { const paragraph = document.createElement('p'); paragraph.textContent = text; item.append(paragraph); }
         $('audio-flags-list').append(item);
       }
-      $('audio-flags-status').textContent = savedAudioFlags.length ? savedAudioFlags.length + ' saved flag' + (savedAudioFlags.length === 1 ? '' : 's') + (savedAudioFlags.length === 100 ? ' · latest 100 shown' : '') : 'No audio flags saved yet.';
+      $('audio-flags-status').textContent = savedAudioFlags.length ? savedAudioFlags.length + ' saved flag' + (savedAudioFlags.length === 1 ? '' : 's') + (result.truncated === true ? ' · newest shown; older flags omitted because this list is large' : savedAudioFlags.length === 100 ? ' · latest 100 shown' : '') : 'No audio flags saved yet.';
       $('audio-flags-export').disabled = !savedAudioFlags.length;
     } catch (error) {
       if (flagResponseCurrent(generation,token) && flagListRequest === controller && error.name !== 'AbortError')
@@ -685,8 +704,8 @@
   window.addEventListener('pagehide',() => savePosition(true));
   document.addEventListener('visibilitychange',() => { if (document.visibilityState === 'hidden') savePosition(true); });
   document.addEventListener('keydown',event => {
-    const interactive = event.target.closest('button,input,select,[role=button],dialog');
-    if (interactive || event.ctrlKey || event.metaKey || event.altKey) return;
+    const interactive = event.target.closest('button,input,select,textarea,[role=button],dialog');
+    if (interactive || document.querySelector('dialog[open]') || event.ctrlKey || event.metaKey || event.altKey) return;
     if (event.code === 'Space') { event.preventDefault(); togglePlayback(); }
     if (event.key === 'ArrowLeft') { event.preventDefault(); seekTo(currentPosition()-15); }
     if (event.key === 'ArrowRight') { event.preventDefault(); seekTo(currentPosition()+15); }
@@ -706,9 +725,9 @@
   }
   if ('mediaSession' in navigator) {
     const actions = {
-      play: () => { if (pendingTransition) { setListeningIntent(true); setPlayState(); } else if (audio.paused && !resumeAfterSeek) togglePlayback(); },
-      pause: () => { setListeningIntent(false); resumeAfterSeek = false; audio.pause(); savePosition(true); setPlayState(); },
-      stop: () => { setListeningIntent(false); resumeAfterSeek = false; audio.pause(); savePosition(true); setPlayState(); },
+      play: () => { stopFlagPreview(); if (pendingTransition) { setListeningIntent(true); setPlayState(); } else if (audio.paused && !resumeAfterSeek) togglePlayback(); },
+      pause: () => { stopFlagPreview(); setListeningIntent(false); resumeAfterSeek = false; audio.pause(); savePosition(true); setPlayState(); },
+      stop: () => { stopFlagPreview(); setListeningIntent(false); resumeAfterSeek = false; audio.pause(); savePosition(true); setPlayState(); },
       seekbackward: details => seekTo(currentPosition() - (details.seekOffset || 15)),
       seekforward: details => seekTo(currentPosition() + (details.seekOffset || 15)),
       seekto: details => { if (Number.isFinite(details.seekTime)) seekTo(details.seekTime); },
