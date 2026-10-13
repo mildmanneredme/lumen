@@ -1,13 +1,16 @@
 # Private reader delivery
 
 Current reader update, 13 October 2026: the stable URL uses deployment
-`dpl_FGQLGhauGzhAzLCn5ZEoFSJicFWW`, shell v30, from merged PR23
-`917fd3f`. The runtime matches reviewed `f66b70f`, including owner audio flags,
-caption and preview playback fixes, rounded controls and the settings cog.
-The illustrated release and both audio editions are unchanged. Final static,
-access, representative media and browser checks passed, including preview
-playback without changing the book clock. Physical-phone installation and
-headset listening remain untested. [Current deployment record](../data/deployment.json).
+`dpl_CYs1s6j1TwbKbDBFY94sArrtRCt4`, shell v31, with the reviewed PR25 runtime
+`d5d78be`. The generated gold **Flag audio** icon button sits beside playback
+speed and stays hidden for ordinary readers. Five deployment tests, two HTTP
+fixture checks and local phone, desktop and landscape controls checks passed.
+Eight live static files match the frozen stage; the existing owner session,
+15.2-second saved slider position and flag dialog were verified in production.
+The Worker, access policy, illustrated release and both audio editions are
+unchanged. Earlier backend and media acceptance remains historical evidence;
+physical-phone installation and headset listening remain untested.
+[Current deployment record](../data/deployment.json).
 
 Illustration release, 11 October 2026: the stable URL now serves
 `lumen-illustrated-192-v1` with 1,379 paintings / 2,758 WebPs and all 182
@@ -82,9 +85,9 @@ recheck the signed session and current role before accessing storage.
   same-ID retries idempotent. Responses use `private, no-store` and bypass the
   service worker. Anonymous requests return `401`; ordinary readers return `403`.
 
-**Flag audio** pauses at the current passage; its preview uses the original
-recording clock without replacing the listening bookmark. Settings → **Saved
-audio flags** reviews and exports the records shown. This queue records requests;
+The **Flag audio** icon button beside playback speed pauses at the current
+passage; its preview uses the original recording clock without replacing the
+listening bookmark. Settings → **Saved audio flags** reviews and exports the records shown. This queue records requests;
 it does not regenerate or replace narration.
 
 The selected policy is encrypted in the ignored

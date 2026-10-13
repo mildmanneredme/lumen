@@ -17,7 +17,7 @@ dialog{max-height:calc(100dvh - 40px - env(safe-area-inset-top) - env(safe-area-
   .edition-label{margin-bottom:24px}.chapter-kicker{font-size:10px;letter-spacing:.1em}
   .resume-panel{padding:8px max(16px,env(safe-area-inset-right)) 8px max(16px,env(safe-area-inset-left));gap:3px}
   .resume-panel p{font-size:11px}.resume-actions{gap:6px}.continue-button{font-size:13px}
-  .player{grid-template-columns:1fr auto 1fr;grid-template-rows:auto auto;gap:0 12px;min-height:0;padding:7px max(16px,env(safe-area-inset-right)) calc(9px + env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}
+  .player{grid-template-columns:minmax(44px,1fr) auto minmax(max-content,1fr);grid-template-rows:auto auto;gap:0 12px;min-height:0;padding:7px max(16px,env(safe-area-inset-right)) calc(9px + env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}
   .progress-area{grid-row:1;grid-column:1/-1;width:100%}
   .progress-heading{font-size:11px;justify-content:space-between;gap:12px;margin-bottom:0}
   .progress-heading #play-status{display:block;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
@@ -31,9 +31,9 @@ dialog{max-height:calc(100dvh - 40px - env(safe-area-inset-top) - env(safe-area-
   .play-button{width:54px;height:54px;font-size:21px}
   .art-toggle{grid-row:2;grid-column:1;justify-self:start;display:flex;align-items:center;justify-content:center;gap:5px;min-width:44px;min-height:48px;padding:4px 0;background:none;border:0;color:var(--muted);font:12px Arial,sans-serif}
   .art-toggle[aria-checked=true]{color:var(--gold)}
-  .speed-control{grid-row:2;grid-column:3;justify-self:end;padding:0;border:0}
+  .player-tools{grid-row:2;grid-column:3;justify-self:end}
+  .speed-control{padding:0;border:0}
   .speed-control select{min-width:55px;min-height:48px;font-size:16px}
-  .audio-flag-button{grid-column:1/-1;grid-row:3;justify-self:center;min-height:44px;margin-top:4px;padding:8px 18px}
   .art-hidden .scene-stage{display:none}
   dialog{width:calc(100% - 28px);padding:20px;max-height:calc(100dvh - 28px - env(safe-area-inset-top) - env(safe-area-inset-bottom))}
   .dialog-heading{margin-bottom:20px}

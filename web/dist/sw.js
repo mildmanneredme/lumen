@@ -1,6 +1,6 @@
 /* Bump the shell version when shipping changes to HTML, scripts, or styles. */
 'use strict';
-const SHELL_CACHE = 'lumen-shell-20261013-owner-review-v30';
+const SHELL_CACHE = 'lumen-shell-20261013-owner-review-v31';
 const ART_CACHE = 'lumen-art-v1';
 const MAX_ART_ENTRIES = 40;
 const SHELL_PATHS = [
@@ -8,7 +8,7 @@ const SHELL_PATHS = [
   '/book.js', '/legacy-pilot.js', '/install.js', '/manifest.webmanifest',
   '/icons/icon.svg', '/icons/icon-192.png', '/icons/icon-512.png',
   '/icons/icon-maskable-512.png', '/icons/apple-touch-icon.png',
-  '/icons/favicon-lumen-32-v2.png', '/icons/favicon-lumen-16-v2.png'
+  '/icons/favicon-lumen-32-v2.png', '/icons/favicon-lumen-16-v2.png', '/icons/audio-flag-v1.png'
 ];
 const SHELL_SET = new Set(SHELL_PATHS);
 

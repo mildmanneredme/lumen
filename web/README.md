@@ -1,13 +1,16 @@
 # Lumen private reader
 
 Current reader update, 13 October 2026: the stable URL uses deployment
-`dpl_FGQLGhauGzhAzLCn5ZEoFSJicFWW`, shell v30, from merged PR23
-`917fd3f`. The runtime matches reviewed `f66b70f`, including owner audio flags,
-caption and preview playback fixes, rounded controls and the settings cog.
-The illustrated release and both audio editions are unchanged. Final static,
-access, representative media and browser checks passed, including preview
-playback without changing the book clock. Physical-phone installation and
-headset listening remain untested. [Current deployment record](data/deployment.json).
+`dpl_CYs1s6j1TwbKbDBFY94sArrtRCt4`, shell v31, with the reviewed PR25 runtime
+`d5d78be`. The generated gold **Flag audio** icon button sits beside playback
+speed and stays hidden for ordinary readers. Five deployment tests, two HTTP
+fixture checks and local phone, desktop and landscape controls checks passed.
+Eight live static files match the frozen stage; the existing owner session,
+15.2-second saved slider position and flag dialog were verified in production.
+The Worker, access policy, illustrated release and both audio editions are
+unchanged. Earlier backend and media acceptance remains historical evidence;
+physical-phone installation and headset listening remain untested.
+[Current deployment record](data/deployment.json).
 
 Illustration release, 11 October 2026: the stable URL now serves
 `lumen-illustrated-192-v1` with 1,379 paintings / 2,758 WebPs and all 182
@@ -36,9 +39,9 @@ Bookmarks use `lumen-book-v2`, with chapter history and completion, canonical se
 
 ## Owner audio review
 
-Sign in with the separate private owner invitation to reveal **Flag audio**.
-It pauses narration and selects the current measured sentence on the mastered
-recording clock. An unmeasured passage defaults to the preceding ten seconds.
+Sign in with the separate private owner invitation to reveal the **Flag audio**
+icon button beside playback speed. It pauses narration and selects the current
+measured sentence on the mastered recording clock. An unmeasured passage defaults to the preceding ten seconds.
 Adjust a range of up to two minutes, preview it, optionally add a note, then save. The flag retains the chapter, narrator, exact recording hash
 and canonical sentence context. Previewing leaves the listening bookmark intact;
 a failed save remains an explicit retry with the same request ID.
@@ -76,9 +79,9 @@ python3 -m unittest discover -s tests -p 'test_*.py'
 
 The browser fixture generates short audio in memory and supplies three chapters in both voices. It checks native touch seeking, retries, stale requests, chapter history, narrator switching, completion, private access/logout, source sync gaps and responsive layouts. Playwright and Chrome are required; `PLAYWRIGHT_MODULE` and `LUMEN_QA_OUT` override their locations. Older pilot browser suites remain historical fixtures.
 
-Reader controls use a shared, locally drawn SVG set in `dist/icons.js` and a final style layer in `dist/controls.css`. Decorative icons inherit the charcoal, ivory and gold palette; changing labels preserves the icons and native control semantics. `reader-controls.cjs` checks icon state changes, accessible names, keyboard focus, reduced motion and phone/tablet/desktop geometry using loopback-only historical text and generated audio. It also captures the welcome screen, settings, chapter list and painted reader for visual review.
+Reader controls use a shared, locally drawn SVG set in `dist/icons.js` and a final style layer in `dist/controls.css`. The owner audio flag uses a 96×96 ImageGen PNG at `dist/icons/audio-flag-v1.png`, displayed at 32px; its original prompt and export identity are recorded in `art-direction/ui-icons/audio-flag-v1.json`. Decorative icons inherit the charcoal, ivory and gold palette; changing labels preserves the icons and native control semantics. `reader-controls.cjs` checks icon state changes, accessible names, keyboard focus, reduced motion and phone/tablet/desktop geometry using loopback-only historical text and generated audio. It also captures the welcome screen, settings, chapter list and painted reader for visual review.
 
-The release fixture records and verifies the exact control stylesheet and icon script it serves. `full-release-browser.cjs --self-test-shell` checks those local assets and anonymous private-book denial without loading the full release; it does not certify the book or hosted deployment.
+The release fixture records and verifies the exact control stylesheet, icon script and audio flag PNG it serves. `full-release-browser.cjs --self-test-shell` checks those local assets and anonymous private-book denial without loading the full release; it does not certify the book or hosted deployment.
 
 After the private full release has been staged, `node tests/full-release-browser.cjs --registry /absolute/path/to/prepared-registry.json` checks all 182 payloads against canonical prose and briefly plays ten representative original MP3s in a loopback-only Chrome fixture. It verifies actual native seeking, chapter/voice changes, resume and explicit cue gaps. QA evidence stays in a private temporary directory. This check does not certify the hosted backend, physical phones or a full-book listening pass.
 
