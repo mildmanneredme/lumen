@@ -1550,8 +1550,15 @@
   },
   "pendingRuntime": {
     "shellVersion": 30,
-    "status": "awaiting-pr-deployment",
-    "description": "Caption fix included in the PR; the stable reader still uses shell v29.",
-    "automaticDeploymentOnMerge": false
+    "status": "reviewed-awaiting-production-deployment",
+    "description": "Reviewed caption and preview playback fixes included in PR23; stable reader still uses shellv29.",
+    "automaticDeploymentOnMerge": false,
+    "reviewedSourceCommit": "f66b70f6ba55cf96fdc94477d8750f02b9f97a37",
+    "pullRequest": "https://github.com/mildmanneredme/lumen/pull/23",
+    "focusedTestsPassed": 121,
+    "candidateDeploymentId": "dpl_FGQLGhauGzhAzLCn5ZEoFSJicFWW",
+    "candidateRuntimeInputSha256": "9942812f757e12e2716d410808f56cb7a7a0233968fee2b500acf20f3751612f",
+    "candidateExactStaticBytesVerified": true,
+    "productionPublishingApprovalRequired": true
   }
 }

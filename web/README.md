@@ -3,8 +3,8 @@
 Current reader update, 13 October 2026: the stable URL uses deployment
 `dpl_2r1f9G7fHc8D7qeSzaHh4MBvpBux`, shell v29, with owner audio flags,
 rounded controls and the settings cog. The illustrated release and both audio
-editions are unchanged. The caption and preview playback fixes in shell v30 await PR review and an
-explicit deployment; merging this PR does not publish it. [Current deployment
+editions are unchanged. The reviewed caption and preview playback fixes in shell v30 await an
+explicit production deployment; merging this PR does not publish it. [Current deployment
 record](data/deployment.json).
 
 Illustration release, 11 October 2026: the stable URL now serves
