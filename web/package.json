@@ -6,7 +6,7 @@
     "node": "24.x"
   },
   "scripts": {
-    "test:private": "node --test tests/private-access*.cjs tests/deployment-files.cjs"
+    "test:private": "npm --prefix cloudflare run build && node --test tests/private-access*.cjs tests/deployment-files.cjs tests/audio-flags.cjs"
   },
   "dependencies": {
     "@vercel/blob": "2.8.1"

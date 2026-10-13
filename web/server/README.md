@@ -1,5 +1,12 @@
 # Private reader delivery
 
+Current reader update, 13 October 2026: the stable URL uses deployment
+`dpl_2r1f9G7fHc8D7qeSzaHh4MBvpBux`, shell v29, with owner audio flags,
+rounded controls and the settings cog. The illustrated release and both audio
+editions are unchanged. The reviewed caption and preview playback fixes in shell v30 await an
+explicit production deployment; merging this PR does not publish it. [Current deployment
+record](../data/deployment.json).
+
 Illustration release, 11 October 2026: the stable URL now serves
 `lumen-illustrated-192-v1` with 1,379 paintings / 2,758 WebPs and all 182
 unchanged recordings through private R2. Protected candidate acceptance passed
@@ -17,10 +24,10 @@ Only the empty reader shell is static. The selected full-book release uses **pri
 
 The previous private Blob implementation is retained for possible future deployment. Its configuration and uploader are documented separately below; no Blob store was provisioned for this release.
 
-`api/session.js`, `api/book.js`, and `api/assets.js` use the shared
+`api/session.js`, `api/book.js`, `api/assets.js`, and `api/audio-flags.js` use the shared
 Node adapter. `LUMEN_WORKER_ORIGIN` selects the Cloudflare bridge; without it, the adapter uses the server-only, pinned `@vercel/blob` fallback SDK. The existing Vercel
 project uses Node 24. Run `npm ci` inside `web/` and
-`node --test web/tests/private-access*.cjs` from the repository root.
+`npm --prefix web/cloudflare ci`, then `npm --prefix web run test:private` from the repository root.
 
 The explicit `web/vercel.json` rewrite `/api/assets/(.*)` → `/api/assets`
 selects the plain asset function for deeply nested immutable filenames. The
@@ -35,9 +42,9 @@ supports single dynamic segments in filenames, so this project uses the
 
 ## Reader API
 
-- `GET /api/session`: `{authenticated:true|false}`.
+- `GET /api/session`: `{authenticated:true|false}`, with `canFlagAudio:true` only for an authenticated owner.
 - `POST /api/session`: JSON `{invite:"<shared access code or legacy token>"}` and the exact
-  app `Origin`; returns `{authenticated:true}` with a signed cookie.
+  app `Origin`; returns the authenticated session state with a signed cookie.
 - `DELETE /api/session`: exact app `Origin`; expires the cookie and returns
   `{authenticated:false}`.
 - `GET /api/book`: the indexed book manifest, after authorization.
@@ -50,6 +57,50 @@ invite expiry, whichever comes first. Every request rechecks invite revocation,
 expiry, and version. Revoking/removing a grant or incrementing its version invalidates its sessions after the updated server configuration is deployed. Logout removes the current browser cookie.
 
 Responses use `private, no-store`. Unauthenticated requests fail before reading the private index or requesting media. HEAD and conditional requests authenticate too. In Cloudflare mode audio receives a 307 redirect with a separately signed path/hash/release/invite/expiry grant. The Worker validates that grant and its current invite policy before streaming. JSON remains behind the Vercel bridge. The service worker bypasses private API and Worker media requests, including Range requests.
+
+## Owner audio review
+
+Owner review uses a separate private invitation. Only a registry grant with
+`role:"owner"` receives `canFlagAudio:true`; missing roles remain readers.
+Keep the `shared-readers` grant unchanged and never give it the owner role.
+The browser hides the review controls for readers, and both flag endpoints
+recheck the signed session and current role before accessing storage.
+
+- `GET /api/audio-flags`: `{flags:[...]}`, containing up to 100 of the owner's latest flags. The complete JSON stays below the bridge's 2 MiB limit; large records reduce the result to the newest contiguous prefix and add `truncated:true`. The UI states when older flags were omitted, and export includes only shown records.
+- `POST /api/audio-flags`: JSON `{id,releaseId,chapterId,narratorId,audioSha256,
+  start,end,note}` with the exact app `Origin`. The UUID v4 remains stable for a
+  retry; bounds use mastered audio seconds, with a maximum 120-second range and
+  an optional note of at most 1,000 characters. Successful saves return `{flag}`.
+- The server verifies release/chapter JSON against the immutable index, checks
+  the narrator and recording hash, then derives canonical sentence IDs and
+  manuscript text. Stale recording identities return `409`; unavailable timing
+  does not acquire guessed sentence text.
+- Flags are immutable private R2 objects under `lumen/owner-audio-flags/v1/`,
+  outside the book inventory. Conditional writes and verified read-back make
+  same-ID retries idempotent. Responses use `private, no-store` and bypass the
+  service worker. Anonymous requests return `401`; ordinary readers return `403`.
+
+**Flag audio** pauses at the current passage; its preview uses the original
+recording clock without replacing the listening bookmark. Settings → **Saved
+audio flags** reviews and exports the records shown. This queue records requests;
+it does not regenerate or replace narration.
+
+The selected policy is encrypted in the ignored
+`Audiobook/author-audit/audio-flags-v2/.env`, using `web/.env.keys`.
+Its `LUMEN_OWNER_ACCESS_CODE` belongs only to `rob-owner`. The historical
+`web/.env` and `.env.shared` retain the shared-reader policy. Future Worker
+deployments must preserve the current registry or load the selected owner
+policy. The v1 owner operator is historical. Inherit the current release index,
+origins, signing keys and other bindings when changing only review code.
+
+The verified v2 rotation replaced the owner code's registry hash while retaining
+owner version 1, preserving existing owner sessions and the shared grant.
+Increment the owner's grant version or revoke it when invalidating existing
+owner sessions is intended. Keep codes, their hashes and decrypted policy values
+out of Git, logs, frontend assets and deployment arguments. Deploy only the
+required server bindings; never import every local environment variable.
+Private owner/rotation evidence remains under ignored `Audiobook/author-audit/`
+and is referenced in the [deployment record](../data/deployment.json).
 
 ## Selected Cloudflare environment
 
@@ -78,7 +129,8 @@ Required names:
 - `LUMEN_APP_ORIGIN`: `https://lumen-phi-five.vercel.app`, with no trailing slash.
 - `LUMEN_SESSION_SECRET`: 32–64 random bytes encoded as canonical base64url.
 - `LUMEN_INVITES_JSON`: at most 50 grants. Each is `{id,tokenHash,version,
-  expiresAt,revoked}`. `tokenHash` is SHA-256 of the canonical lowercase access code joined with hyphens, or the exact legacy base64url token string. `expiresAt` is Unix seconds; `version` starts at 1; `revoked` is boolean. The shared audience uses one grant; this is not a per-person or per-device count limit. Original codes/tokens remain in encrypted private operator records only.
+  expiresAt,revoked,role?}`; an omitted role means reader and only `role:"owner"`
+  grants audio review. `tokenHash` is SHA-256 of the canonical lowercase access code joined with hyphens, or the exact legacy base64url token string. `expiresAt` is Unix seconds; `version` starts at 1; `revoked` is boolean. The shared audience uses one grant; this is not a per-person or per-device count limit. Original codes/tokens remain in encrypted private operator records only.
 - `LUMEN_RELEASE_INDEX_PATH`: immutable
   `lumen/releases/<releaseId>/server-index.<sha256>.json`.
 - `LUMEN_RELEASE_INDEX_SHA256`: that file's exact byte hash.

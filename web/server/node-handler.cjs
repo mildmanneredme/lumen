@@ -17,7 +17,7 @@ function createNodeHandler({loadReader=getReader,env=process.env}={}) {
         else if(value!==undefined) requestHeaders.set(name,value);
       }
       let body;
-      if(request.method==='POST' && url.pathname==='/api/session') {
+      if(request.method==='POST' && ['/api/session','/api/audio-flags'].includes(url.pathname)) {
         const chunks=[];let bytes=0;
         for await(const chunk of request) {
           bytes+=chunk.length;

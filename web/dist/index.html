@@ -15,15 +15,15 @@
   <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-lumen-32-v2.png">
   <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-lumen-16-v2.png">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-  <link rel="stylesheet" href="styles.css?v=20261010-book">
-  <link rel="stylesheet" href="mobile.css?v=20261012-switch">
-  <link rel="stylesheet" href="controls.css?v=20261012-native-type">
-  <script src="icons.js?v=20261012-switch" defer></script>
+  <link rel="stylesheet" href="styles.css?v=20261013-reader-restore">
+  <link rel="stylesheet" href="mobile.css?v=20261013-reader-restore">
+  <link rel="stylesheet" href="controls.css?v=20261013-rounded-controls">
+  <script src="icons.js?v=20261013-settings-cog" defer></script>
   <script src="legacy-pilot.js?v=20261010-book" defer></script>
   <script src="progress.js?v=20261009-mobile" defer></script>
   <script src="book.js?v=20261010-book" defer></script>
-  <script src="app.js?v=20261012-dashes" defer></script>
-  <script src="install.js?v=20261012-polish" defer></script>
+  <script src="app.js?v=20261013-owner-review" defer></script>
+  <script src="install.js?v=20261013-reader-restore" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#prose">Skip to the book</a>
@@ -51,7 +51,7 @@
     <p id="access-hint">Spaces or dashes work; capital letters are fine. Invitation links work too.</p>
     <p id="access-status" role="status">Checking your access…</p>
     <p class="access-help">For help or feedback, contact the person who shared your access code.</p>
-    <p class="access-credit">AI-generated narration. Illustrations are in preparation.</p>
+    <p class="access-credit">AI-generated narration.</p>
     </div>
   </section>
   <aside id="resume-panel" class="resume-panel" aria-label="Your listening position" hidden>
@@ -67,7 +67,7 @@
   </aside>
   <main class="experience">
     <figure class="scene-stage" id="scene-stage" data-scene="opening-room">
-      <div id="scene-placeholder" class="scene-placeholder" aria-label="Illustrations are in preparation"><span class="placeholder-mark" aria-hidden="true">L</span><span>LUMEN</span><small>Read & listen</small></div>
+      <div id="scene-placeholder" class="scene-placeholder" aria-label="Artwork placeholder"><span class="placeholder-mark" aria-hidden="true">L</span><span>LUMEN</span><small>Read & listen</small></div>
       <img id="scene-image" class="scene-image" decoding="async" alt="">
       <img id="scene-incoming" class="scene-image incoming" alt="" aria-hidden="true">
       <figcaption class="scene-caption"><span id="scene-title">Berkeley · Monday evening</span><span class="scene-number" id="scene-number">01 / 08</span></figcaption>
@@ -88,7 +88,7 @@
           <button id="chapter-continue" class="text-button" type="button" hidden><span class="control-label">Continue to next chapter</span><span data-lumen-icon="arrow-right" aria-hidden="true"></span></button>
           <button id="replay" class="text-button" type="button"><span data-lumen-icon="replay" aria-hidden="true"></span><span class="control-label">Listen again</span></button>
         </section>
-        <p class="narration-credit">AI-generated narration. Illustrations are in preparation.</p>
+        <p class="narration-credit">AI-generated narration.</p>
       </div>
     </section>
   </main>
@@ -107,6 +107,7 @@
       <label class="sr-only" for="seek">Playback position</label><input id="seek" type="range" min="0" max="320.19" step="0.1" value="0" aria-valuetext="0 minutes 0 seconds">
     </div>
     <label class="speed-control"><span class="sr-only">Playback speed</span><select id="speed" aria-label="Playback speed"><option value="0.75">0.75×</option><option value="1" selected>1×</option><option value="1.25">1.25×</option><option value="1.5">1.5×</option><option value="2">2×</option></select><span data-lumen-icon="chevron-down" aria-hidden="true"></span></label>
+    <button id="audio-flag-open" class="audio-flag-button" type="button" aria-haspopup="dialog" hidden>Flag audio</button>
   </footer>
   <dialog id="settings" aria-labelledby="settings-title">
     <div class="dialog-heading"><h2 id="settings-title"><span data-lumen-icon="settings" aria-hidden="true"></span>Reading settings</h2><button id="settings-close" class="text-button icon-button" type="button" aria-label="Close reading settings" title="Close reading settings"><span data-lumen-icon="close" aria-hidden="true"></span></button></div>
@@ -121,13 +122,41 @@
       <button id="install-app" class="continue-button" type="button"><span data-lumen-icon="download" aria-hidden="true"></span><span class="control-label">How to install</span></button>
       <p id="install-status" role="status">Add Lumen to your Home screen to open it as an app.</p>
     </section>
+    <section id="audio-flag-settings" class="install-section" hidden>
+      <h3>Audio regeneration</h3>
+      <button id="audio-flags-open" class="continue-button" type="button" aria-haspopup="dialog">Saved audio flags</button>
+    </section>
     <button id="sign-out-settings" class="text-button" type="button" hidden><span data-lumen-icon="sign-out" aria-hidden="true"></span><span class="control-label">Sign out</span></button>
   </dialog>
   <dialog id="chapters" aria-labelledby="chapters-title">
     <div class="dialog-heading"><h2 id="chapters-title"><span data-lumen-icon="book-open" aria-hidden="true"></span>Chapters</h2><button id="chapters-close" class="text-button icon-button" type="button" aria-label="Close chapters" title="Close chapters"><span data-lumen-icon="close" aria-hidden="true"></span></button></div>
     <nav id="chapter-list" aria-label="Book chapters"></nav>
   </dialog>
+  <dialog id="audio-flag-dialog" aria-labelledby="audio-flag-title" hidden>
+    <div class="dialog-heading"><h2 id="audio-flag-title">Flag audio</h2><button id="audio-flag-close" class="text-button" type="button">Close</button></div>
+    <p id="audio-flag-context" class="flag-context"></p>
+    <form id="audio-flag-form">
+      <div class="flag-range">
+        <label for="audio-flag-start">Start<input id="audio-flag-start" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" aria-describedby="audio-flag-range-help" required></label>
+        <label for="audio-flag-end">End<input id="audio-flag-end" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" aria-describedby="audio-flag-range-help" required></label>
+      </div>
+      <p id="audio-flag-range-help">Use m:ss or seconds. Select up to 2 minutes.</p>
+      <p id="audio-flag-excerpt" class="flag-excerpt"></p>
+      <label class="flag-note-label" for="audio-flag-note">What needs fixing? <span>(optional)</span></label>
+      <textarea id="audio-flag-note" rows="3" maxlength="1000" placeholder="Mispronunciation, missing word, unnatural pause…"></textarea>
+      <div class="flag-actions"><button id="audio-flag-preview" class="text-button" type="button">Preview snippet</button><button id="audio-flag-save" class="continue-button" type="submit">Save flag</button></div>
+      <p id="audio-flag-status" role="status" aria-live="polite"></p>
+    </form>
+  </dialog>
+  <dialog id="audio-flags-dialog" aria-labelledby="audio-flags-title" hidden>
+    <div class="dialog-heading"><h2 id="audio-flags-title">Saved audio flags</h2><button id="audio-flags-close" class="text-button" type="button">Close</button></div>
+    <div class="flag-actions"><button id="audio-flags-refresh" class="text-button" type="button">Refresh</button><button id="audio-flags-export" class="continue-button" type="button" disabled>Download shown flags</button></div>
+    <p>Up to 100 latest flags. Downloads contain the flags shown here.</p>
+    <p id="audio-flags-status" role="status" aria-live="polite"></p>
+    <ol id="audio-flags-list" class="audio-flags-list"></ol>
+  </dialog>
   <audio id="narration" preload="metadata" crossorigin="anonymous"></audio>
+  <audio id="audio-flag-player" preload="metadata" crossorigin="anonymous" hidden></audio>
   <noscript><p class="no-script">Enable JavaScript to use your access code and open the book.</p></noscript>
 </body>
 </html>

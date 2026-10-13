@@ -4,6 +4,7 @@
   --control-hover: #302d25;
   --control-edge: #514837;
   --control-gold: #dfbd7d;
+  --control-radius: 12px;
 }
 
 .lumen-icon { width: 22px; height: 22px; display: block; flex: none; }
@@ -15,14 +16,15 @@ button:disabled { cursor: default; opacity: .42; }
 button:focus-visible, select:focus-visible, input:focus-visible, .sentence:focus-visible {
   outline: 2px solid var(--gold); outline-offset: 3px;
 }
-.skip-link { border: 1px solid var(--gold); border-radius: 5px; font: 14px Arial, sans-serif; }
+.skip-link { border: 1px solid var(--gold); border-radius: var(--control-radius); font: 14px Arial, sans-serif; }
 
 .text-button, .type-button, .continue-button {
   display: inline-flex; align-items: center; justify-content: center; gap: 9px;
-  min-width: 44px; min-height: 44px; border-radius: 5px;
+  min-width: 44px; min-height: 44px; border-radius: var(--control-radius);
   font: 13px/1.35 Arial, sans-serif; letter-spacing: .015em;
   transition: background-color .18s, border-color .18s, color .18s;
 }
+.audio-flag-button { border-radius: var(--control-radius); }
 .text-button, .type-button { border: 1px solid transparent; padding: 9px 12px; color: var(--muted); }
 .text-button:hover:not(:disabled), .type-button:hover:not(:disabled) {
   background: var(--control-hover); border-color: var(--control-edge); color: var(--paper);
@@ -44,7 +46,7 @@ button:focus-visible, select:focus-visible, input:focus-visible, .sentence:focus
 .reader-tools .lumen-icon { width: 20px; height: 20px; }
 .reading-mode { height: auto; border: 0; padding: 0 16px 0 0; font-size: 11px; letter-spacing: .06em; color: var(--muted); }
 .reading-mode::before { content: ''; width: 4px; height: 4px; margin-right: 8px; background: var(--gold); transform: rotate(45deg); }
-#sign-out { margin-left: 6px; border-left-color: var(--line); border-radius: 0 5px 5px 0; }
+#sign-out { margin-left: 6px; border-left-color: var(--line); border-radius: var(--control-radius); }
 
 .access-gate { padding: 42px 24px; background: radial-gradient(ellipse at 50% 20%, #55432a36, transparent 65%); }
 .access-room { width: min(100%, 520px); margin: auto; }
@@ -86,7 +88,7 @@ button:focus-visible, select:focus-visible, input:focus-visible, .sentence:focus
 .chapter-navigation .lumen-icon { width: 18px; height: 18px; }
 #book-progress { font-size: 10px; line-height: 1.6; }
 .sentence:focus-visible { border-radius: 2px; background: #dfbd7d12; }
-.excerpt-ending .text-button { border-color: var(--control-edge); border-radius: 5px; margin: 4px; }
+.excerpt-ending .text-button { border-color: var(--control-edge); border-radius: var(--control-radius); margin: 4px; }
 
 .player { background: linear-gradient(180deg, #22221d, #191a16); border-top-color: #5c50394d; }
 .skip-button {
@@ -109,7 +111,7 @@ button:focus-visible, select:focus-visible, input:focus-visible, .sentence:focus
 #play-icon [data-icon="play"] { transform: translateX(1px); }
 .art-toggle {
   display: inline-flex; min-width: 48px; min-height: 48px; gap: 9px; padding: 8px;
-  align-items: center; justify-content: center; border: 0; border-radius: 5px;
+  align-items: center; justify-content: center; border: 0; border-radius: var(--control-radius);
   background: transparent; font: 12px Arial, sans-serif; color: var(--muted);
 }
 .art-toggle[aria-checked="true"] { color: var(--gold); }
@@ -130,7 +132,7 @@ button:focus-visible, select:focus-visible, input:focus-visible, .sentence:focus
 #seek::-moz-range-thumb { width: 10px; height: 10px; background: #ead1a0; border: 3px solid #ac8b52; box-shadow: 0 0 0 4px #dfbd7d0c; }
 .speed-control { display: flex; position: relative; align-items: center; padding-left: 16px; }
 .speed-control select, #narrator {
-  appearance: none; -webkit-appearance: none; border: 1px solid var(--control-edge); border-radius: 5px;
+  appearance: none; -webkit-appearance: none; border: 1px solid var(--control-edge); border-radius: var(--control-radius);
   background: #20211c; color: var(--paper); font: 13px Arial, sans-serif;
 }
 .speed-control select { min-width: 80px; min-height: 46px; padding: 8px 30px 8px 13px; }
@@ -177,7 +179,7 @@ dialog p { font-size: 12px; }
 #chapter-list h3 { margin: 26px 8px 12px; font-size: 10px; letter-spacing: .14em; }
 .chapter-choice {
   min-height: 64px; gap: 12px; padding: 12px 10px; border: 1px solid transparent;
-  border-bottom-color: var(--line); border-radius: 5px; font-size: 13px;
+  border-bottom-color: var(--line); border-radius: var(--control-radius); font-size: 13px;
   transition: background-color .18s, border-color .18s;
 }
 .chapter-choice:hover { background: #dfbd7d08; border-color: #dfbd7d30; }

@@ -31,20 +31,20 @@ function createCloudflareBridge({env=process.env,fetch=globalThis.fetch}={}) {
   return async request=>{
     let config;
     try {config=bridgeConfig(env);}catch(_){return failure(503);}
-    const url=new URL(request.url),session=url.pathname==='/api/session';
-    if(!session&&url.pathname!=='/api/book'&&!url.pathname.startsWith('/api/assets/'))return failure(404);
+    const url=new URL(request.url),session=url.pathname==='/api/session',flags=url.pathname==='/api/audio-flags';
+    if(!session&&!flags&&url.pathname!=='/api/book'&&!url.pathname.startsWith('/api/assets/'))return failure(404);
     if(url.search)return failure(400);
-    if(!(session?['GET','POST','DELETE']:['GET','HEAD']).includes(request.method))return failure(405);
+    if(!(session?['GET','POST','DELETE']:flags?['GET','POST']:['GET','HEAD']).includes(request.method))return failure(405);
     const supplied=request.headers.get('origin'),host=request.headers.get('host'),site=request.headers.get('sec-fetch-site');
     if(url.origin!==config.requestOrigin||(host&&host.toLowerCase()!==new URL(config.requestOrigin).host)||
       (supplied&&supplied!==config.requestOrigin)||(site&&!['same-origin','none'].includes(site))||
-      (session&&request.method!=='GET'&&supplied!==config.requestOrigin))return failure(403);
+      (((session&&request.method!=='GET')||(flags&&request.method==='POST'))&&supplied!==config.requestOrigin))return failure(403);
     const worker=config.previous&&url.pathname.startsWith(config.previous.prefix)?config.previous.worker:config.worker;
     const headers={};
     for(const name of forwarded)if(request.headers.has(name))headers[name]=request.headers.get(name);
     let body;
     try {
-      if(session&&request.method==='POST') {
+      if((session||flags)&&request.method==='POST') {
         if(!/^application\/json(?:;|$)/i.test(headers['content-type']||''))return failure(400);
         const length=request.headers.get('content-length');
         if(length&&(!/^\d+$/.test(length)||Number(length)>4096))return failure(413);
